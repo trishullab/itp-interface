@@ -1,0 +1,49 @@
+[build-system]
+requires = 
+[
+    "hatchling",
+    "dataclasses-json==0.5.7",
+    "numpy==1.23.2",
+    "pexpect==4.8.0",
+    "sentence-transformers==2.2.2",
+    "sexpdata",
+    "pampy==0.3.0",
+    "ray==2.4.0",
+    "pydantic==1.10.12",
+    "ray==2.4.0",
+    "pydantic==1.10.12 # pydantic > 2 is not compatible with ray",
+    "faiss-cpu>=1.6.1",
+    "filelock",
+    "regex",
+    "tqdm>=4.27",
+    "wget",
+    "hydra-core>=1.0.0",
+    "omegaconf>=2.0.1",
+    "jsonlines",
+    "soundfile==0.12.1",
+    "editdistance==0.6.2",
+    "rank_bm25==0.2.2",
+    "parglare==0.16.1",
+    "psutil==5.9.5",
+    "urllib3>=2.0.7",
+    "mathlibtools==1.3.2"
+]
+build-backend = "hatchling.build"
+[project]
+name = "itp_interface"
+version = "0.0.1"
+authors = [
+  { name="Amitayush Thakur", email="amitayush@utexas.edu" },
+]
+description = "Generic interface for hooking up to any Interactive Theorem Prover (ITP) and collecting data for training ML models for AI in formal theorem proving."
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GLP License",
+    "Operating System :: Linux :: Ubuntu 20.04",
+]
+
+[project.urls]
+Homepage = "https://github.com/trishullab/itp-interface"
+Issues = "https://github.com/trishullab/itp-interface/issues"
