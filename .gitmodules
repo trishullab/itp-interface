@@ -1,0 +1,6 @@
+[submodule "data/benchmarks/CompCert"]
+	path = data/benchmarks/CompCert
+	url = https://github.com/AbsInt/CompCert.git
+[submodule "data/benchmarks/miniF2F"]
+	path = data/benchmarks/miniF2F
+	url = https://github.com/facebookresearch/miniF2F.git
