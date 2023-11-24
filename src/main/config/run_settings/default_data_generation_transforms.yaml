@@ -1,0 +1,19 @@
+name: default_data_generation_transforms
+use_human_readable: True
+save_intermidiate_transforms: True
+buffer_size: 10000
+pool_size: 20
+transform_type: LOCAL
+dep_depth: 0
+max_search_results:
+output_dir: .log/run_data_generation_transforms/data/test/custom_group_theory
+info_file: data/test/coq/custom_group_theory/compilable_projects_info.log.json
+setting_type: Agent
+timeout_in_secs: 60 # coq tactic execution timeout
+proof_retries: 1
+max_theorems_in_prompt: 7
+max_number_of_episodes: 1
+max_steps_per_episode: 60
+render: False
+checkpoint_dir: .log/checkpoints
+should_checkpoint: False

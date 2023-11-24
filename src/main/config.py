@@ -27,6 +27,14 @@ class PolicyName(Enum):
 
     def __str__(self):
         return self.value
+    
+class TransformType(Enum):
+    LOCAL = "LOCAL"
+    GLOBAL = "GLOBAL"
+    FULL = "FULL"
+
+    def __str__(self):
+        return self.value
 
 @dataclass_json
 @dataclass
@@ -43,31 +51,26 @@ class PromptSettings(object):
 
 @dataclass_json
 @dataclass
-class EvalSettings(object):
+class RunSettings(object):
     name: str
-    use_hammer: bool
-    setting_type: SettingType = SettingType.Agent
-    max_proof_depth: int = 50
-    timeout_in_secs: int = 60
-    proof_retries: int = 1
-    max_tokens_per_action: int = 25
-    max_theorems_in_prompt: int = 3
-    gpt_model_name: str = "gpt-3.5-turbo"
-    max_number_of_episodes: int = 1
-    max_steps_per_episode: int = 50
-    render: bool = False
-    checkpoint_dir: str = ".log/checkpoints"
-    should_checkpoint: bool = False
-    temperature: float = 0.0
-    max_history_messages: int = 0
-    policy_name: PolicyName = PolicyName.Dfs
-    proof_dump_dir: str = ".log/proofs/proof-dump-"
-    use_human_readable_proof_context: bool = True
-    sample: float = 1.0
-    sample_seed: int = 0xf00
-    use_example_retrieval: bool = False
-    always_use_useful_theorem_retrieval: bool = False
-    num_goal_per_prompt: typing.Optional[int] = None
+    use_human_readable: bool
+    save_intermidiate_transforms: bool
+    buffer_size: int
+    pool_size: int
+    transform_type: TransformType
+    dep_depth: int
+    output_dir: str
+    info_file: str
+    max_search_results: typing.Optional[int] = None
+    setting_type: SettingType
+    timeout_in_secs: int # coq tactic execution timeout
+    proof_retries: int
+    max_theorems_in_prompt: int
+    max_number_of_episodes: int
+    max_steps_per_episode: int
+    render: bool
+    checkpoint_dir: str
+    should_checkpoint: bool
 
 @dataclass_json
 @dataclass
@@ -97,8 +100,7 @@ class EvalBenchmark(object):
 @dataclass
 class Experiments(object):
     env_settings: EnvSettings
-    prompt_settings: PromptSettings
-    eval_settings: EvalSettings
+    run_settings: RunSettings
     benchmark: EvalBenchmark
 
 @dataclass_json
@@ -139,39 +141,28 @@ def parse_config(cfg):
     env_settings = EnvSettings(
         name=env_settings_cfg["name"],
         retrieval_strategy=ProofEnvReRankStrategy(env_settings_cfg["retrieval_strategy"]))
-    prompt_settings_cfg = cfg["prompt_settings"]
-    prompt_settings = PromptSettings(
-        name=prompt_settings_cfg["name"],
-        main_prompt=prompt_settings_cfg["main_prompt"],
-        conv_prompt=prompt_settings_cfg["conv_prompt"])
-    eval_settings_cfg = cfg["eval_settings"]
-    eval_settings = EvalSettings(
-        name=eval_settings_cfg["name"],
-        use_hammer=eval_settings_cfg["use_hammer"],
-        setting_type=SettingType(eval_settings_cfg["setting_type"]),
-        max_proof_depth=eval_settings_cfg["max_proof_depth"],
-        timeout_in_secs=eval_settings_cfg["timeout_in_secs"],
-        proof_retries=eval_settings_cfg["proof_retries"],
-        # main_prompt=eval_settings_cfg["main_prompt"],
-        # conv_prompt=eval_settings_cfg["conv_prompt"],
-        max_tokens_per_action=eval_settings_cfg["max_tokens_per_action"],
-        max_theorems_in_prompt=eval_settings_cfg["max_theorems_in_prompt"],
-        gpt_model_name=eval_settings_cfg["gpt_model_name"],
-        max_number_of_episodes=eval_settings_cfg["max_number_of_episodes"],
-        max_steps_per_episode=eval_settings_cfg["max_steps_per_episode"],
-        render=eval_settings_cfg["render"],
-        checkpoint_dir=eval_settings_cfg["checkpoint_dir"],
-        should_checkpoint=eval_settings_cfg["should_checkpoint"],
-        temperature=eval_settings_cfg["temperature"],
-        max_history_messages=eval_settings_cfg["max_history_messages"],
-        policy_name=PolicyName(eval_settings_cfg["policy_name"]),
-        proof_dump_dir=eval_settings_cfg["proof_dump_dir"],
-        use_human_readable_proof_context=eval_settings_cfg["use_human_readable_proof_context"],
-        sample=eval_settings_cfg["sample"],
-        sample_seed=eval_settings_cfg["sample_seed"],
-        use_example_retrieval=eval_settings_cfg["use_example_retrieval"],
-        always_use_useful_theorem_retrieval=eval_settings_cfg["always_use_useful_theorem_retrieval"],
-        num_goal_per_prompt=eval_settings_cfg["num_goal_per_prompt"])
+    run_settings_cfg = cfg["run_settings"]
+    eval_settings = RunSettings(
+        name=run_settings_cfg["name"],
+        use_human_readable=run_settings_cfg["use_human_readable"],
+        save_intermidiate_transforms=run_settings_cfg["save_intermidiate_transforms"],
+        buffer_size=run_settings_cfg["buffer_size"],
+        pool_size=run_settings_cfg["pool_size"],
+        transform_type=TransformType(run_settings_cfg["transform_type"]),
+        dep_depth=run_settings_cfg["dep_depth"],
+        output_dir=run_settings_cfg["output_dir"],
+        info_file=run_settings_cfg["info_file"],
+        max_search_results=run_settings_cfg["max_search_results"],
+        setting_type=SettingType(run_settings_cfg["setting_type"]),
+        timeout_in_secs=run_settings_cfg["timeout_in_secs"],
+        proof_retries=run_settings_cfg["proof_retries"],
+        max_theorems_in_prompt=run_settings_cfg["max_theorems_in_prompt"],
+        max_number_of_episodes=run_settings_cfg["max_number_of_episodes"],
+        max_steps_per_episode=run_settings_cfg["max_steps_per_episode"],
+        render=run_settings_cfg["render"],
+        checkpoint_dir=run_settings_cfg["checkpoint_dir"],
+        should_checkpoint=run_settings_cfg["should_checkpoint"]
+    )
     benchmark_cfg = cfg["benchmark"]
     datasets_cfg = benchmark_cfg["datasets"]
     eval_datasets = []
@@ -200,4 +191,4 @@ def parse_config(cfg):
         few_shot_metadata_filename_for_retrieval=benchmark_cfg["few_shot_metadata_filename_for_retrieval"],
         dfs_data_path_for_retrieval=benchmark_cfg["dfs_data_path_for_retrieval"],
         dfs_metadata_filename_for_retrieval=benchmark_cfg["dfs_metadata_filename_for_retrieval"])
-    return Experiments(env_settings=env_settings, eval_settings=eval_settings, benchmark=benchmark, prompt_settings=prompt_settings)
+    return Experiments(env_settings=env_settings, run_settings=eval_settings, benchmark=benchmark)
