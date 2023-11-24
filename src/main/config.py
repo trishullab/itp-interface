@@ -44,13 +44,6 @@ class EnvSettings(object):
 
 @dataclass_json
 @dataclass
-class PromptSettings(object):
-    name: str
-    main_prompt: str
-    conv_prompt: str
-
-@dataclass_json
-@dataclass
 class RunSettings(object):
     name: str
     use_human_readable: bool
@@ -61,7 +54,6 @@ class RunSettings(object):
     dep_depth: int
     output_dir: str
     info_file: str
-    max_search_results: typing.Optional[int] = None
     setting_type: SettingType
     timeout_in_secs: int # coq tactic execution timeout
     proof_retries: int
@@ -71,6 +63,7 @@ class RunSettings(object):
     render: bool
     checkpoint_dir: str
     should_checkpoint: bool
+    max_search_results: typing.Optional[int] = None
 
 @dataclass_json
 @dataclass

@@ -92,7 +92,7 @@ def run_data_generation(experiment: Experiments, log_dir: str, logger: logging.L
         try:
             logger = logger or logging.getLogger(__name__)
             logger.info(f"Running experiment: \n{experiment.to_json(indent=4)}")
-            run_data_generation_pipeline(experiment, log_dir, logger=logger)
+            run_data_generation_pipeline(experiment, log_dir, checkpoint_info, logger=logger)
             trial_cnt = 0
         except:
             trial_cnt -= 1
