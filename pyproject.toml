@@ -1,6 +1,5 @@
 [build-system]
-requires = 
-[
+requires = [
     "hatchling",
     "dataclasses-json==0.5.7",
     "numpy==1.23.2",
@@ -40,8 +39,8 @@ readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: GLP License",
-    "Operating System :: Linux :: Ubuntu 20.04",
+    "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+    "Operating System :: POSIX :: Linux",
 ]
 
 [project.urls]
