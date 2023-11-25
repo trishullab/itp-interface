@@ -10,7 +10,7 @@ requires = [
     "ray==2.4.0",
     "pydantic==1.10.12",
     "ray==2.4.0",
-    "pydantic==1.10.12 # pydantic > 2 is not compatible with ray",
+    "pydantic==1.10.12",
     "faiss-cpu>=1.6.1",
     "filelock",
     "regex",
