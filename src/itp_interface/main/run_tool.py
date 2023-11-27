@@ -103,9 +103,10 @@ def run_data_generation(experiment: Experiments, log_dir: str, logger: logging.L
 @hydra.main(config_path="config", config_name="experiments", version_base="1.2")
 def main(cfg):
     experiment = parse_config(cfg)
-    top_level_dir = os.path.dirname(root_dir)
-    top_level_dir = os.path.dirname(top_level_dir)
-    os.chdir(top_level_dir)
+    os.chdir(root_dir)
+    # top_level_dir = os.path.dirname(root_dir)
+    # top_level_dir = os.path.dirname(top_level_dir)
+    # os.chdir(top_level_dir)
     log_dir = ".log/data_generation/benchmark/{}/{}".format(experiment.benchmark.name, time.strftime("%Y%m%d-%H%M%S"))
     os.makedirs(log_dir, exist_ok=True)
     log_path = os.path.join(log_dir, "eval.log")
