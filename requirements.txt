@@ -2,20 +2,20 @@ dataclasses-json==0.5.7
 numpy==1.23.2
 pexpect==4.8.0
 sentence-transformers==2.2.2
-sexpdata
+sexpdata==1.0.1
 pampy==0.3.0
 ray==2.4.0
 pydantic==1.10.12
 ray==2.4.0
 pydantic==1.10.12 # pydantic > 2 is not compatible with ray
 faiss-cpu>=1.6.1
-filelock
-regex
+filelock==3.12.4
+regex==2023.10.3
 tqdm>=4.27
-wget
+wget==3.2
 hydra-core>=1.0.0
 omegaconf>=2.0.1
-jsonlines
+jsonlines==4.0.0
 soundfile==0.12.1
 editdistance==0.6.2
 rank_bm25==0.2.2
