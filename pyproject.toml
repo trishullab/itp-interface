@@ -5,7 +5,7 @@ requires = [
     "numpy==1.23.2",
     "pexpect==4.8.0",
     "sentence-transformers==2.2.2",
-    "sexpdata==1.0.1",
+    "sexpdata==1.0.0",
     "pampy==0.3.0",
     "ray==2.4.0",
     "pydantic==1.10.12",
