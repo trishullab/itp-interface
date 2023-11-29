@@ -170,6 +170,7 @@ class Lean3Executor(object):
             self._mathlib_root = os.path.join(self.project_root, "_target", "deps", "mathlib")
         self._mathlib_src_root = os.path.join(self._mathlib_root, "src")
         self._enable_search = enable_search
+        self._comments_removed = False
         self._namespaces = namespaces if namespaces is not None else Constants.lean_useful_imports + Constants.mathlib_useful_imports
         if self._enable_search:
             self._search_tool = Lean3Executor._init_search(self._mathlib_root, self._namespaces)
@@ -192,7 +193,8 @@ class Lean3Executor(object):
     def __enter__(self):
         self.lean_server = LeanCmdServer(memory_in_mibs=self._max_memory_in_mib, cwd=self.project_root, debug=False)
         if self.main_file_iter is None:
-            self.main_file_iter = LeanLineByLineReader(self.main_file).instruction_step_generator()
+            self._comments_removed = True
+            self.main_file_iter = LeanLineByLineReader(self.main_file, remove_comments=True).instruction_step_generator()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -477,7 +479,7 @@ class Lean3Executor(object):
         else:
             self._file_content = stmt.strip()
         # Remove comments
-        self._file_content = Lean3Utils.remove_comments(self._file_content)
+        self._file_content = Lean3Utils.remove_comments(self._file_content) if not self._comments_removed else self._file_content
     
     def _check_matching_end(self, file_content: str) -> bool:
         # The file_content must end with a matching end
@@ -495,8 +497,8 @@ class Lean3Executor(object):
             with open(self.temp_file_full_path, "w") as f:
                 f.write("")
         # Now add the contents to the file
-
-        if stmt.startswith("theorem") and self._import_end_idx is None:
+        # Use regex to match the last theorem start
+        if (stmt.startswith("theorem") or stmt.startswith("lemma")) and self._import_end_idx is None:
             self._import_end_idx = idx - 1
         if not self._proof_running:
             last_thm_details = Lean3Executor.theorem_match.findall(content)
@@ -548,7 +550,10 @@ class Lean3Executor(object):
             
             if not timed_out:
                 prev_proof_context = self.proof_context
-                self.proof_context = self._parse_proof_context(response.state)
+                if not matching_end:
+                    self.proof_context = self._parse_proof_context(response.state)
+                else:
+                    self.proof_context = None
 
                 if len(response.messages) > 0:
                     lines = content.split("\n")
@@ -560,7 +565,7 @@ class Lean3Executor(object):
                     self.lean_error_messages = []
 
                 if self.proof_context is None and prev_proof_context is not None:
-                    if len(response.messages) > 0: # This has to be on the response messages not the error message
+                    if len(response.messages) > 0 and not matching_end: # This has to be on the response messages not the error message
                         # Never give up the proof context because of an error
                         self.proof_context = prev_proof_context
                     elif len(response.messages) == 0 and not matching_end:
@@ -568,7 +573,7 @@ class Lean3Executor(object):
                         self.proof_context = ProofContext.empty()
 
                 # Don't give up the proof context because someone tried to end early
-                elif prev_proof_context is not None and self.proof_context is None:
+                if prev_proof_context is not None and self.proof_context is None:
                     # We have finished a proof
                     self._proof_running = False
                     self.curr_lemma_name, self.curr_lemma = None, None
@@ -601,7 +606,7 @@ class Lean3Executor(object):
                 file_content += "\n" + stmt.strip()
             else:
                 file_content = stmt.strip()
-            file_content = Lean3Utils.remove_comments(file_content)
+            file_content = Lean3Utils.remove_comments(file_content) if not self._comments_removed else file_content
             last_thm_details = Lean3Executor.theorem_match.findall(file_content)
             if last_thm_details:
                 # We might have found a new theorem

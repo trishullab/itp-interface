@@ -459,7 +459,7 @@ class Lean3Executor(object):
     def _run_stmt_on_lean_server(self, idx : int, stmt: str):
         self._set_content_to_run(stmt)
         content = self._file_content
-        if stmt.startswith("theorem") and self._import_end_idx is None:
+        if (stmt.startswith("theorem") or stmt.startswith("lemma")) and self._import_end_idx is None:
             self._import_end_idx = idx - 1
         if not self._proof_running:
             last_thm_details = Lean3Executor.theorem_match.findall(content)

@@ -192,9 +192,8 @@ class DynamicProofExecutor(Lean3Executor):
         if len(self.lean_error_messages) > 0:
             current_thm_name = self.get_lemma_name_if_running()
             assert current_thm_name is not None, "current_thm_name must not be None"
-            if len(self.lean_error_messages) > 0:
-                tactic_failed = True
-                self.run_state.last_exception = '\n'.join(self.lean_error_messages)
+            tactic_failed = True
+            self.run_state.last_exception = '\n'.join(self.lean_error_messages)
         return start_line_num, not tactic_failed
     
     def get_last_exception(self) -> typing.Optional[str]:
