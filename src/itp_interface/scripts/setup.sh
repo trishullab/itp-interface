@@ -98,4 +98,11 @@ popd
 echo "Building Lean's Simple Benchmark done!"
 echo "Building Lean's projects done!"
 echo "Lean's Setup complete!"
+echo "Downloading ReProver benchmarks..."
+(
+    # Download ReProver benchmarks
+    echo "Running download.sh from src/data/benchmarks/lean-dojo..."
+    ./src/data/benchmarks/lean-dojo/download.sh
+    echo "Downloaded ReProver benchmarks successfully!"
+) || exit 1
 echo "Copra Setup complete!"

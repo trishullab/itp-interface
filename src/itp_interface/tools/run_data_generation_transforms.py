@@ -292,7 +292,7 @@ class RunDataGenerationTransforms(object):
         self.logger.warning(f"==============================>[{transform.name}] Removing temp directory {temp_output_dir}<==============================")
         shutil.rmtree(temp_output_dir)
 
-    def run_all_local_transforms(self, pool_size: int, root: str, projects: typing.List[str], files: typing.List[str], use_human_readable: bool, new_output_dir: str, log_error: bool):
+    def run_all_local_transforms(self, pool_size: int, root: str, projects: typing.List[str], files: typing.List[str], use_human_readable: bool, new_output_dir: str, log_error: bool, clone_dir: str):
         for idx, transform in enumerate(self.transforms):
             last_transform = idx == len(self.transforms) - 1
             save_transform = self.save_intermidiate_transforms or last_transform
@@ -313,6 +313,7 @@ if __name__ == "__main__":
     os.chdir(root_dir)
     current_time = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
     logging_dir = f".log/run_data_generation_transforms/logs/{current_time}"
+    clone_dir = f".log/run_data_generation_transforms/clones/{current_time}"
     os.makedirs(logging_dir, exist_ok=True)
     log_file = f"{os.path.join(logging_dir, f'_coq_data_gen.log')}"
     with open(log_file, "w") as f:
@@ -379,7 +380,7 @@ if __name__ == "__main__":
                 raise ValueError(f"Unexpected data_type: {data_type}")
             if transform_type == "LOCAL":
                 if len(files) > 0:
-                    data_transform.run_all_local_transforms(pool_size, builder.root, projects, files, use_human_readable=use_human_readable, new_output_dir=new_output_dir, log_error=True)
+                    data_transform.run_all_local_transforms(pool_size, builder.root, projects, files, use_human_readable=use_human_readable, new_output_dir=new_output_dir, log_error=True, clone_dir=clone_dir)
     except Exception as e:
         logger.exception(e)
         raise e 

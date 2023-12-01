@@ -50,11 +50,11 @@ begin
     rw nat.succ_eq_add_one,
     rw nat.add_mod,
     cases x_ih,
-    {
+    begin
       right,
       rw x_ih,
       simp
-    },
+    end,
     {
       left,
       rw x_ih,
