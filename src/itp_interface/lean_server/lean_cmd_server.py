@@ -29,6 +29,7 @@ EmptyResponse = LeanCmdServerResponse()
 
 class LeanCmdServer:
     has_state_message = 'tactic failed, there are unsolved goals\nstate:'
+    has_focused_message = 'solve1 tactic failed, focused goal has not been solved\nstate:'
     def __init__(self, memory_in_mibs = 40000, cwd = '.', debug=False):
         assert cwd is not None, "cwd must be provided"
         assert os.path.isdir(cwd), "cwd must be a valid directory"
@@ -82,8 +83,9 @@ class LeanCmdServer:
                 line_num = int(line_num_str)
                 col_num = int(col_num_str)
                 level = level_str.lower()
-                if level == 'error' and text.startswith(LeanCmdServer.has_state_message):
-                    state = text[len(LeanCmdServer.has_state_message):]
+                if level == 'error' and \
+                    (text.startswith(LeanCmdServer.has_state_message) or text.startswith(LeanCmdServer.has_focused_message)):
+                    state = text[text.find('state:') + len('state:'):].strip()
                 else:
                     final_messages.append(Message(level, full_path, line_num, col_num, text))
             except:

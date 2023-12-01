@@ -57,7 +57,7 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
                 proof_running = True
                 prev_goal : typing.List[Goal] = [Goal(goal.hypotheses, goal.goal) for goal in prev_goal]
                 next_goal : typing.List[Goal] = lean_context_helper.get_focussed_goals(lean_executor)
-                if len(prev_goal) > 0 and cmd_exec != "begin":
+                if len(prev_goal) > 0: #and cmd_exec != "begin":
                     training_data_format = TrainingDataFormat(
                         proof_id=proof_id,
                         all_useful_defns_theorems=[],
@@ -118,14 +118,14 @@ if __name__ == "__main__":
     import time
     os.chdir(root_dir)
     project_dir = "data/test/lean_proj"
-    file_name = "data/test/lean_proj/src/simple.lean"
-    output_path = ".log/local_data_generation_transform/data/"
-    log_path = ".log/local_data_generation_transform/log/"
+    file_name = "data/test/lean_proj/src/simple_solved.lean"
     project_id = project_dir.replace('/', '.')
+    time_str = time.strftime("%Y%m%d-%H%M%S")
+    output_path = f".log/local_data_generation_transform/data/{time_str}"
+    log_path = f".log/local_data_generation_transform/log/{time_str}"
+    log_file = f"{log_path}/local_data_generation_transform-{time_str}.log"
     os.makedirs(output_path, exist_ok=True)
     os.makedirs(log_path, exist_ok=True)
-    time_str = time.strftime("%Y%m%d-%H%M%S")
-    log_file = f"{log_path}/local_data_generation_transform-{time_str}.log"
     logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger(__name__)
     def _print_lean_executor_callback():

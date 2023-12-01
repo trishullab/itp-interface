@@ -121,6 +121,7 @@ class Lean3Executor(object):
     proof_context_match = re.compile(proof_context_regex, re.MULTILINE)
     goal_match = re.compile(goal_regex, re.MULTILINE)
     proof_context_generation_tactic = "\nend"
+    proof_context_generation_tactic_curlies = "\n}"
     proof_state_running_message = "tactic failed, there are unsolved goals\nstate:"
     search_tools: typing.Dict[str, typing.Any] = {}
     def __init__(self, project_root: str = None, prefix: str = None, main_file: str = None, use_hammer: bool = False, timeout_in_sec: int = 60, use_human_readable_proof_context: bool = False, proof_step_iter: typing.Iterator[str] = None, suppress_error_log: bool = False, mathlib_root: typing.Optional[str] = None, enable_search: bool = False, namespaces: typing.List[str] = None):
@@ -488,6 +489,55 @@ class Lean3Executor(object):
         if not file_content.endswith("end"):
             return False # no need to check if we are no where near a closing of a proof
         return file_content.count("begin") == file_content.count("end")
+    
+    def _check_curlies(self, file_content: str) -> bool:
+        # The file_content must end with a matching end
+        # TODO: This is a hack, since we are not tokenizing if there are variables which have suffix or prefix
+        # of begin or end, then this won't be correct. But this is a rare case, so we can ignore it for now
+        return file_content.count("{") == file_content.count("}")
+
+    def _diff_begin_end(self, file_content: str) -> int:
+        return file_content.count("begin") - file_content.count("end")
+    
+    def _diff_curlies(self, file_content: str) -> int:
+        return file_content.count("{") - file_content.count("}")
+    
+    def _close_unmatched_subproofs(self, file_content: str) -> typing.Tuple[bool, str]:
+        stack = []
+        idx = 0
+        matched_end = file_content.endswith("end")
+        while idx < len(file_content):
+            # scan at most 5 characters
+            if file_content[idx:].startswith("begin"):
+                stack.append("begin")
+                idx += 5
+            elif file_content[idx:].startswith("end"):
+                if len(stack) > 0 and stack[-1] == "begin":
+                    stack.pop()
+                    idx += 3
+                else:
+                    raise Exception("Unmatched 'end', proof is not well formed")
+            elif file_content[idx:].startswith("{"):
+                stack.append("{")
+                idx += 1
+            elif file_content[idx:].startswith("}"):
+                if len(stack) > 0 and stack[-1] == "{":
+                    stack.pop()
+                    idx += 1
+                else:
+                    raise Exception("Unmatched '}', proof is not well formed")
+            else:
+                idx += 1
+        while len(stack) > 0:
+            top = stack.pop()
+            if top == "begin":
+                file_content += Lean3Executor.proof_context_generation_tactic
+                matched_end = False
+            elif top == "{":
+                file_content += Lean3Executor.proof_context_generation_tactic_curlies
+            else:
+                raise Exception("Bad stack")
+        return matched_end, file_content
 
     def _run_stmt_on_lean_server(self, idx : int, stmt: str):
         self._set_content_to_run(stmt)
@@ -528,9 +578,24 @@ class Lean3Executor(object):
         if self._proof_running:
             content = content.rstrip()
             assert self._proof_start_idx is not None
-            matching_end = self._check_matching_end(content)
-            if not matching_end:
-                content += Lean3Executor.proof_context_generation_tactic
+            # end_diff = self._diff_begin_end(content)
+            # if end_diff > 1:
+            #     # We have multiple begin-end pairs in between the proof
+            #     # So we just forcefully finish all the proofs in between
+            #     end_diff -= 1
+            #     content += "\nend" * end_diff
+            # curlies_diff = self._diff_curlies(content)
+            # if curlies_diff > 1:
+            #     # We have multiple begin-end pairs in between the proof
+            #     # So we just forcefully finish all the proofs in between
+            #     curlies_diff -= 1
+            #     content += Lean3Executor.proof_context_generation_tactic_curlies * curlies_diff
+            matching_end, content = self._close_unmatched_subproofs(content)
+            # matching_curlies = self._check_curlies(content)
+            # if not matching_curlies:
+            #     content += Lean3Executor.proof_context_generation_tactic_curlies
+            # if not matching_end:
+            #     content += Lean3Executor.proof_context_generation_tactic
             idx += 1
             with open(self.temp_file_full_path, "w") as f:
                 f.write(content)
