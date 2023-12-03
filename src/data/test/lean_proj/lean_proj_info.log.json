@@ -1,0 +1,20 @@
+{
+    "root": "data/test",
+    "compilable_projects": [
+        "lean_proj"
+    ],
+    "compilable_files": [
+        "data/test/lean_proj/src/simple_solved.lean",
+        "data/test/lean_proj/src/temp.lean"
+    ],
+    "uncompilable_projects": [],
+    "uncompilable_files": [],
+    "train_compilable_files": [
+        "data/test/lean_proj/src/simple_solved.lean"
+    ],
+    "train_uncompilable_files": [],
+    "test_compilable_files": [
+        "data/test/lean_proj/src/temp.lean"
+    ],
+    "test_uncompilable_files": []
+}

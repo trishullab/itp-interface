@@ -35,7 +35,7 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
     def load_data_from_file(self, file_path) -> MergableCollection:
         return TrainingDataCollection.load_from_file(file_path, self.logger)
 
-    def __call__(self, training_data: TrainingData, project_id : str, lean_executor: Lean3Executor, print_coq_executor_callback: typing.Callable[[], Lean3Executor]) -> TrainingData:
+    def __call__(self, training_data: TrainingData, project_id : str, lean_executor: Lean3Executor, print_coq_executor_callback: typing.Callable[[], Lean3Executor], theorems: typing.List[str] = None) -> TrainingData:
         print_lean_executor = print_coq_executor_callback()
         lean_context_helper = Lean3ContextHelper(print_lean_executor, self.depth, self.logger)
         lean_context_helper.__enter__()
@@ -52,8 +52,9 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
         proof_id = self.get_proof_id(project_id, file_namespace, line_number, lemma_name)
         local_lemma_refs_cnt = 0
         external_lemma_refs_cnt = 0
+        theorems = set(theorems) if theorems is not None else None
         while cmd_ran:
-            if lean_executor.is_in_proof_mode() and lemma_name != "__NONE__":
+            if lean_executor.is_in_proof_mode() and lemma_name != "__NONE__" and (theorems is None or lemma_name in theorems):
                 proof_running = True
                 prev_goal : typing.List[Goal] = [Goal(goal.hypotheses, goal.goal) for goal in prev_goal]
                 next_goal : typing.List[Goal] = lean_context_helper.get_focussed_goals(lean_executor)

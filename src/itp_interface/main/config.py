@@ -53,7 +53,6 @@ class RunSettings(object):
     transform_type: TransformType
     dep_depth: int
     output_dir: str
-    info_file: str
     setting_type: SettingType
     timeout_in_secs: int # coq tactic execution timeout
     proof_retries: int
@@ -144,7 +143,6 @@ def parse_config(cfg):
         transform_type=TransformType(run_settings_cfg["transform_type"]),
         dep_depth=run_settings_cfg["dep_depth"],
         output_dir=run_settings_cfg["output_dir"],
-        info_file=run_settings_cfg["info_file"],
         max_search_results=run_settings_cfg["max_search_results"],
         setting_type=SettingType(run_settings_cfg["setting_type"]),
         timeout_in_secs=run_settings_cfg["timeout_in_secs"],
@@ -154,8 +152,7 @@ def parse_config(cfg):
         max_steps_per_episode=run_settings_cfg["max_steps_per_episode"],
         render=run_settings_cfg["render"],
         checkpoint_dir=run_settings_cfg["checkpoint_dir"],
-        should_checkpoint=run_settings_cfg["should_checkpoint"]
-    )
+        should_checkpoint=run_settings_cfg["should_checkpoint"])
     benchmark_cfg = cfg["benchmark"]
     datasets_cfg = benchmark_cfg["datasets"]
     eval_datasets = []

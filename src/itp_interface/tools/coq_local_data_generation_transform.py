@@ -35,7 +35,7 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
     def load_data_from_file(self, file_path) -> MergableCollection:
         return TrainingDataCollection.load_from_file(file_path, self.logger)
 
-    def __call__(self, training_data: TrainingData, project_id : str, coq_executor: CoqExecutor, print_coq_executor_callback: typing.Callable[[], CoqExecutor]) -> TrainingData:
+    def __call__(self, training_data: TrainingData, project_id : str, coq_executor: CoqExecutor, print_coq_executor_callback: typing.Callable[[], CoqExecutor], theorems: typing.List[str] = None) -> TrainingData:
         print_coq_executor = print_coq_executor_callback()
         coq_context_helper = CoqContextHelper(print_coq_executor, self.depth, self.logger)
         coq_context_helper.__enter__()
@@ -53,7 +53,7 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
         local_lemma_refs_cnt = 0
         external_lemma_refs_cnt = 0
         while cmd_ran:
-            if coq_executor.is_in_proof_mode() and lemma_name != "__NONE__":
+            if coq_executor.is_in_proof_mode() and lemma_name != "__NONE__" and (theorems is None or lemma_name in theorems):
                 proof_running = True
                 prev_goal : typing.List[Goal] = [Goal(goal.hypotheses, goal.goal) for goal in prev_goal]
                 next_goal : typing.List[Goal] = coq_context_helper.get_focussed_goals(coq_executor)

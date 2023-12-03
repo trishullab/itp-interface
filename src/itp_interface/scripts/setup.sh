@@ -57,7 +57,7 @@ echo "Building Coq projects..."
     # Build CompCert
     echo "Building CompCert..."
     echo "This may take a while... (don't underestimate the time taken to build CompCert, meanwhile you can take a coffee break!)"
-    pushd ./data/benchmarks
+    pushd ./src/data/benchmarks
     set -euv
     cd CompCert
     if [[ ! -f "Makefile.config" ]]; then
@@ -70,7 +70,7 @@ echo "Building Coq projects..."
     # ./src/scripts/patch_compcert.sh
 ) || exit 1
 echo "Building Coq's Simple Benchmark..."
-pushd ./data/test/coq/custom_group_theory
+pushd ./src/data/test/coq/custom_group_theory
 cd theories
 make
 cd ..
@@ -82,7 +82,7 @@ echo "Building Lean's projects ..."
     # Build Lean's projects
     echo "Building miniF2F..."
     echo "This may take a while... (don't underestimate the time taken to build miniF2F, meanwhile you can take a coffee break!)"
-    pushd ./data/benchmarks
+    pushd ./src/data/benchmarks
     set -euv
     cd miniF2F
     leanpkg configure
@@ -92,7 +92,7 @@ echo "Building Lean's projects ..."
     echo "miniF2F built successfully!"
 ) || exit 1
 echo "Building Lean's Simple Benchmark..."
-pushd ./data/test/lean_proj
+pushd ./src/data/test/lean_proj
 leanproject build
 popd
 echo "Building Lean's Simple Benchmark done!"
