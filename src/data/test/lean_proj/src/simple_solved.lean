@@ -86,3 +86,30 @@ begin
   rw pow_two,
   ring_nf,
 end
+
+theorem aime_1983_p2
+(x p : ℝ)
+(f : ℝ → ℝ)
+(h₀ : 0 < p ∧ p < 15)
+(h₁ : p ≤ x ∧ x ≤ 15)
+(h₂ : f x = abs (x - p) + 
+            abs (x - 15) + 
+            abs (x - p - 15)) :
+15 ≤ f x :=
+begin
+    have h₃ : f x ≥ 15, 
+    {
+      rw h₂,
+      have h₄ : x - p ≥ 0, 
+        by linarith [h₁.left],
+      have h₅ : x - 15 ≤ 0, 
+        by linarith [h₁.right],
+      have h₆ : x - p - 15 ≤ 0, 
+        by linarith [h₁.right, h₀.right],
+      rw abs_of_nonneg h₄,
+      rw abs_of_nonpos h₅,
+      rw abs_of_nonpos h₆,
+      linarith,
+    },
+    exact h₃,
+end
