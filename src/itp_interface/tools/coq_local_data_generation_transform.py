@@ -5,6 +5,7 @@ root_dir = f"{__file__.split('itp_interface')[0]}"
 if root_dir not in sys.path:
     sys.path.append(root_dir)
 import typing
+import uuid
 from itp_interface.tools.coq_context_helper import CoqContextHelper
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
 from itp_interface.tools.training_data_format import Goal, MergableCollection, TrainingDataMetadataFormat, TrainingDataCollection, TrainingDataFormat
@@ -49,7 +50,8 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
         lemma_name = coq_executor.get_lemma_name_if_running()
         if lemma_name is None:
             lemma_name = "__NONE__"
-        proof_id = self.get_proof_id(project_id, file_namespace, line_number, lemma_name)
+        theorem_id = str(uuid.uuid4())
+        proof_id = self.get_proof_id(theorem_id, file_namespace, line_number, lemma_name)
         local_lemma_refs_cnt = 0
         external_lemma_refs_cnt = 0
         while cmd_ran:
@@ -99,11 +101,12 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
             line_number = coq_executor.line_num
             if proof_running and not coq_executor.is_in_proof_mode():
                 proof_running = False
-                self.logger.info(f"Finished processing lemma {lemma_name}")
+                self.logger.info(f"Finished processing lemma [{theorem_id}] {lemma_name}")
+                theorem_id = str(uuid.uuid4())
             lemma_name = coq_executor.get_lemma_name_if_running()
             if lemma_name is None:
                 lemma_name = "__NONE__"
-            proof_id = self.get_proof_id(project_id, file_namespace, line_number, lemma_name)
+            proof_id = self.get_proof_id(theorem_id, file_namespace, line_number, lemma_name)
             
         self.logger.info(f"===============Finished processing {file_namespace}=====================")
         try:

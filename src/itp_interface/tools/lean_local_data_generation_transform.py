@@ -5,6 +5,7 @@ root_dir = f"{__file__.split('itp_interface')[0]}"
 if root_dir not in sys.path:
     sys.path.append(root_dir)
 import typing
+import uuid
 from itp_interface.tools.lean_cmd_executor import Lean3Executor
 from itp_interface.tools.lean_context_helper import Lean3ContextHelper
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
@@ -49,7 +50,8 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
         lemma_name = lean_executor.get_lemma_name_if_running()
         if lemma_name is None:
             lemma_name = "__NONE__"
-        proof_id = self.get_proof_id(project_id, file_namespace, line_number, lemma_name)
+        theorem_id = str(uuid.uuid4())
+        proof_id = self.get_proof_id(theorem_id, file_namespace, line_number, lemma_name)
         local_lemma_refs_cnt = 0
         external_lemma_refs_cnt = 0
         theorems = set(theorems) if theorems is not None else None
@@ -58,7 +60,7 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
                 proof_running = True
                 prev_goal : typing.List[Goal] = [Goal(goal.hypotheses, goal.goal) for goal in prev_goal]
                 next_goal : typing.List[Goal] = lean_context_helper.get_focussed_goals(lean_executor)
-                if len(prev_goal) > 0: #and cmd_exec != "begin":
+                if len(prev_goal) > 0:
                     training_data_format = TrainingDataFormat(
                         proof_id=proof_id,
                         all_useful_defns_theorems=[],
@@ -67,21 +69,6 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
                         proof_steps=[cmd_exec],
                         simplified_goals=[], 
                         addition_state_info={})
-                    # try:
-                    #     lean_context_helper.set_relevant_defns_in_training_data_point(training_data_format, print_lean_executor, self.logger)
-                    #     lean_context_helper.set_local_thms_dfns(training_data_format, lean_executor, self.logger)
-                    # except Exception:
-                    #     self.logger.warning(f"Ignoring error in getting useful defns for cmd: \"{cmd_exec}\"")
-                    #     self.logger.warning(f"Killing print coq executor")
-                    #     self.logger.exception("Exception occurred!!")
-                    #     try:
-                    #         lean_context_helper.__exit__(None, None, None)
-                    #     except:
-                    #         pass
-                    #     print_lean_executor = print_coq_executor_callback()
-                    #     lean_context_helper = Lean3Executor(print_lean_executor, self.depth, self.logger)
-                    #     lean_context_helper.__enter__()
-                    #     self.logger.warning(f"Re-initialized print coq executor")
                     assert len(training_data_format.proof_steps) > 0, f"Proof steps cannot be empty for {proof_id}"
                     for goal in training_data_format.start_goals:
                         lemma_cnt = len(training_data_format.all_useful_defns_theorems)
@@ -100,11 +87,12 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
             line_number = lean_executor.line_num
             if proof_running and not lean_executor.is_in_proof_mode():
                 proof_running = False
-                self.logger.info(f"Finished processing lemma {lemma_name}")
+                self.logger.info(f"Finished processing lemma [{theorem_id}] {lemma_name}")
+                theorem_id = str(uuid.uuid4())
             lemma_name = lean_executor.get_lemma_name_if_running()
             if lemma_name is None:
                 lemma_name = "__NONE__"
-            proof_id = self.get_proof_id(project_id, file_namespace, line_number, lemma_name)
+            proof_id = self.get_proof_id(theorem_id, file_namespace, line_number, lemma_name)
             
         self.logger.info(f"===============Finished processing {file_namespace}=====================")
         try:

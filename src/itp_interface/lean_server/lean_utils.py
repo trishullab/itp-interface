@@ -8,9 +8,72 @@ import os
 import re
 import typing
 
+class Obligation(typing.NamedTuple):
+    hypotheses: typing.List[str]
+    goal: str
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(**data)
+
+    def to_dict(self) -> typing.Dict[str, typing.Any]:
+        return {"hypotheses": self.hypotheses,
+                "goal": self.goal}
+
+
+class ProofContext(typing.NamedTuple):
+    fg_goals: typing.List[Obligation]
+    bg_goals: typing.List[Obligation]
+    shelved_goals: typing.List[Obligation]
+    given_up_goals: typing.List[Obligation]
+
+    @classmethod
+    def empty(cls: typing.Type['ProofContext']):
+        return ProofContext([], [], [], [])
+
+    @classmethod
+    def from_dict(cls, data):
+        fg_goals = list(map(Obligation.from_dict, data["fg_goals"]))
+        bg_goals = list(map(Obligation.from_dict, data["bg_goals"]))
+        shelved_goals = list(map(Obligation.from_dict, data["shelved_goals"]))
+        given_up_goals = list(map(Obligation.from_dict,
+                                  data["given_up_goals"]))
+        return cls(fg_goals, bg_goals, shelved_goals, given_up_goals)
+
+    def to_dict(self) -> typing.Dict[str, typing.Any]:
+        return {"fg_goals": list(map(Obligation.to_dict, self.fg_goals)),
+                "bg_goals": list(map(Obligation.to_dict, self.bg_goals)),
+                "shelved_goals": list(map(Obligation.to_dict,
+                                          self.shelved_goals)),
+                "given_up_goals": list(map(Obligation.to_dict,
+                                           self.given_up_goals))}
+
+    @property
+    def all_goals(self) -> typing.List[Obligation]:
+        return self.fg_goals + self.bg_goals + \
+            self.shelved_goals + self.given_up_goals
+
+    @property
+    def focused_goal(self) -> str:
+        if self.fg_goals:
+            return self.fg_goals[0].goal
+        else:
+            return ""
+
+    @property
+    def focused_hyps(self) -> typing.List[str]:
+        if self.fg_goals:
+            return self.fg_goals[0].hypotheses
+        else:
+            return []
+
 class Lean3Utils:
     lean_internal_lib_cmd = "elan which lean"
     theorem_lemma_search_regex = re.compile(r"(theorem|lemma) ([\w+|\d+]*) ([\S|\s]*?):=")
+    proof_context_separator = "⊢"
+    proof_context_regex = r"((\d+) goals)*([\s|\S]*?)\n\n"
+    goal_regex = rf"([\s|\S]*?){proof_context_separator}([\s|\S]*)"
+
     def remove_comments(text: str) -> str:
         # Remove comments
         #1. First remove all nested comments
@@ -109,6 +172,45 @@ class Lean3Utils:
             dfn = dfn.strip(':')
             theorems.append((name, dfn))
         return theorems
+
+    def parse_proof_context_human_readable(proof_context_str: str) -> ProofContext:
+        if len(proof_context_str) == 0 and Lean3Utils.proof_context_separator not in proof_context_str:
+            return None
+        if proof_context_str == "no goals":
+            return ProofContext.empty()
+        proof_context_str = proof_context_str.strip()
+        proof_context_str += "\n\n"
+        all_matches = re.findall(Lean3Utils.proof_context_regex, proof_context_str, re.MULTILINE)
+        goal_strs = []
+        total_goal_cnt = 0
+        for _, goal_cnt, goal_str in all_matches:
+            if len(goal_cnt) > 0:
+               total_goal_cnt = int(goal_cnt)
+            goal_str = goal_str.strip()
+            goal_strs.append(goal_str)
+        if total_goal_cnt > 0:
+            assert len(goal_strs) == total_goal_cnt, f"Total goal count {total_goal_cnt} does not match the number of goals {len(goal_strs)}"
+        else:
+            assert len(goal_strs) == 1, f"Total goal count {total_goal_cnt} does not match the number of goals {len(goal_strs)}"
+            total_goal_cnt = 1
+        assert len(goal_strs) == total_goal_cnt, f"Total goal count {total_goal_cnt} does not match the number of goals {len(goal_strs)}"
+        goals = []
+        for goal_str in goal_strs:
+            goal = Lean3Utils.parse_goal(goal_str)
+            goals.append(goal)
+        return ProofContext(goals, [], [], [])
+
+    def parse_goal(goal_str: str):
+        goal_str = goal_str.strip()
+        goal = ""
+        hyps_goals = re.findall(Lean3Utils.goal_regex, goal_str, re.MULTILINE)
+        assert len(hyps_goals) == 1, f"Found more than one goal in the goal string: {goal_str}"
+        hypotheses_str, goal = hyps_goals[0]
+        hypotheses_str = hypotheses_str.strip()
+        goal = goal.strip()
+        hypotheses = [hyp.rstrip(',') for hyp in hypotheses_str.split("\n")]
+        goal = Obligation(hypotheses, goal)
+        return goal
 
 if __name__ == '__main__':
     text = """

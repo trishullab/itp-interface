@@ -198,7 +198,7 @@ class TrainingDataFormat(object):
     """Class to format the training data for coq based automatic theorem provers.
     This class is responsible for formatting the training data for coq based automatic theorem provers.
     """
-    proof_id : Optional[str] = None # The id of the proof which helps locating the proof in the original file.
+    proof_id : Optional[str] = None # The id of the proof which helps locating the proof in the original file.    
     all_useful_defns_theorems : List[LemmaReferences] = field(default_factory=list) # The list of all useful definitions.
     goal_description: Optional[str] = None # The description of the goal.
     start_goals: List[Goal] = field(default_factory=list) # The goal to start with.
@@ -206,6 +206,9 @@ class TrainingDataFormat(object):
     proof_steps: List[str] = field(default_factory=list) # The list of proof steps to get from the start goal to the end goal.
     simplified_goals: List[Goal] = field(default_factory=list) # A possible list of simplified theorem or lemma to prove.
     addition_state_info: dict = field(default_factory=dict) # Custom key-value pairs for additional information.
+    file_path: Optional[str] = None # The path of the file which contains the proof.
+    project_id: Optional[str] = None # The url of the repository which contains the proof.
+    theorem_name: Optional[str] = None # The name of the theorem.
 
     def __eq__(self, __o: object) -> bool:
         if not isinstance(__o, TrainingDataFormat):
