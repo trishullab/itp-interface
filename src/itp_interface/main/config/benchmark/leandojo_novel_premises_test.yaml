@@ -1,0 +1,2908 @@
+name: leandojo_novel_premises_test
+num_files: 449
+language: LEAN
+dfs_data_path_for_retrieval: null
+dfs_metadata_filename_for_retrieval: null
+few_shot_data_path_for_retrieval: null
+few_shot_metadata_filename_for_retrieval: null
+datasets:
+- files:
+  - path: src/data/list/basic.lean
+    theorems:
+    - list.inth_eq_iget_nth
+    - list.drop_sizeof_le
+    - list.intercalate_split_on
+    - list.append_subset_iff
+    - list.modify_nth_eq_take_cons_drop
+    - list.enum_append
+    - list.nth_modify_nth_ne
+    - list.nth_le_enum_from
+    - list.mem_pmap
+    - list.remove_nth_insert_nth
+    - list.reduce_option_length_lt_iff
+    - list.mfoldr_append
+    - list.index_of_append_of_mem
+    - list.split_on_p_spec
+    - list.scanr_aux_cons
+    - list.split_at_eq_take_drop
+    - list.nthd_eq_nth_le
+    - list.split_on_p_cons
+    - list.reduce_option_length_eq_iff
+    - list.foldl_eq_foldr'
+    - list.nth_succ_scanl
+    - list.modify_nth_tail_modify_nth_tail_same
+    - list.foldr_join
+    - list.take'_left'
+    - list.zip_left_eq_zip_left'
+    - list.map_eq_append_split
+    - list.doubleton_eq
+    - list.reduce_option_nth_iff
+    - list.nth_le_succ_scanl
+    - list.nthd_eq_default
+    - list.sublist.erase
+    - list.length_erase_of_mem
+    - list.erase_append_right
+    - list.sublist.reverse
+    - list.zip_right_eq_zip_right'
+    - list.to_chunks_eq_cons'
+  - path: src/data/list/of_fn.lean
+    theorems:
+    - list.of_fn_add
+    - list.array_eq_of_fn
+    - list.of_fn_succ'
+    - list.of_fn_fin_repeat
+  - path: src/data/list/nodup.lean
+    theorems:
+    - list.rel_nodup
+  - path: src/data/finset/mul_antidiagonal.lean
+    theorems:
+    - set.is_wf.min_mul
+  - path: src/analysis/convex/caratheodory.lean
+    theorems:
+    - caratheodory.affine_independent_min_card_finset_of_mem_convex_hull
+  - path: src/data/polynomial/field_division.lean
+    theorems:
+    - polynomial.derivative_root_multiplicity_of_root
+    - polynomial.map_dvd_map'
+    - polynomial.is_coprime_of_is_root_of_eval_derivative_ne_zero
+    - polynomial.root_set_X_pow
+    - polynomial.root_set_prod
+    - polynomial.root_set_monomial
+    - polynomial.root_multiplicity_sub_one_le_derivative_root_multiplicity
+    - polynomial.exists_root_of_degree_eq_one
+    - polynomial.root_set_C_mul_X_pow
+    - polynomial.gcd_map
+    - polynomial.monic_normalize
+    - polynomial.degree_div_le
+  - path: src/set_theory/ordinal/exponential.lean
+    theorems:
+    - ordinal.opow_le_of_limit
+    - ordinal.succ_log_def
+    - ordinal.log_opow
+    - ordinal.log_zero_right
+    - ordinal.log_opow_mul_add
+    - ordinal.div_opow_log_pos
+  - path: src/data/nat/prime_fin.lean
+    theorems:
+    - nat.pow_factors_to_finset
+    - nat.prime_pow_prime_divisor
+  - path: src/data/pfun.lean
+    theorems:
+    - pfun.core_eq
+    - pfun.core_res
+    - pfun.mem_prod_map
+    - pfun.mem_prod_lift
+    - pfun.preimage_as_subtype
+    - pfun.mem_core_res
+    - pfun.fix_fwd
+    - pfun.core_restrict
+  - path: src/set_theory/ordinal/notation.lean
+    theorems:
+    - "onote.repr_opow_aux\u2082"
+    - onote.NF.below_of_lt
+    - onote.repr_sub
+    - onote.NF_repr_split'
+    - onote.fundamental_sequence_has_prop
+    - onote.NF.zero_of_zero
+    - onote.add_NF_below
+    - onote.fast_growing_one
+    - onote.repr_opow
+    - onote.repr_scale
+    - onote.fast_growing_def
+    - onote.zero_lt_one
+  - path: src/data/multiset/powerset.lean
+    theorems:
+    - multiset.nodup_powerset
+    - multiset.powerset_aux_perm_powerset_aux'
+    - multiset.powerset_len_aux_eq_map_coe
+    - multiset.revzip_powerset_aux_perm_aux'
+    - multiset.powerset_aux_eq_map_coe
+    - multiset.map_single_le_powerset
+    - multiset.powerset_len_map
+    - multiset.powerset_len_le_powerset
+    - multiset.revzip_powerset_aux'
+  - path: src/data/polynomial/reverse.lean
+    theorems:
+    - polynomial.reflect_support
+    - polynomial.reverse_mul
+    - polynomial.rev_at_fun_inj
+    - polynomial.reflect_C_mul_X_pow
+    - polynomial.reflect_mul_induction
+  - path: src/set_theory/ordinal/principal.lean
+    theorems:
+    - ordinal.principal_add_iff_add_lt_ne_self
+    - "ordinal.principal_nfp_blsub\u2082"
+    - ordinal.principal_add_iff_zero_or_omega_opow
+    - ordinal.principal_opow_omega
+    - ordinal.principal_add_of_principal_mul
+    - ordinal.principal_mul_of_le_two
+  - path: src/analysis/special_functions/log/deriv.lean
+    theorems:
+    - real.has_sum_log_one_add_inv
+    - real.has_sum_log_sub_log_of_abs_lt_1
+    - has_strict_deriv_at.log
+    - real.has_strict_deriv_at_log
+  - path: src/analysis/convex/topology.lean
+    theorems:
+    - convex.is_path_connected
+    - convex.strict_convex'
+    - set.finite.compact_convex_hull
+    - std_simplex_subset_closed_ball
+  - path: src/model_theory/elementary_maps.lean
+    theorems:
+    - first_order.language.elementary_embedding.map_bounded_formula
+    - first_order.language.elementary_substructure.Theory_model_iff
+  - path: src/set_theory/cardinal/ordinal.lean
+    theorems:
+    - cardinal.aleph'_succ
+    - cardinal.type_cardinal
+    - cardinal.aleph_le_beth
+    - cardinal.add_le_add_iff_of_lt_aleph_0
+    - cardinal.mk_bounded_set_le_of_infinite
+    - cardinal.powerlt_aleph_0_le
+    - cardinal.aleph'_pos
+    - cardinal.eq_of_add_eq_add_right
+    - cardinal.mk_finsupp_lift_of_infinite
+    - cardinal.aleph_idx_le
+    - cardinal.extend_function_finite
+    - cardinal.ord_aleph'_eq_enum_card
+    - cardinal.eq_of_add_eq_add_left
+    - cardinal.add_eq_right
+    - cardinal.aleph'_omega
+  - path: src/data/finset/basic.lean
+    theorems:
+    - finset.sdiff_union_erase_cancel
+    - finset.ssubset_singleton_iff
+    - finset.inter_erase
+    - multiset.to_finset_dedup
+    - finset.disjoint_erase_comm
+    - finset.ssubset_iff_exists_subset_erase
+    - finset.filter_cons
+    - finset.cons_subset_cons
+    - finset.sizeof_lt_sizeof_of_mem
+    - finset.piecewise_insert
+    - finset.disjoint_bUnion_right
+    - finset.inter_filter
+    - finset.cons_induction
+    - finset.sdiff_insert
+    - finset.disjoint_or_nonempty_inter
+    - finset.nonempty.cons_induction
+    - finset.nodup_to_list
+    - finset.sdiff_eq_self
+    - list.perm_of_nodup_nodup_to_finset_eq
+    - finset.eq_singleton_or_nontrivial
+    - finset.inter_bUnion
+    - list.to_finset_cons
+    - finset.range_eq_empty_iff
+    - finset.sdiff_insert_insert_of_mem_of_not_mem
+    - finset.insert_union_distrib
+    - finset.coe_eq_pair
+  - path: src/data/finset/pointwise.lean
+    theorems:
+    - finset.one_mem_div_iff
+    - finset.univ_pow
+    - finset.smul_finset_subset_iff
+    - finset.zero_mem_smul_iff
+    - finset.subset_smul_finset_iff
+    - finset.op_smul_finset_smul_eq_smul_smul_finset
+    - finset.pow_subset_pow
+    - finset.mem_pow
+    - finset.is_unit_iff
+  - path: src/analysis/special_functions/trigonometric/chebyshev.lean
+    theorems:
+    - polynomial.chebyshev.aeval_U
+    - polynomial.chebyshev.algebra_map_eval_U
+    - polynomial.chebyshev.aeval_T
+    - polynomial.chebyshev.algebra_map_eval_T
+    - polynomial.chebyshev.U_real_cos
+  - path: src/data/fin/basic.lean
+    theorems:
+    - fin.one_mul
+    - fin.nat_add_sub_nat_cast
+    - fin.subsingleton_iff_le_one
+    - fin.coe_order_iso_apply
+    - fin.nontrivial_iff_two_le
+    - fin.coe_nat_eq_last
+    - fin.coe_sub_one
+    - fin.le_coe_last
+    - fin.succ_above_pred_above
+    - fin.sub_one_lt_iff
+    - fin.pos_iff_ne_zero
+  - path: src/data/polynomial/coeff.lean
+    theorems:
+    - polynomial.coeff_C_mul
+    - polynomial.coeff_mul_C
+    - polynomial.support_binomial
+    - polynomial.coeff_mul
+  - path: src/data/real/hyperreal.lean
+    theorems:
+    - hyperreal.st_eq_Sup
+    - hyperreal.abs_lt_real_iff_infinitesimal
+    - hyperreal.st_inv
+    - hyperreal.is_st_iff_abs_sub_lt_delta
+    - hyperreal.infinite_pos_mul_of_not_infinitesimal_neg_infinite_neg
+    - hyperreal.infinite_mul_of_not_infinitesimal_infinite
+    - hyperreal.infinite_iff_infinite_pos_abs
+    - hyperreal.lt_of_tendsto_zero_of_pos
+    - hyperreal.zero_iff_infinitesimal_real
+    - hyperreal.infinite_neg_mul_of_not_infinitesimal_neg_infinite_pos
+    - hyperreal.not_infinite_pos_add_infinite_neg
+    - hyperreal.infinite_pos_iff_infinite_of_pos
+    - hyperreal.is_st_mul
+    - hyperreal.infinitesimal_mul
+  - path: src/data/array/lemmas.lean
+    theorems:
+    - array.mem_rev_list_aux
+    - array.write_to_list
+    - array.to_list_length
+    - array.to_list_foldl
+  - path: src/analysis/inner_product_space/basic.lean
+    theorems:
+    - orthogonal_family.summable_iff_norm_sq_summable
+    - orthogonal_family.norm_sq_diff_sum
+    - inner_product_space.core.inner_self_eq_norm_mul_norm
+    - orthogonal_family.independent
+    - is_bounded_bilinear_map_inner
+    - inner_lt_one_iff_real_of_norm_one
+    - dist_div_norm_sq_smul
+    - real_inner_div_norm_mul_norm_eq_one_iff
+    - inner_eq_norm_mul_iff_div
+    - inner_mul_inner_self_le
+    - orthonormal.inner_finsupp_eq_sum_left
+    - inner_product_space.core.norm_inner_le_norm
+    - exists_maximal_orthonormal
+    - norm_inner_div_norm_mul_norm_eq_one_iff
+    - inner_product_space.core.inner_sub_right
+    - ext_inner_map
+    - orthonormal.tsum_inner_products_le
+    - inner_product_space.core.inner_sub_sub_self
+    - inner_product_space.core.cauchy_schwarz_aux
+    - orthonormal.equiv_refl
+  - path: src/data/rat/nnrat.lean
+    theorems:
+    - nnrat.to_nnrat_sum_of_nonneg
+    - nnrat.to_nnrat_prod_of_nonneg
+    - rat.to_nnrat_lt_to_nnrat_iff'
+    - rat.coe_nnabs
+    - nnrat.num_div_denom
+  - path: src/set_theory/ordinal/basic.lean
+    theorems:
+    - ordinal.rel_iso_enum'
+    - ordinal.enum_zero_le'
+    - ordinal.enum_zero_eq_bot
+    - cardinal.lift_lt_univ'
+    - cardinal.lift_lt_univ
+    - cardinal.ord_le
+    - ordinal.type_out
+    - ordinal.lift_le
+  - path: src/analysis/special_functions/pow_deriv.lean
+    theorems:
+    - complex.has_strict_deriv_at_const_cpow
+    - tendsto_one_plus_div_rpow_exp
+    - has_strict_deriv_at.rpow
+  - path: src/model_theory/syntax.lean
+    theorems:
+    - first_order.language.Lhom.id_on_bounded_formula
+    - first_order.language.bounded_formula.relabel_not
+    - first_order.language.bounded_formula.not_ex_is_qf
+    - first_order.language.bounded_formula.is_prenex_to_prenex_imp
+  - path: src/set_theory/zfc/basic.lean
+    theorems:
+    - Set.mem_of_mem_sInter
+    - Set.nonempty_mk_iff
+    - Set.hereditarily_iff
+    - pSet.not_nonempty_empty
+    - pSet.to_set_empty
+    - Set.mem_sInter
+    - Set.to_set_empty
+    - Set.sUnion_lem
+    - Set.mem_powerset
+    - Set.mem_funs
+    - Class.Cong_to_Class_empty
+    - Set.pair_injective
+    - Set.mem_prod
+    - Class.mem_wf
+    - Set.choice_mem
+    - Set.sInter_singleton
+    - Set.to_set_inter
+  - path: src/data/complex/exponential.lean
+    theorems:
+    - complex.sum_div_factorial_le
+    - real.abs_exp_sub_one_sub_id_le
+    - complex.cosh_mul_I
+    - complex.sinh_mul_I
+    - complex.cosh_add
+    - complex.tanh_of_real_im
+    - complex.sin_eq
+    - real.exp_bound_div_one_sub_of_interval
+    - complex.abs_exp
+    - real.cos_three_mul
+    - real.cos_add_cos
+    - series_ratio_test
+    - complex.sinh_of_real_im
+    - real.sin_sub_sin
+    - real.exp_approx_end'
+    - real.add_one_le_exp
+    - real.abs_exp_sub_one_le
+    - complex.exp_add
+    - is_cau_of_decreasing_bounded
+    - complex.cos_eq
+    - real.cosh_three_mul
+    - real.exp_bound_div_one_sub_of_interval_approx
+    - complex.sin_sub_sin
+    - cauchy_product
+    - complex.tan_sq_div_one_add_tan_sq
+    - complex.of_real_tan_of_real_re
+  - path: src/data/polynomial/basic.lean
+    theorems:
+    - polynomial.of_finsupp_add
+    - polynomial.X_pow_mul_monomial
+    - polynomial.of_finsupp_eq_zero
+    - polynomial.to_finsupp_eq_zero
+    - polynomial.of_finsupp_mul
+    - polynomial.to_finsupp_pow
+    - polynomial.to_finsupp_eq_one
+    - polynomial.forall_eq_iff_forall_eq
+    - polynomial.support_update
+    - polynomial.coeff_sub
+    - polynomial.support_update_zero
+    - polynomial.coeff_update_apply
+    - polynomial.to_finsupp_sub
+    - polynomial.monomial_mul_monomial
+  - path: src/data/set/lattice.lean
+    theorems:
+    - set.image_sInter_subset
+    - "set.Iic_infi\u2082"
+    - set.sUnion_Union
+    - "set.Ici_supr\u2082"
+    - set.sInter_prod_sInter
+    - "set.union_distrib_Inter\u2082_left"
+    - set.Iic_Inf
+    - set.compl_sInter
+    - set.Ici_Sup
+    - set.Inter_Inter_eq_or_left
+    - Sup_sUnion
+    - set.seq_def
+    - set.univ_pi_eq_Inter
+    - "set.Inter\u2082_union"
+    - set.sInter_Union
+    - set.inter_bInter
+    - set.inj_on.image_bInter_eq
+  - path: src/set_theory/ordinal/arithmetic.lean
+    theorems:
+    - ordinal.supr_ord
+    - ordinal.nat_cast_div
+    - ordinal.type_subrel_lt
+    - ordinal.limit_rec_on_succ
+    - ordinal.lt_mul_succ_div
+    - cardinal.ord_aleph_0
+    - ordinal.sup_eq_lsub_or_sup_succ_eq_lsub
+    - ordinal.is_limit_iff_omega_dvd
+    - ordinal.mk_initial_seg
+    - ordinal.bmex_lt_ord_succ_card
+    - ordinal.mod_one
+    - ordinal.lift_succ
+    - ordinal.bsup_succ_le_blsub
+    - well_founded.rank_eq
+    - ordinal.limit_rec_on_limit
+    - ordinal.nat_cast_mod
+    - ordinal.bsup_one
+    - ordinal.mod_self
+    - ordinal.bsup_eq_blsub_or_succ_bsup_eq_blsub
+    - ordinal.dvd_add_iff
+    - ordinal.mod_eq_of_lt
+    - ordinal.is_normal_iff_lt_succ_and_blsub_eq
+    - ordinal.lift_pred
+    - ordinal.mex_lt_ord_succ_mk
+    - ordinal.le_div
+  - path: src/data/set/image.lean
+    theorems:
+    - set.compl_compl_image
+    - set.image_injective
+    - set.preimage_inr_range_inl
+    - set.preimage_inl_range_inr
+    - set.exists_subset_range_iff
+    - set.preimage_iterate_eq
+    - set.mem_compl_image
+  - path: src/analysis/inner_product_space/l2_space.lean
+    theorems:
+    - hilbert_basis.coe_mk
+    - is_hilbert_sum.has_sum_linear_isometry_equiv_symm
+    - is_hilbert_sum.linear_isometry_equiv_symm_apply_single
+    - hilbert_basis.has_sum_repr_symm
+    - lp.summable_inner
+    - orthogonal_family.range_linear_isometry
+    - is_hilbert_sum.linear_isometry_equiv_symm_apply_dfinsupp_sum_single
+    - is_hilbert_sum.mk_internal
+    - submodule.is_hilbert_sum_orthogonal
+  - path: src/data/finsupp/defs.lean
+    theorems:
+    - finsupp.single_add_single_eq_single_add_single
+    - finsupp.card_support_eq_one'
+    - finsupp.erase_zero
+    - "finsupp.induction\u2082"
+    - finsupp.coe_eq_zero
+    - finsupp.emb_domain_apply
+    - finsupp.equiv_fun_on_finite_symm_single
+    - finsupp.unique_single_eq_iff
+    - finsupp.single_eq_update
+    - finsupp.single_add_erase
+  - path: src/data/list/rotate.lean
+    theorems:
+    - list.is_rotated_nil_iff'
+    - list.rotate_eq_singleton_iff
+    - list.prod_rotate_eq_one_of_prod_eq_one
+    - list.rotate_reverse
+    - list.is_rotated_iff_mem_map_range
+    - list.is_rotated.symm
+    - list.is_rotated_reverse_iff
+  - path: src/data/int/order/basic.lean
+    theorems:
+    - int.mul_mod
+    - int.div_eq_iff_eq_mul_left
+    - int.sign_add_eq_of_sign_eq
+    - int.abs_sign_of_nonzero
+    - int.div_eq_div_of_mul_eq_mul
+    - int.sub_div_of_dvd
+  - path: src/data/fintype/powerset.lean
+    theorems:
+    - finset.powerset_eq_univ
+  - path: src/data/finset/pi_induction.lean
+    theorems:
+    - finset.induction_on_pi_of_choice
+  - path: src/data/real/cau_seq_completion.lean
+    theorems:
+    - cau_seq.lim_eq_zero_iff
+    - cau_seq.lim_mul_lim
+    - cau_seq.lim_add
+    - cau_seq.lim_inv
+    - cau_seq.completion.mk_eq_zero
+  - path: src/data/polynomial/monic.lean
+    theorems:
+    - polynomial.monic.sub_of_right
+    - polynomial.is_unit_leading_coeff_mul_left_eq_zero_iff
+    - polynomial.monic.next_coeff_multiset_prod
+    - polynomial.nat_degree_smul_of_smul_regular
+    - polynomial.monic.mul
+    - polynomial.monic_of_injective
+    - polynomial.monic_X_pow_sub
+  - path: src/data/nat/totient.lean
+    theorems:
+    - nat.totient_gcd_mul_totient_mul
+    - nat.totient_eq_iff_prime
+    - nat.prime_iff_card_units
+    - nat.Ico_filter_coprime_le
+    - nat.totient_prime_pow
+  - path: src/data/nat/interval.lean
+    theorems:
+    - nat.Icc_pred_right
+    - nat.mod_inj_on_Ico
+    - nat.cauchy_induction_mul
+    - nat.cauchy_induction'
+    - nat.multiset_Ico_map_mod
+  - path: src/data/complex/basic.lean
+    theorems:
+    - complex.abs_re_lt_abs
+    - complex.abs_theory.abs_add
+  - path: src/data/nat/choose/dvd.lean
+    theorems:
+    - nat.prime.dvd_choose_add
+  - path: src/data/string/basic.lean
+    theorems:
+    - list.to_list_inv_as_string
+    - string.popn_empty
+    - string.length_to_list
+    - string.lt_iff_to_list_lt
+  - path: src/data/set/finite.lean
+    theorems:
+    - set.infinite.exists_ne_map_eq_of_maps_to
+    - set.finite.card_to_finset
+    - set.finite.bdd_above_bUnion
+    - set.finite.exists_lt_map_eq_of_forall_mem
+    - set.finite.pi
+    - set.seq_of_forall_finite_exists
+    - set.finite_coe_iff
+    - set.infinite_of_not_bdd_below
+    - set.finite.finite_subsets
+    - set.card_fintype_insert_of_not_mem
+    - finite.of_forall_not_lt_lt
+    - set.finite.bUnion
+    - set.card_insert
+  - path: src/set_theory/game/nim.lean
+    theorems:
+    - pgame.grundy_value_iff_equiv_zero
+    - pgame.nim_add_equiv_zero_iff
+    - pgame.grundy_value_nim_add_nim
+    - pgame.nim_add_fuzzy_zero_iff
+  - path: src/data/pnat/prime.lean
+    theorems:
+    - pnat.coprime.pow
+    - pnat.coprime.mul_right
+    - pnat.coprime.coprime_dvd_left
+    - pnat.eq_one_of_lt_two
+  - path: src/analysis/mean_inequalities.lean
+    theorems:
+    - real.inner_le_Lp_mul_Lq_of_nonneg
+    - nnreal.young_inequality_real
+    - real.geom_mean_weighted_of_constant
+    - ennreal.rpow_sum_le_const_mul_sum_rpow
+    - real.young_inequality_of_nonneg
+    - real.geom_mean_eq_arith_mean_weighted_of_constant
+  - path: src/set_theory/ordinal/fixed_point.lean
+    theorems:
+    - ordinal.nfp_add_zero
+    - ordinal.nfp_mul_zero
+    - ordinal.deriv_bfamily_eq_enum_ord
+    - ordinal.nfp_mul_opow_omega_add
+    - ordinal.mul_eq_right_iff_opow_omega_dvd
+    - ordinal.deriv_family_is_normal
+    - ordinal.deriv_add_eq_mul_omega_add
+    - ordinal.nfp_mul_eq_opow_omega
+    - ordinal.nfp_family_eq_self
+    - ordinal.deriv_family_eq_enum_ord
+    - ordinal.deriv_mul_eq_opow_omega_mul
+    - ordinal.apply_lt_nfp_bfamily
+  - path: src/data/real/ereal.lean
+    theorems:
+    - ereal.eq_top_iff_forall_lt
+    - ereal.abs_eq_zero_iff
+    - ereal.eq_bot_iff_forall_lt
+    - ereal.neg_lt_of_neg_lt
+    - ereal.to_real_sub
+    - ereal.coe_ennreal_bit1
+    - ereal.bot_mul_of_neg
+    - ereal.abs_mul
+    - ereal.coe_abs
+  - path: src/data/set/intervals/disjoint.lean
+    theorems:
+    - Union_Ici_eq_Ici_infi
+    - Union_Ici_eq_Ioi_infi
+  - path: src/data/finset/noncomm_prod.lean
+    theorems:
+    - multiset.noncomm_fold_coe
+    - finset.noncomm_prod_mul_distrib
+    - finset.noncomm_prod_map
+    - finset.noncomm_prod_to_finset
+    - multiset.noncomm_prod_eq_pow_card
+    - finset.noncomm_prod_union_of_disjoint
+    - multiset.noncomm_prod_commute
+    - multiset.noncomm_foldr_coe
+  - path: src/data/set/intervals/basic.lean
+    theorems:
+    - set.Ioo_union_Ioo
+    - set.Ioo_inter_Ioc_of_right_lt
+    - set.Iio_union_Ioo
+    - set.Icc_union_Ici
+    - set.Ico_inter_Ici
+    - set.Ico_diff_Iio
+    - set.Ico_union_Ici
+    - set.Ioo_inter_Ioc_of_left_le
+    - set.Iio_subset_Iic_iff
+    - set.Iio_union_Ico
+  - path: src/data/real/irrational.lean
+    theorems:
+    - irrational_sqrt_rat_iff
+    - irrational_nrt_of_n_not_dvd_multiplicity
+  - path: src/data/finsupp/interval.lean
+    theorems:
+    - finsupp.card_Icc
+    - finsupp.card_Iio
+  - path: src/data/setoid/basic.lean
+    theorems:
+    - setoid.map_of_surjective_eq_map
+    - setoid.sup_def
+  - path: src/analysis/convex/body.lean
+    theorems:
+    - convex_body.Hausdorff_edist_ne_top
+  - path: src/data/polynomial/hasse_deriv.lean
+    theorems:
+    - polynomial.nat_degree_hasse_deriv
+    - polynomial.hasse_deriv_mul
+    - polynomial.hasse_deriv_apply_one
+  - path: src/data/nat/modeq.lean
+    theorems:
+    - nat.modeq.eq_of_abs_lt
+    - nat.add_modeq_left
+    - nat.modeq.cancel_right_div_gcd
+    - nat.modeq.cancel_left_div_gcd
+    - nat.chinese_remainder'_lt_lcm
+  - path: src/data/finset/locally_finite.lean
+    theorems:
+    - finset.eq_of_mem_uIcc_of_mem_uIcc'
+    - finset.image_add_left_Ioo
+    - finset.card_Iio_eq_card_Iic_sub_one
+    - finset.Icc_ssubset_Icc_right
+    - finset.image_add_right_Ioo
+    - finset.Iic_eq_cons_Iio
+    - finset.Ioc_eq_cons_Ioo
+    - finset.Icc_eq_cons_Ioc
+    - finset.Ioc_eq_empty_iff
+    - finset.image_add_left_Icc
+    - finset.Icc_subset_Ico_iff
+    - finset.Icc_subset_Ioo_iff
+    - finset.map_add_left_Icc
+  - path: src/data/real/cau_seq.lean
+    theorems:
+    - cau_seq.inf_equiv_inf
+    - cau_seq.const_lt
+    - cau_seq.sub_equiv_sub
+    - cau_seq.const_le
+    - cau_seq.sup_eq_left
+    - cau_seq.smul_equiv_smul
+    - cau_seq.sup_eq_right
+  - path: src/data/set/sigma.lean
+    theorems:
+    - set.sigma_insert
+    - set.image_sigma_mk_preimage_sigma_map
+  - path: src/data/mv_polynomial/equiv.lean
+    theorems:
+    - mv_polynomial.degree_fin_succ_equiv
+    - mv_polynomial.support_fin_succ_equiv_nonempty
+    - mv_polynomial.nat_degree_fin_succ_equiv
+    - mv_polynomial.fin_succ_equiv_support
+  - path: src/data/fin/interval.lean
+    theorems:
+    - fin.map_subtype_embedding_Ioo
+    - fin.card_fintype_Iio
+    - fin.map_subtype_embedding_Iio
+    - fin.card_Icc
+    - fin.map_subtype_embedding_Ico
+    - fin.card_fintype_Ico
+    - fin.card_Ici
+    - fin.card_Ioo
+    - fin.card_fintype_Ioc
+  - path: src/data/finmap.lean
+    theorems:
+    - finmap.insert_insert_of_ne
+    - finmap.union_cancel
+    - finmap.union_to_finmap
+    - finmap.insert_singleton_eq
+    - finmap.keys_lookup_equiv_symm_apply_keys
+    - alist.to_finmap_eq
+    - finmap.keys_lookup_equiv_symm_apply_lookup
+    - finmap.lookup_insert
+    - finmap.lookup_insert_of_ne
+    - finmap.ext_lookup
+    - finmap.insert_insert
+    - finmap.extract_eq_lookup_erase
+    - finmap.mem_list_to_finmap
+    - finmap.insert_entries_of_neg
+    - finmap.insert_to_finmap
+    - finmap.insert_union
+    - finmap.erase_union_singleton
+    - finmap.sigma_keys_lookup
+  - path: src/analysis/convex/side.lean
+    theorems:
+    - affine_subspace.w_opp_side_iff_exists_wbtw
+    - affine_subspace.s_opp_side.exists_sbtw
+    - affine_subspace.is_connected_set_of_w_same_side
+    - affine_subspace.s_same_side_smul_vsub_vadd_left
+    - affine_subspace.s_same_side_vadd_right_iff
+    - affine_subspace.is_preconnected_set_of_s_same_side
+    - affine_subspace.set_of_w_opp_side_eq_image2
+    - affine_subspace.is_connected_set_of_s_same_side
+    - affine_subspace.w_same_side_and_w_opp_side_iff
+    - affine_subspace.s_opp_side_iff_exists_right
+    - affine_subspace.is_connected_set_of_s_opp_side
+    - affine_subspace.is_preconnected_set_of_s_opp_side
+    - affine_subspace.set_of_s_opp_side_eq_image2
+    - affine_subspace.set_of_s_same_side_eq_image2
+    - "wbtw.w_same_side\u2082\u2083"
+    - affine_subspace.is_preconnected_set_of_w_opp_side
+    - affine_subspace.s_opp_side_smul_vsub_vadd_left
+  - path: src/analysis/inner_product_space/gram_schmidt_ortho.lean
+    theorems:
+    - gram_schmidt_orthonormal_basis_apply_of_orthogonal
+    - inner_gram_schmidt_orthonormal_basis_eq_zero
+    - gram_schmidt_of_orthogonal
+    - span_gram_schmidt_normed
+    - gram_schmidt_inv_triangular
+    - gram_schmidt_orthonormal
+  - path: src/analysis/seminorm.lean
+    theorems:
+    - seminorm.absorbent_closed_ball
+    - seminorm.smul_inf
+    - seminorm.absorbent_ball
+    - seminorm.uniform_continuous_of_continuous_at_zero
+    - seminorm.finset_sup_le_sum
+    - seminorm.ball_norm_mul_subset
+    - seminorm.continuous_at_zero'
+    - seminorm.ball_finset_sup'
+    - seminorm.ball_zero_eq_preimage_ball
+    - seminorm.ball_zero_absorbs_ball_zero
+    - seminorm.closed_ball_finset_sup
+    - seminorm.continuous_of_continuous_at_zero
+  - path: src/set_theory/lists.lean
+    theorems:
+    - lists'.mem_cons
+    - lists.equiv.trans
+    - lists.equiv.antisymm_iff
+  - path: src/analysis/special_functions/japanese_bracket.lean
+    theorems:
+    - rpow_neg_one_add_norm_sq_le
+    - closed_ball_rpow_sub_one_eq_empty_aux
+    - one_add_norm_le_sqrt_two_mul_sqrt
+    - finite_integral_rpow_sub_one_pow_aux
+    - integrable_rpow_neg_one_add_norm_sq
+  - path: src/analysis/matrix.lean
+    theorems:
+    - matrix.linfty_op_norm_def
+    - matrix.frobenius_norm_row
+    - matrix.linfty_op_nnnorm_mul_vec
+    - matrix.linfty_op_nnnorm_mul
+  - path: src/data/list/forall2.lean
+    theorems:
+    - list.rel_filter_map
+    - "list.sublist_forall\u2082_iff"
+    - "list.forall\u2082_eq_eq_eq"
+    - "list.forall\u2082_map_right_iff"
+  - path: src/data/polynomial/ring_division.lean
+    theorems:
+    - polynomial.exists_multiset_roots
+    - polynomial.roots_pow
+    - polynomial.count_map_roots
+    - polynomial.roots_multiset_prod
+    - polynomial.not_dvd_of_nat_degree_lt
+    - polynomial.roots_map_of_injective_of_card_eq_nat_degree
+    - polynomial.root_multiplicity_add
+    - polynomial.nat_degree_pow
+    - polynomial.eq_of_monic_of_dvd_of_nat_degree_le
+    - polynomial.eq_of_infinite_eval_eq
+    - polynomial.roots_C_mul_X_pow
+    - polynomial.roots_C
+    - polynomial.card_roots_le_map_of_injective
+    - polynomial.monic.irreducible_of_irreducible_map
+    - polynomial.prod_multiset_X_sub_C_dvd
+  - path: src/data/list/sublists.lean
+    theorems:
+    - list.sublists_aux_cons_cons
+    - list.mem_sublists_len_self
+    - list.sublists_eq_sublists'
+    - list.sublists_len_succ_cons
+    - list.nodup_sublists'
+  - path: src/data/rat/lemmas.lean
+    theorems:
+    - rat.mul_self_denom
+    - rat.num_denom_mk
+    - rat.inv_coe_nat_denom_of_pos
+    - rat.inv_coe_int_denom
+    - rat.coe_int_div
+    - rat.substr_num_denom'
+  - path: src/data/polynomial/laurent.lean
+    theorems:
+    - laurent_polynomial.induction_on_mul_T
+    - laurent_polynomial.is_localization
+    - laurent_polynomial.trunc_C_mul_T
+    - laurent_polynomial.to_laurent_support
+    - laurent_polynomial.commute_T
+    - polynomial.to_laurent_X_pow
+    - laurent_polynomial.T_pow
+  - path: src/data/bool/all_any.lean
+    theorems:
+    - list.all_iff_forall
+    - list.any_iff_exists
+    - list.any_iff_exists_prop
+  - path: src/data/nat/part_enat.lean
+    theorems:
+    - part_enat.get_eq_iff_eq_coe
+    - part_enat.to_with_top_coe
+    - part_enat.dom_of_le_coe
+    - part_enat.coe_lt_top
+    - part_enat.lt_find_iff
+    - part_enat.with_top_equiv_symm_lt
+    - part_enat.add_left_cancel_iff
+  - path: src/data/nat/lattice.lean
+    theorems:
+    - nat.Inf_add
+    - nat.Inf_add'
+    - nat.Inf_upward_closed_eq_succ_iff
+  - path: src/data/num/lemmas.lean
+    theorems:
+    - pos_num.divmod_to_nat
+    - num.shiftl_to_nat
+    - znum.zneg_pred
+    - num.pred_to_nat
+    - znum.cast_succ
+    - pos_num.cast_sub'
+    - num.lxor_to_nat
+    - pos_num.nat_size_to_nat
+    - num.to_of_nat
+    - znum.of_nat_to_znum_neg
+    - znum.cast_add
+    - znum.div_zero
+    - num.sub_to_nat
+    - num.add_succ
+    - num.cast_le
+    - num.dvd_iff_mod_eq_zero
+    - znum.cast_mul
+    - znum.cast_bitm1
+    - num.pred_succ
+    - pos_num.divmod_to_nat_aux
+    - znum.of_int'_eq
+    - num.gcd_to_nat_aux
+    - znum.of_to_int
+    - num.lor_to_nat
+    - num.of_int'_to_znum
+    - num.land_to_nat
+  - path: src/data/finsupp/big_operators.lean
+    theorems:
+    - finset.support_sum_eq
+    - finset.support_sum_subset
+  - path: src/analysis/special_functions/complex/log.lean
+    theorems:
+    - complex.map_exp_comap_re_at_top
+    - continuous_at_clog
+    - complex.tendsto_log_nhds_within_im_neg_of_re_neg_of_im_zero
+  - path: src/data/matrix/pequiv.lean
+    theorems:
+    - pequiv.single_mul_single_of_ne
+    - pequiv.mul_to_pequiv_to_matrix
+    - pequiv.single_mul_single_right
+    - pequiv.to_matrix_swap
+  - path: src/data/list/alist.lean
+    theorems:
+    - alist.mk_cons_eq_insert
+    - alist.extract_eq_lookup_erase
+    - alist.mem_erase
+    - alist.insert_singleton_eq
+  - path: src/data/pnat/factors.lean
+    theorems:
+    - prime_multiset.to_of_pnat_multiset
+    - pnat.factor_multiset_le_iff
+    - pnat.factor_multiset_one
+    - prime_multiset.prod_of_nat_multiset
+    - pnat.factor_multiset_lcm
+    - pnat.count_factor_multiset
+  - path: src/data/mv_polynomial/variables.lean
+    theorems:
+    - mv_polynomial.mem_degrees
+    - mv_polynomial.total_degree_list_prod
+    - mv_polynomial.degree_of_mul_X_ne
+    - mv_polynomial.le_degrees_add
+    - mv_polynomial.total_degree_multiset_prod
+    - mv_polynomial.vars_rename
+    - mv_polynomial.vars_add_of_disjoint
+  - path: src/data/finsupp/ne_locus.lean
+    theorems:
+    - finsupp.ne_locus_eq_support_sub
+  - path: src/data/set/intervals/group.lean
+    theorems:
+    - set.pairwise_disjoint_Ico_zpow
+    - set.pairwise_disjoint_Ioo_zpow
+    - set.pairwise_disjoint_Ioo_add_int_cast
+    - set.pairwise_disjoint_Ioo_int_cast
+    - set.pairwise_disjoint_Ico_int_cast
+  - path: src/analysis/convex/combination.lean
+    theorems:
+    - convex_hull_range_eq_exists_affine_combination
+    - affine_basis.convex_hull_eq_nonneg_coord
+    - convex.finsum_mem
+  - path: src/data/set/sups.lean
+    theorems:
+    - upper_closure_sups
+  - path: src/analysis/special_functions/integrals.lean
+    theorems:
+    - integral_sin_pow_pos
+    - integral_cos_sq
+    - integral_cos_pow
+    - integral_one_div
+    - interval_integral.interval_integrable_inv
+    - integral_sin_pow
+    - integral_cos_mul_complex
+    - integral_pow
+    - integral_one_div_of_pos
+    - integral_mul_rpow_one_add_sq
+    - integral_mul_cpow_one_add_sq
+    - integral_pow_abs_sub_uIoc
+  - path: src/data/pnat/xgcd.lean
+    theorems:
+    - pnat.xgcd_type.v_eq_succ_vp
+    - pnat.xgcd_type.reduce_v
+    - pnat.xgcd_type.reduce_reduced
+    - pnat.xgcd_type.finish_is_special
+    - pnat.gcd_b'_coe
+    - pnat.xgcd_type.is_special_iff
+    - pnat.xgcd_type.reduce_special
+  - path: src/data/set/prod.lean
+    theorems:
+    - set.mk_preimage_prod_right_fn_eq_if
+    - set.prod_eq_iff_eq
+    - set.pi_update_of_mem
+    - set.off_diag_insert
+    - set.pi_eq_empty_iff
+    - set.univ_pi_subset_univ_pi_iff
+  - path: src/data/real/cardinality.lean
+    theorems:
+    - cardinal.mk_Iio_real
+    - cardinal.cantor_function_le
+    - cardinal.increasing_cantor_function
+    - cardinal.mk_Ioi_real
+    - cardinal.mk_Ioo_real
+    - cardinal.cantor_function_succ
+  - path: src/data/buffer/parser/basic.lean
+    theorems:
+    - parser.many_eq_fail
+    - parser.eps_eq_done
+    - parser.foldl_eq_fail_iff_mono_at_end
+    - parser.char_buf_eq_done
+    - parser.bounded.str_iff
+    - parser.foldr_eq_fail_iff_mono_at_end
+    - parser.nat_of_done
+    - parser.step.str_iff
+    - parser.bounded.foldl_core
+    - parser.prog.char_buf_iff
+    - parser.bounded.guard_iff
+    - parser.static.str_iff
+    - parser.bounded.many'
+    - parser.unfailing.failure
+    - parser.digit_eq_done
+    - parser.map_const_eq_fail
+    - parser.prog.str_iff
+    - parser.nat_eq_done
+    - parser.static.sat_iff
+    - parser.foldl_eq_done
+    - parser.err_static.fix
+    - parser.bounded.foldl
+    - parser.static.any_char
+  - path: src/analysis/convex/between.lean
+    theorems:
+    - affine_equiv.sbtw_map_iff
+    - mem_vadd_const_affine_segment
+    - affine_equiv.wbtw_map_iff
+    - sbtw_const_vsub_iff
+    - wbtw.rotate_iff
+    - sbtw_one_zero_iff
+    - affine_segment_comm
+    - sbtw_iff_mem_image_Ioo_and_ne
+    - sbtw_of_sbtw_of_sbtw_of_mem_affine_span_pair
+    - sbtw_const_vadd_iff
+  - path: src/data/fintype/prod.lean
+    theorems:
+    - infinite_prod
+  - path: src/data/prod/tprod.lean
+    theorems:
+    - set.elim_preimage_pi
+    - list.tprod.elim_mk
+    - list.tprod.ext
+  - path: src/model_theory/substructures.lean
+    theorems:
+    - first_order.language.substructure.coe_infi
+    - first_order.language.hom.range_eq_top
+    - first_order.language.hom.range_le_iff_comap
+    - first_order.language.term.realize_mem
+  - path: src/data/complex/module.lean
+    theorems:
+    - rank_real_of_complex
+    - complex.alg_hom_ext
+    - complex.real_alg_hom_eq_id_or_conj
+  - path: src/data/nat/choose/sum.lean
+    theorems:
+    - nat.sum_range_choose_halfway
+    - finset.sum_powerset_neg_one_pow_card_of_nonempty
+    - finset.sum_powerset_neg_one_pow_card
+  - path: src/analysis/special_functions/exp.lean
+    theorems:
+    - real.map_exp_at_top
+    - real.is_o_exp_comp_exp_comp
+    - real.is_O_exp_comp_one
+  - path: src/data/polynomial/unit_trinomial.lean
+    theorems:
+    - polynomial.is_unit_trinomial.irreducible_aux2
+    - polynomial.is_unit_trinomial.not_is_unit
+    - polynomial.is_unit_trinomial_iff'
+    - polynomial.is_unit_trinomial.irreducible_of_coprime'
+    - polynomial.trinomial_nat_trailing_degree
+    - polynomial.is_unit_trinomial.ne_zero
+    - polynomial.is_unit_trinomial.irreducible_aux1
+    - polynomial.is_unit_trinomial.irreducible_aux3
+  - path: src/data/list/indexes.lean
+    theorems:
+    - list.foldl_with_index_eq_foldl_enum
+    - list.mmap_with_index_aux_eq_mmap_with_index_aux_spec
+    - list.find_indexes_eq_map_indexes_values
+    - list.mmap_with_index'_aux_eq_mmap_with_index_aux
+    - list.foldr_with_index_aux_eq_foldr_with_index_aux_spec
+    - list.foldr_with_index_eq_foldr_enum
+    - list.map_with_index_eq_enum_map
+    - list.mmap_with_index_eq_mmap_enum
+    - list.foldl_with_index_aux_eq_foldl_with_index_aux_spec
+  - path: src/data/nat/order/basic.lean
+    theorems:
+    - nat.add_mod_eq_ite
+    - nat.one_le_bit0_iff
+    - nat.find_greatest_mono_right
+    - nat.find_greatest_eq_iff
+    - nat.half_le_of_sub_le_half
+    - nat.div_mul_div_le_div
+    - nat.find_greatest_spec
+    - nat.find_greatest_mono_left
+  - path: src/data/int/cast/lemmas.lean
+    theorems:
+    - ext_int'
+  - path: src/data/list/big_operators/basic.lean
+    theorems:
+    - list.prod_lt_prod'
+    - list.exists_le_of_prod_le'
+    - list.prod_is_unit_iff
+    - canonically_ordered_comm_semiring.list_prod_pos
+  - path: src/data/polynomial/degree/lemmas.lean
+    theorems:
+    - polynomial.nat_degree_mul_C_eq_of_mul_ne_zero
+    - polynomial.nat_degree_add_le_iff_left
+    - polynomial.nat_degree_sub_le_iff_right
+    - polynomial.coeff_pow_of_nat_degree_le
+    - polynomial.nat_degree_bit1
+    - polynomial.coeff_sub_eq_neg_right_of_lt
+  - path: src/data/int/gcd.lean
+    theorems:
+    - int.lcm_self
+    - int.lcm_zero_right
+    - tactic.norm_num.int_lcm_helper
+    - int.dvd_of_dvd_mul_left_of_gcd_one
+    - int.gcd_eq_right
+    - int.lcm_comm
+    - int.lcm_assoc
+    - int.lcm_one_left
+    - nat.xgcd_aux_val
+  - path: src/model_theory/satisfiability.lean
+    theorems:
+    - first_order.language.Theory.is_satisfiable_Union_iff_is_satisfiable_Union_finset
+    - first_order.language.Theory.is_satisfiable_union_distinct_constants_theory_of_infinite
+    - cardinal.categorical.is_complete
+    - first_order.language.Theory.is_satisfiable_on_Theory_iff
+    - cardinal.empty_Theory_categorical
+    - first_order.language.exists_elementary_embedding_card_eq_of_ge
+    - first_order.language.bounded_formula.semantically_equivalent_to_prenex
+  - path: src/data/vector3.lean
+    theorems:
+    - vector3.append_insert
+    - vector_allp_iff_forall
+  - path: src/data/set/basic.lean
+    theorems:
+    - set.strict_anti_on_iff_strict_anti
+    - set.not_monotone_on_not_antitone_on_iff_exists_lt_lt
+    - set.nontrivial_coe_sort
+    - set.nontrivial.ne_singleton
+    - set.ite_inter_of_inter_eq
+  - path: src/data/list/cycle.lean
+    theorems:
+    - cycle.nodup.nontrivial_iff
+    - list.prev_mem
+    - cycle.lists_nil
+    - list.next_reverse_eq_prev
+    - list.next_nth_le
+    - cycle.chain_range_succ
+  - path: src/data/nat/multiplicity.lean
+    theorems:
+    - nat.multiplicity_eq_card_pow_dvd
+    - nat.prime.dvd_choose_pow
+    - nat.prime.multiplicity_choose_prime_pow_add_multiplicity
+    - nat.prime.dvd_choose_pow_iff
+    - nat.prime.multiplicity_factorial_mul_succ
+    - nat.prime.multiplicity_factorial_mul
+    - nat.multiplicity_two_factorial_lt
+    - nat.prime.multiplicity_factorial_le_div_pred
+  - path: src/data/int/parity.lean
+    theorems:
+    - int.not_even_iff
+    - int.odd_add'
+    - int.odd_iff_not_even
+    - int.nat_abs_odd
+    - int.even_xor_odd'
+    - int.not_odd_iff
+  - path: src/data/dfinsupp/interval.lean
+    theorems:
+    - dfinsupp.card_Iic
+    - dfinsupp.support_range_Icc_subset
+    - dfinsupp.card_Iio
+  - path: src/data/rbtree/insert.lean
+    theorems:
+    - rbnode.find_balance2_node
+    - rbnode.find_balance2_node_gt
+    - rbnode.equiv_or_mem_of_mem_ins
+    - rbnode.balance1_node_rb
+    - rbnode.find_balance1_node_eqv
+    - rbnode.ins_rb
+    - rbnode.balance2_node_rb
+    - rbnode.find_balance1_node_gt
+    - rbnode.balance2_node_ne_leaf
+    - rbnode.mem_ins_of_mem
+    - rbnode.equiv_or_mem_of_mem_insert
+    - rbnode.mem_insert_of_incomp
+  - path: src/data/set/intervals/with_bot_top.lean
+    theorems:
+    - with_top.image_coe_Icc
+    - with_bot.image_coe_Ioi
+    - with_top.image_coe_Ioi
+    - with_bot.image_coe_Ici
+    - with_top.range_coe
+    - with_top.image_coe_Ioo
+    - with_top.image_coe_Iic
+    - with_bot.image_coe_Iio
+  - path: src/data/finset/lattice.lean
+    theorems:
+    - finset.max'_image
+    - finset.supr_insert
+    - supr_eq_supr_finset'
+    - list.foldr_inf_eq_inf_to_finset
+    - finset.inf_sup
+    - finset.coe_sup'
+    - finset.max'_insert
+    - finset.min_singleton
+    - finset.sup'_induction
+    - list.foldr_sup_eq_sup_to_finset
+    - finset.lt_sup'_iff
+  - path: src/set_theory/cardinal/cofinality.lean
+    theorems:
+    - ordinal.cof_univ
+    - ordinal.aleph_0_le_cof
+    - ordinal.lift_cof
+    - cardinal.is_strong_limit_beth
+    - ordinal.infinite_pigeonhole_card
+    - ordinal.unbounded_of_unbounded_Union
+    - cardinal.le_range_of_union_finset_eq_top
+    - ordinal.cof_sup_le
+    - ordinal.is_fundamental_sequence.zero
+    - ordinal.cof_omega
+    - cardinal.exists_infinite_fiber
+    - ordinal.cof_cof
+    - ordinal.nfp_family_lt_ord_lift
+    - ordinal.infinite_pigeonhole
+    - cardinal.lt_power_cof
+    - ordinal.is_normal.cof_le
+  - path: src/data/nat/parity.lean
+    theorems:
+    - nat.bit1_div_two
+    - nat.bit0_div_two
+    - function.involutive.iterate_bit0
+    - nat.bit1_mod_bit0
+    - nat.even_iff_not_odd
+  - path: src/analysis/mean_inequalities_pow.lean
+    theorems:
+    - ennreal.rpow_arith_mean_le_arith_mean_rpow
+    - ennreal.rpow_add_rpow_le_add
+    - nnreal.arith_mean_le_rpow_mean
+  - path: src/data/pnat/basic.lean
+    theorems:
+    - pnat.le_of_dvd
+    - pnat.mod_add_div
+    - pnat.add_sub_of_lt
+  - path: src/data/rbtree/main.lean
+    theorems:
+    - rbtree.balanced
+    - rbtree.max_is_maximal
+    - rbtree.insert_ne_mk_rbtree
+    - rbtree.find_insert_of_eqv
+    - rbtree.find_correct
+    - rbnode.is_searchable_of_well_formed
+    - rbtree.min_is_minimal
+    - rbtree.mem_insert
+    - rbtree.find_insert_of_disj
+    - rbtree.equiv_or_mem_of_mem_insert
+  - path: src/data/real/ennreal.lean
+    theorems:
+    - ennreal.to_real_top_mul
+    - ennreal.to_real_Inf
+    - ennreal.infi_sum
+    - ennreal.sub_mul
+    - ennreal.to_real_eq_one_iff
+    - ennreal.to_nnreal_supr
+    - ennreal.to_real_Sup
+    - ennreal.to_nnreal_Inf
+    - ennreal.mul_lt_top_iff
+    - ennreal.inv_lt_one
+    - ennreal.exists_mem_Ioc_zpow
+    - ennreal.lt_iff_exists_rat_btwn
+    - ennreal.inv_le_one
+    - ennreal.one_le_inv
+    - ennreal.one_sub_inv_two
+    - ennreal.nat_cast_sub
+    - ennreal.of_real_prod_of_nonneg
+  - path: src/set_theory/game/pgame.lean
+    theorems:
+    - pgame.le_iff_forall_lf
+    - pgame.lt_or_equiv_or_gf
+    - pgame.zero_lf_neg_iff
+    - pgame.neg_fuzzy_iff
+    - pgame.zero_le_add_left_neg
+    - pgame.add_left_neg_le_zero
+  - path: src/data/nat/squarefree.lean
+    theorems:
+    - nat.sq_mul_squarefree_of_pos
+    - tactic.norm_num.squarefree_helper_3
+    - tactic.norm_num.squarefree_helper_2
+    - tactic.norm_num.squarefree_helper_4
+    - nat.squarefree.factorization_le_one
+  - path: src/data/rel.lean
+    theorems:
+    - rel.preimage_univ
+    - rel.preimage_id
+    - rel.image_univ
+  - path: src/analysis/convex/function.lean
+    theorems:
+    - linear_order.convex_on_of_lt
+    - convex_on_iff_pairwise_pos
+  - path: src/data/hash_map.lean
+    theorems:
+    - hash_map.find_erase
+    - hash_map.mem_insert
+    - bucket_array.foldl_eq
+  - path: src/data/pequiv.lean
+    theorems:
+    - pequiv.of_set_eq_refl
+    - pequiv.trans_eq_none
+  - path: src/data/seq/wseq.lean
+    theorems:
+    - stream.wseq.dropn_of_seq
+    - stream.wseq.bind_assoc
+    - stream.wseq.lift_rel_join.lem
+    - stream.wseq.to_list_cons
+    - stream.wseq.tail_congr
+    - stream.wseq.eq_or_mem_iff_mem
+    - stream.wseq.destruct_join
+    - stream.wseq.lift_rel_map
+    - stream.wseq.dropn_tail
+    - stream.wseq.think_equiv
+    - stream.wseq.destruct_dropn
+  - path: src/data/matrix/block.lean
+    theorems:
+    - matrix.from_blocks_conj_transpose
+    - matrix.block_diagonal_one
+    - matrix.block_diagonal'_one
+    - matrix.to_block_mul_eq_mul
+    - matrix.block_diagonal_conj_transpose
+  - path: src/data/nat/choose/multinomial.lean
+    theorems:
+    - nat.binomial_one
+    - nat.binomial_eq_choose
+  - path: src/data/list/perm.lean
+    theorems:
+    - list.perm.inter_append
+    - list.nodup_permutations'_aux_iff
+    - list.perm.rec_heq
+    - list.perm.union_right
+    - list.countp_eq_countp_filter_add
+    - list.perm.union_left
+    - list.perm_insert_nth
+    - list.subperm.diff_right
+    - list.cons_subperm_of_mem
+    - list.perm.drop_inter
+    - list.perm_replicate_append_replicate
+    - list.subperm_ext_iff
+    - list.perm.bind_left
+    - list.rel_perm_imp
+    - list.perm.slice_inter
+    - list.perm.pairwise_iff
+    - list.nodup.subperm
+  - path: src/data/rat/cast.lean
+    theorems:
+    - rat.cast_sub_of_ne_zero
+    - rat.cast_bit1
+    - rat.cast_pos_of_pos
+    - eq_rat_cast
+  - path: src/data/complex/determinant.lean
+    theorems:
+    - complex.linear_equiv_det_conj_ae
+    - complex.det_conj_ae
+  - path: src/data/rat/floor.lean
+    theorems:
+    - int.mod_nat_eq_sub_mul_floor_rat_div
+    - nat.coprime_sub_mul_floor_rat_div_of_coprime
+    - rat.floor_int_div_nat_eq_div
+    - rat.le_floor
+  - path: src/data/set/list.lean
+    theorems:
+    - set.range_list_nthd
+  - path: src/data/multiset/basic.lean
+    theorems:
+    - multiset.rel_add_right
+    - multiset.sub_le_iff_le_add
+    - multiset.add_inter_distrib
+    - multiset.filter_nsmul
+    - multiset.cons_union_distrib
+    - multiset.count_inter
+    - multiset.sub_add_inter
+    - multiset.strong_induction_eq
+    - multiset.map_filter
+    - multiset.filter_sub
+    - multiset.filter_eq
+    - multiset.countp_map
+    - multiset.map_replicate
+    - multiset.union_le
+    - multiset.count_filter
+    - multiset.disjoint_iff_ne
+  - path: src/data/multiset/lattice.lean
+    theorems:
+    - multiset.inf_add
+  - path: src/data/is_R_or_C/basic.lean
+    theorems:
+    - is_R_or_C.im_eq_zero_of_le
+    - is_R_or_C.div_I
+    - is_R_or_C.conj_smul
+    - is_R_or_C.norm_sq_re_add_conj
+    - is_R_or_C.bit1_im
+    - is_R_or_C.abs_im_le_norm
+    - is_R_or_C.norm_conj
+    - is_R_or_C.im_eq_conj_sub
+    - is_R_or_C.norm_sq_sub
+  - path: src/data/nat/factorization/basic.lean
+    theorems:
+    - nat.dvd_iff_prime_pow_dvd_dvd
+    - nat.ord_proj_dvd_ord_proj_iff_dvd
+    - nat.factorization_le_factorization_mul_right
+    - nat.ord_compl_dvd_ord_compl_iff_dvd
+    - nat.Icc_factorization_eq_pow_dvd
+    - nat.prod_prime_factors_dvd
+    - nat.dvd_iff_div_factorization_eq_tsub
+    - nat.factorization_lcm
+    - nat.factorization_eq_of_coprime_right
+    - nat.Ico_filter_pow_dvd_eq
+    - nat.factorization_eq_card_pow_dvd
+  - path: src/set_theory/cardinal/basic.lean
+    theorems:
+    - cardinal.zero_power_le
+    - cardinal.cantor
+    - cardinal.prod_eq_of_fintype
+    - cardinal.lift_supr
+    - cardinal.two_le_iff
+    - cardinal.powerlt_le
+    - cardinal.aleph_0_le_mul_iff'
+    - cardinal.power_mul
+    - cardinal.power_bit1
+    - cardinal.mk_insert
+    - cardinal.lift_down
+    - cardinal.sum_lt_prod
+    - cardinal.nat_cast_le
+    - cardinal.one_le_iff_ne_zero
+    - cardinal.le_mk_iff_exists_subset
+    - cardinal.denumerable_iff
+    - cardinal.mk_set
+    - cardinal.powerlt_zero
+    - cardinal.prod_ne_zero
+  - path: src/analysis/convex/basic.lean
+    theorems:
+    - convex.add_smul
+    - convex_hyperplane
+  - path: src/data/erased.lean
+    theorems:
+    - erased.map_out
+  - path: src/analysis/convex/integral.lean
+    theorems:
+    - ae_eq_const_or_exists_average_ne_compl
+    - ae_eq_const_or_norm_average_lt_of_norm_le_const
+    - convex.average_mem
+  - path: src/analysis/convolution.lean
+    theorems:
+    - continuous_on_convolution_right_with_param_comp'
+    - has_fderiv_at_convolution_right_with_param
+    - cont_diff_on_convolution_right_with_param_aux
+    - convolution_mono_right_of_nonneg
+    - cont_diff_on_convolution_right_with_param
+    - has_compact_support.has_deriv_at_convolution_right
+    - dist_convolution_le'
+    - integral_pos_convolution
+    - convolution_flip
+    - has_compact_support.has_fderiv_at_convolution_right
+    - convolution_tendsto_right
+  - path: src/data/dfinsupp/order.lean
+    theorems:
+    - dfinsupp.support_sup
+    - dfinsupp.disjoint_iff
+  - path: src/data/set/pointwise/interval.lean
+    theorems:
+    - set.image_mul_left_Ioo
+    - set.preimage_const_mul_Iic_of_neg
+    - set.abs_sub_le_of_uIcc_subset_uIcc
+    - set.preimage_add_const_uIcc
+    - set.image_const_mul_Ioi_zero
+    - set.preimage_const_mul_Ico_of_neg
+    - set.image_mul_left_Icc
+  - path: src/data/matrix/basic.lean
+    theorems:
+    - matrix.mul_one
+    - matrix.map_algebra_map
+    - matrix.comp_equiv_dot_product_comp_equiv
+    - matrix.dot_product_comp_equiv_symm
+    - matrix.update_row_conj_transpose
+    - matrix.mul_diagonal
+  - path: src/analysis/special_functions/pow.lean
+    theorems:
+    - ennreal.zero_rpow_mul_self
+    - continuous_at_const_cpow'
+    - real.rpow_lt_one_of_one_lt_of_neg
+    - ennreal.eventually_pow_one_div_le
+    - ennreal.le_rpow_self_of_one_le
+    - ennreal.rpow_le_rpow_of_exponent_le
+    - real.continuous_at_rpow_of_ne
+    - complex.is_Theta_exp_arg_mul_im
+    - real.rpow_le_rpow_left_iff_of_base_lt_one
+    - complex.continuous_at_of_real_cpow
+    - ennreal.rpow_lt_one_of_one_lt_of_neg
+    - real.rpow_sub_one
+    - ennreal.one_le_rpow_of_pos_of_le_one_of_neg
+    - ennreal.one_le_rpow
+    - real.exists_rat_pow_btwn_rat
+    - real.le_rpow_of_log_le
+    - nnreal.rpow_le_self_of_le_one
+    - is_o_pow_exp_pos_mul_at_top
+    - ennreal.rpow_le_self_of_le_one
+    - complex.conj_cpow
+    - real.rpow_add_one
+    - tendsto_exp_mul_div_rpow_at_top
+    - complex.eq_zero_cpow_iff
+    - ennreal.rpow_lt_rpow_of_exponent_lt
+    - ennreal.tendsto_rpow_at_top
+  - path: src/data/finset/n_ary.lean
+    theorems:
+    - "finset.image\u2082_insert_left"
+    - "finset.image\u2082_congr"
+    - "finset.image_image\u2082_distrib_left"
+    - "finset.image_image\u2082_distrib_right"
+    - "finset.image\u2082_eq_empty_iff"
+    - "finset.image\u2082_right"
+    - "finset.image\u2082_union_inter_subset"
+    - "finset.image\u2082_union_inter_subset_union"
+    - "finset.card_le_card_image\u2082_left"
+    - "finset.image\u2082_inter_union_subset_union"
+    - "finset.image\u2082_left_identity"
+    - "finset.image\u2082_inter_left"
+  - path: src/set_theory/cardinal/finite.lean
+    theorems:
+    - nat.card_prod
+    - nat.card_of_subsingleton
+    - nat.card_pi
+  - path: src/analysis/convex/slope.lean
+    theorems:
+    - strict_concave_on_of_slope_strict_anti_adjacent
+    - concave_on_of_slope_anti_adjacent
+  - path: src/data/set/intervals/ord_connected_component.lean
+    theorems:
+    - set.ord_connected_component_eq_empty
+    - set.eq_of_mem_ord_connected_section_of_uIcc_subset
+    - set.self_mem_ord_connected_component
+  - path: src/data/int/order/lemmas.lean
+    theorems:
+    - int.nat_abs_lt_iff_mul_self_lt
+  - path: src/data/fintype/units.lean
+    theorems:
+    - fintype.card_units
+  - path: src/data/polynomial/eval.lean
+    theorems:
+    - "polynomial.eval\u2082_bit1"
+    - "polynomial.eval\u2082_mul_X"
+    - polynomial.coeff_comp_degree_mul_degree
+    - "polynomial.eval\u2082_smul"
+    - polynomial.nat_cast_mul_comp
+    - "polynomial.eval\u2082_mul_noncomm"
+  - path: src/analysis/special_functions/improper_integrals.lean
+    theorems:
+    - integral_Ioi_cpow_of_lt
+    - integral_exp_neg_Ioi
+    - integral_exp_Iic
+  - path: src/data/zmod/basic.lean
+    theorems:
+    - zmod.val_min_abs_mul_two_eq_iff
+    - zmod.val_min_abs_eq_zero
+    - zmod.inv_coe_unit
+    - zmod.cast_sub_one
+    - zmod.cast_neg_one
+    - zmod.ring_hom_eq_of_ker_eq
+    - zmod.nat_coe_zmod_eq_zero_iff_dvd
+    - zmod.mul_inv_eq_gcd
+    - zmod.val_mul
+    - zmod.val_one
+  - path: src/model_theory/definability.lean
+    theorems:
+    - set.definable_finset_inf
+    - set.definable.union
+    - set.definable_finset_bUnion
+    - set.definable_finset_bInter
+    - set.definable.image_comp
+  - path: src/data/polynomial/splits.lean
+    theorems:
+    - polynomial.splits_comp_of_splits
+    - polynomial.splits_of_exists_multiset
+    - polynomial.adjoin_root_set_eq_range
+    - polynomial.splits_of_degree_le_one
+    - polynomial.sum_roots_eq_next_coeff_of_monic_of_split
+    - polynomial.splits_of_map_degree_eq_one
+  - path: src/analysis/convex/gauge.lean
+    theorems:
+    - gauge_smul
+    - gauge_unit_ball
+    - le_gauge_of_not_mem
+    - gauge_lt_one_subset_self
+    - convex.gauge_le
+    - seminorm.gauge_ball
+    - gauge_ball
+    - gauge_neg_set_eq_gauge_neg
+  - path: src/set_theory/game/impartial.lean
+    theorems:
+    - pgame.impartial.forall_left_moves_fuzzy_iff_equiv_zero
+    - pgame.impartial.exists_left_move_equiv_iff_fuzzy_zero
+    - pgame.impartial.nonneg
+  - path: src/data/ordmap/ordset.lean
+    theorems:
+    - ordnode.valid'.merge_aux
+    - ordnode.dual_rotate_l
+    - ordnode.split_max_eq
+    - ordnode.sized.rotate_l_size
+    - ordnode.valid'.erase_aux
+    - ordnode.size_erase_of_mem
+    - ordnode.bounded.dual_iff
+    - ordnode.erase_max.valid
+    - ordnode.valid'.erase_min_aux
+    - ordnode.dual_balance'
+    - ordnode.valid'.glue_aux
+    - ordnode.valid'.balance'_lemma
+    - ordnode.length_to_list'
+    - ordnode.insert.valid
+    - ordnode.split_min_eq
+    - ordnode.valid'.rotate_l
+    - ordnode.insert'.valid
+    - ordnode.valid'.node4_l
+    - ordnode.length_to_list
+  - path: src/analysis/special_functions/complex/arg.lean
+    theorems:
+    - complex.arg_mem_Ioc
+    - complex.continuous_at_arg
+    - complex.cos_arg
+    - complex.arg_inv_coe_angle
+  - path: src/data/finsupp/basic.lean
+    theorems:
+    - finsupp.prod_map_domain_index_inj
+    - finsupp.graph_injective
+  - path: src/data/list/chain.lean
+    theorems:
+    - "list.chain_append_singleton_iff_forall\u2082"
+    - list.chain_append_cons_cons
+    - list.chain'.rel_head'
+    - list.chain'_iff_nth_le
+  - path: src/model_theory/semantics.lean
+    theorems:
+    - "first_order.language.bounded_formula.realize_rel\u2081"
+    - first_order.language.bounded_formula.realize_lift_at_one_self
+    - first_order.language.bounded_formula.realize_to_formula
+    - first_order.language.bounded_formula.realize_relabel_equiv
+    - first_order.language.bounded_formula.realize_iff
+    - first_order.language.bounded_formula.realize_exs
+    - "first_order.language.formula.realize_rel\u2081"
+    - "first_order.language.term.realize_functions_apply\u2081"
+    - first_order.language.elementarily_equivalent_iff
+    - first_order.language.bounded_formula.realize_alls
+    - first_order.language.bounded_formula.realize_constants_vars_equiv
+    - first_order.language.term.realize_constants_to_vars
+    - first_order.language.bounded_formula.realize_lift_at
+    - first_order.language.term.realize_constants_vars_equiv_left
+    - first_order.language.formula.realize_equal
+    - first_order.language.bounded_formula.realize_inf
+  - path: src/data/nat/basic.lean
+    theorems:
+    - nat.mul_add_mod_of_lt
+    - nat.le_induction
+    - nat.decreasing_induction_succ_left
+    - nat.le_rec_on_succ_left
+    - nat.div_eq_iff_eq_mul_left
+  - path: src/data/fintype/big_operators.lean
+    theorems:
+    - fintype.prod_dite
+  - path: src/data/set/pointwise/list_of_fn.lean
+    theorems:
+    - set.mem_list_prod
+  - path: src/set_theory/ordinal/natural_ops.lean
+    theorems:
+    - nat_ordinal.to_ordinal_cast_nat
+    - ordinal.nadd_one
+    - ordinal.nadd_zero
+  - path: src/data/list/count.lean
+    theorems:
+    - list.countp_pos
+    - list.count_filter
+    - list.filter_eq'
+    - list.sublist.countp_le
+    - list.count_bind
+    - list.count_le_count_map
+  - path: src/data/nat/log.lean
+    theorems:
+    - nat.log_div_base
+    - nat.le_pow_iff_clog_le
+    - nat.log_eq_iff
+    - nat.log_mul_base
+    - nat.log_monotone
+  - path: src/data/pnat/interval.lean
+    theorems:
+    - pnat.card_Ioc
+    - pnat.card_fintype_Ico
+    - pnat.card_Ico
+    - pnat.card_fintype_Icc
+    - pnat.card_fintype_Ioc
+  - path: src/model_theory/quotients.lean
+    theorems:
+    - first_order.language.rel_map_quotient_mk
+  - path: src/data/real/sqrt.lean
+    theorems:
+    - real.mul_self_sqrt
+    - real.sqrt_eq_iff_mul_self_eq_of_pos
+    - real.sqrt_eq_zero'
+    - real.real_sqrt_le_nat_sqrt_succ
+  - path: src/data/fin/tuple/basic.lean
+    theorems:
+    - fin.insert_nth_sub_same
+    - fin.snoc_update
+    - fin.cons_cases_cons
+    - fin.find_eq_none_iff
+    - fin.append_assoc
+  - path: src/data/list/pairwise.lean
+    theorems:
+    - list.pairwise.pmap
+    - list.pairwise_join
+  - path: src/data/nat/order/lemmas.lean
+    theorems:
+    - nat.not_dvd_iff_between_consec_multiples
+  - path: src/data/stream/init.lean
+    theorems:
+    - stream.even_interleave
+    - stream.take_theorem
+    - stream.zip_eq
+    - stream.corec_eq
+    - stream.mem_of_mem_odd
+    - stream.nth_inits
+    - stream.mem_interleave_left
+    - stream.head_drop
+    - stream.iterate_eq
+    - stream.nth_even
+    - stream.zip_inits_tails
+    - stream.interleave_even_odd
+  - path: src/data/complex/cardinality.lean
+    theorems:
+    - not_countable_complex
+    - mk_complex
+    - mk_univ_complex
+  - path: src/analysis/inner_product_space/pi_L2.lean
+    theorems:
+    - euclidean_space.norm_eq
+    - linear_isometry.extend_apply
+    - orthonormal.exists_orthonormal_basis_extension_of_card_eq
+    - orthonormal_basis.coe_mk
+    - orthonormal_basis.to_matrix_orthonormal_basis_mem_unitary
+    - orthonormal_basis.span_apply
+    - basis.to_basis_to_orthonormal_basis
+    - orthonormal_basis.det_to_matrix_orthonormal_basis
+    - orthonormal_basis.det_to_matrix_orthonormal_basis_real
+    - orthonormal_basis.orthonormal
+  - path: src/set_theory/ordinal/cantor_normal_form.lean
+    theorems:
+    - ordinal.CNF_fst_le_log
+    - ordinal.CNF_lt_snd
+    - ordinal.CNF_snd_lt
+  - path: src/data/real/pointwise.lean
+    theorems:
+    - real.Sup_smul_of_nonneg
+    - real.supr_mul_of_nonpos
+    - real.infi_mul_of_nonpos
+    - real.Sup_smul_of_nonpos
+    - real.Inf_smul_of_nonneg
+  - path: src/analysis/convex/hull.lean
+    theorems:
+    - affine_span_convex_hull
+    - convex_hull_nonempty_iff
+    - mem_convex_hull_iff
+  - path: src/analysis/inner_product_space/two_dim.lean
+    theorems:
+    - complex.area_form
+    - orientation.nonneg_inner_and_area_form_eq_zero_iff_same_ray
+    - orientation.area_form_to_volume_form
+    - "orientation.inner_right_angle_rotation_aux\u2081_left"
+    - orientation.kahler_swap
+  - path: src/data/nat/bitwise.lean
+    theorems:
+    - nat.test_bit_eq_inth
+    - nat.test_bit_two_pow
+  - path: src/data/finset/image.lean
+    theorems:
+    - finset.map_comm
+    - finset.map_subtype_subset
+    - finset.image_subset_image
+    - finset.image_inter_of_inj_on
+    - finset.image_erase
+    - finset.subset_image_iff
+    - finset.disjoint_image
+  - path: src/data/nat/factorial/basic.lean
+    theorems:
+    - nat.pow_succ_le_asc_factorial
+    - nat.asc_factorial_lt_pow_add
+    - nat.pow_lt_asc_factorial'
+  - path: src/data/int/bitwise.lean
+    theorems:
+    - int.bit1_ne_zero
+    - int.bodd_neg
+    - int.shiftr_neg
+  - path: src/data/list/sigma.lean
+    theorems:
+    - list.lookup_all_eq_lookup
+    - list.sizeof_dedupkeys
+    - list.lookup_all_nodup
+    - list.lookup_kunion_left
+    - list.lookup_kinsert
+    - list.perm_lookup_all
+    - list.lookup_eq_none
+  - path: src/data/polynomial/taylor.lean
+    theorems:
+    - polynomial.nat_degree_taylor
+    - polynomial.sum_taylor_eq
+  - path: src/data/polynomial/derivative.lean
+    theorems:
+    - polynomial.iterate_derivative_X_pow_eq_smul
+    - polynomial.nat_degree_derivative_lt
+    - polynomial.derivative_sq
+    - polynomial.derivative_eval
+    - polynomial.iterate_derivative_X_add_pow
+    - polynomial.degree_derivative_eq
+    - polynomial.iterate_derivative_comp_one_sub_X
+    - polynomial.iterate_derivative_X_pow_eq_nat_cast_mul
+    - polynomial.derivative_mul
+    - polynomial.iterate_derivative_eq_zero
+  - path: src/data/nat/count.lean
+    theorems:
+    - nat.count_succ'
+  - path: src/data/polynomial/div.lean
+    theorems:
+    - polynomial.root_multiplicity_eq_multiplicity
+    - polynomial.eval_div_by_monic_pow_root_multiplicity_ne_zero
+    - polynomial.X_pow_dvd_iff
+  - path: src/analysis/bounded_variation.lean
+    theorems:
+    - evariation_on.add_point
+    - has_locally_bounded_variation_on.exists_monotone_on_sub_monotone_on
+    - has_locally_bounded_variation_on.ae_differentiable_within_at_of_mem_pi
+    - evariation_on.comp_of_dual
+    - evariation_on.comp_eq_of_antitone_on
+    - evariation_on.comp_inter_Icc_eq_of_monotone_on
+  - path: src/data/finset/prod.lean
+    theorems:
+    - finset.singleton_product_singleton
+    - finset.diag_insert
+    - finset.off_diag_insert
+  - path: src/data/real/basic.lean
+    theorems:
+    - real.cinfi_const_zero
+    - real.zero_lt_one
+    - real.exists_is_lub
+    - real.le_def
+    - real.of_cauchy_sup
+    - real.cau_seq_converges
+    - real.mk_pos
+    - real.is_lub_Sup
+  - path: src/data/dfinsupp/well_founded.lean
+    theorems:
+    - dfinsupp.lex.acc_of_single
+    - dfinsupp.lex.acc_single
+    - dfinsupp.lex.acc_of_single_erase
+    - pi.lex.well_founded
+  - path: src/data/matrix/rank.lean
+    theorems:
+    - matrix.rank_reindex
+    - matrix.rank_transpose_mul_self
+    - matrix.rank_unit
+    - matrix.rank_eq_finrank_span_cols
+    - matrix.ker_mul_vec_lin_conj_transpose_mul_self
+  - path: src/data/matrix/reflection.lean
+    theorems:
+    - matrix.forall_iff
+    - "matrix.mul\u1D63_eq"
+  - path: src/model_theory/order.lean
+    theorems:
+    - first_order.language.realize_densely_ordered_iff
+    - first_order.language.rel_map_le_symb
+  - path: src/data/pnat/find.lean
+    theorems:
+    - pnat.find_comp_succ
+  - path: src/data/pi/lex.lean
+    theorems:
+    - pi.lex_lt_of_lt
+    - pi.lt_to_lex_update_self_iff
+    - pi.lex_desc
+  - path: src/data/num/prime.lean
+    theorems:
+    - pos_num.min_fac_to_nat
+  - path: src/data/finsupp/alist.lean
+    theorems:
+    - finsupp.to_alist_lookup_finsupp
+  - path: src/data/list/infix.lean
+    theorems:
+    - list.is_suffix.filter
+    - list.infix_cons_iff
+    - list.suffix_insert
+    - list.tail_suffix
+    - list.prefix_take_le_iff
+    - list.slice_sublist
+  - path: src/data/polynomial/degree/definitions.lean
+    theorems:
+    - polynomial.leading_coeff_linear
+    - polynomial.coeff_mul_degree_add_degree
+    - polynomial.X_pow_sub_C_ne_zero
+    - polynomial.degree_C_lt_degree_C_mul_X
+    - polynomial.leading_coeff_add_of_degree_eq
+    - polynomial.monic_of_nat_degree_le_of_coeff_eq_one
+    - polynomial.degree_mul
+    - polynomial.next_coeff_X_sub_C
+    - polynomial.degree_X_pow_add_C
+    - polynomial.degree_C_mul_X_pow_le
+    - polynomial.degree_update_le
+    - polynomial.degree_X_sub_C
+    - polynomial.monic.eq_X_add_C
+    - polynomial.nat_degree_pow'
+    - polynomial.monomial_nat_degree_leading_coeff_eq_self
+    - polynomial.coeff_pow_mul_nat_degree
+    - polynomial.degree_erase_lt
+    - polynomial.degree_linear_lt_degree_C_mul_X_sq
+  - path: src/data/polynomial/mirror.lean
+    theorems:
+    - polynomial.mirror_neg
+    - polynomial.mirror_nat_degree
+    - polynomial.mirror_monomial
+  - path: src/analysis/special_functions/trigonometric/bounds.lean
+    theorems:
+    - real.cos_le_one_div_sqrt_sq_add_one
+  - path: src/analysis/special_functions/bernstein.lean
+    theorems:
+    - bernstein.variance
+    - bernstein_approximation_uniform
+    - bernstein_nonneg
+  - path: src/analysis/constant_speed.lean
+    theorems:
+    - unique_unit_speed
+    - has_constant_speed_on_with.has_locally_bounded_variation_on
+    - has_constant_speed_on_with_zero_iff
+    - unique_unit_speed_on_Icc_zero
+  - path: src/data/finset/sym.lean
+    theorems:
+    - finset.sym_inter
+    - finset.sym2_eq_empty
+    - finset.sym2_singleton
+    - finset.mem_sym_iff
+  - path: src/data/multiset/sections.lean
+    theorems:
+    - multiset.coe_sections
+  - path: src/data/list/nodup_equiv_fin.lean
+    theorems:
+    - list.duplicate_iff_exists_distinct_nth_le
+  - path: src/analysis/special_functions/trigonometric/arctan.lean
+    theorems:
+    - real.continuous_on_tan_Ioo
+    - real.arcsin_eq_arctan
+    - real.tan_ne_zero_iff
+    - real.sin_arctan
+  - path: src/analysis/inner_product_space/dual.lean
+    theorems:
+    - inner_product_space.to_dual_symm_apply
+    - inner_product_space.ext_inner_right_basis
+    - inner_product_space.continuous_linear_map_of_bilin_apply
+    - inner_product_space.unique_continuous_linear_map_of_bilin
+  - path: src/analysis/inner_product_space/lax_milgram.lean
+    theorems:
+    - is_coercive.ker_eq_bot
+    - is_coercive.antilipschitz
+  - path: src/data/set/intervals/surj_on.lean
+    theorems:
+    - surj_on_Ioi_of_monotone_surjective
+    - surj_on_Ici_of_monotone_surjective
+    - surj_on_Ico_of_monotone_surjective
+  - path: src/data/nat/choose/factorization.lean
+    theorems:
+    - nat.prod_pow_factorization_choose
+    - nat.factorization_factorial_eq_zero_of_lt
+  - path: src/data/nat/factorization/prime_pow.lean
+    theorems:
+    - is_prime_pow_iff_card_support_factorization_eq_one
+    - is_prime_pow_iff_unique_prime_dvd
+    - nat.coprime.is_prime_pow_dvd_mul
+    - is_prime_pow_iff_factorization_eq_single
+  - path: src/data/mv_polynomial/monad.lean
+    theorems:
+    - "mv_polynomial.bind\u2082_monomial"
+    - "mv_polynomial.mem_vars_bind\u2081"
+    - "mv_polynomial.map_bind\u2081"
+    - "mv_polynomial.bind\u2081_bind\u2081"
+    - "mv_polynomial.eval\u2082_hom_bind\u2081"
+  - path: src/analysis/special_functions/arsinh.lean
+    theorems:
+    - real.has_strict_deriv_at_arsinh
+    - real.sinh_arsinh
+  - path: src/data/multiset/fintype.lean
+    theorems:
+    - multiset.to_enum_finset_subset_iff
+    - multiset.image_to_enum_finset_fst
+    - multiset.to_enum_finset_filter_eq
+    - multiset.map_univ
+    - multiset.map_univ_coe_embedding
+  - path: src/analysis/inner_product_space/euclidean_dist.lean
+    theorems:
+    - cont_diff.euclidean_dist
+    - euclidean.is_compact_closed_ball
+  - path: src/data/nat/nth.lean
+    theorems:
+    - nat.filter_range_nth_eq_insert_of_finite
+    - nat.le_nth_of_lt_nth_succ_finite
+    - nat.nth_count_le
+    - nat.count_nth_of_lt_card_finite
+    - nat.nth_set_nonempty_of_lt_card
+    - nat.le_nth_of_count_le
+    - nat.count_nth_of_infinite
+  - path: src/analysis/convex/extrema.lean
+    theorems:
+    - is_min_on.of_is_local_min_on_of_convex_on
+  - path: src/data/list/tfae.lean
+    theorems:
+    - list.tfae_singleton
+  - path: src/data/set/pointwise/basic.lean
+    theorems:
+    - set.empty_pow
+    - set.nsmul_univ
+    - set.pow_subset_pow_of_one_mem
+    - set.pow_mem_pow
+    - set.is_unit_iff
+    - set.inv_subset
+  - path: src/data/nat/factors.lean
+    theorems:
+    - nat.factors_unique
+    - nat.factors_sublist_of_dvd
+    - nat.factors_sublist_right
+  - path: src/data/set/function.lean
+    theorems:
+    - set.eq_on.piecewise_ite'
+    - set.bij_on_singleton
+    - set.restrict_extend_range
+    - set.range_restrict_preimage
+    - set.maps_range_to
+    - function.semiconj.bij_on_range
+    - set.injective_piecewise_iff
+    - set.range_extend
+  - path: src/data/list/zip.lean
+    theorems:
+    - list.unzip_zip_right
+    - list.length_zip_with
+  - path: src/data/nat/pow.lean
+    theorems:
+    - nat.dvd_of_pow_dvd
+    - nat.mod_pow_succ
+    - nat.mul_lt_mul_pow_succ
+    - nat.sq_sub_sq
+    - nat.pow_dvd_pow_iff_le_right
+  - path: src/data/nat/digits.lean
+    theorems:
+    - nat.base_pow_length_digits_le'
+    - nat.dvd_of_digits_sub_of_digits
+    - nat.base_pow_length_digits_le
+    - nat.digits_zero
+    - nat.digits_eq_cons_digits_div
+    - nat.digits_len_le_digits_len_succ
+    - nat.eleven_dvd_of_palindrome
+    - nat.modeq_digits_sum
+    - nat.of_digits_eq_sum_map_with_index
+  - path: src/data/sign.lean
+    theorems:
+    - exists_signed_sum_aux
+    - exists_signed_sum'
+  - path: src/set_theory/surreal/dyadic.lean
+    theorems:
+    - surreal.nsmul_pow_two_pow_half
+    - pgame.add_pow_half_succ_self_eq_pow_half
+    - surreal.nsmul_pow_two_pow_half'
+    - pgame.numeric_pow_half
+    - surreal.dyadic_map_apply_pow
+    - surreal.zsmul_pow_two_pow_half
+  - path: src/data/seq/seq.lean
+    theorems:
+    - stream.seq.head_cons
+    - stream.seq.map_tail
+    - stream.seq.eq_of_bisim
+    - stream.seq.dropn_tail
+    - stream.seq.enum_cons
+  - path: src/data/vector/basic.lean
+    theorems:
+    - vector.not_empty_to_list
+    - vector.prod_update_nth'
+    - vector.nth_update_nth_eq_if
+    - vector.scanl_cons
+    - vector.reverse_nth_zero
+    - vector.reverse_reverse
+    - vector.of_fn_nth
+    - vector.insert_nth_comm
+    - vector.head_of_fn
+    - vector.nth_cons_succ
+  - path: src/set_theory/game/domineering.lean
+    theorems:
+    - pgame.domineering.move_left_smaller
+    - pgame.domineering.move_left_card
+    - pgame.domineering.move_right_smaller
+  - path: src/data/sum/basic.lean
+    theorems:
+    - sum.lex.mono
+    - sum.update_inr_apply_inr
+    - sum.update_inl_apply_inl
+    - sum.get_right_eq_none_iff
+  - path: src/data/int/sqrt.lean
+    theorems:
+    - int.sqrt_eq
+  - path: src/data/fin_enum.lean
+    theorems:
+    - fin_enum.nodup_to_list
+  - path: src/analysis/special_functions/gaussian.lean
+    theorems:
+    - rpow_mul_exp_neg_mul_sq_is_o_exp_neg
+    - gaussian_fourier.vertical_integral_norm_le
+    - integral_cexp_neg_mul_sq_add_const
+    - integral_gaussian
+    - complex.tsum_exp_neg_mul_int_sq
+    - fourier_transform_gaussian
+    - gaussian_fourier.integral_cexp_neg_mul_sq_add_real_mul_I
+    - real.Gamma_one_half_eq
+    - gaussian_fourier.tendsto_vertical_integral
+    - integrable_mul_cexp_neg_mul_sq
+  - path: src/data/real/nnreal.lean
+    theorems:
+    - nnreal.finset_sup_div
+    - nnreal.Sup_of_not_bdd_above
+    - nnreal.infi_const_zero
+  - path: src/data/fintype/card.lean
+    theorems:
+    - list.nodup.length_le_card
+    - infinite.of_surjective
+    - finite.well_founded_of_trans_of_irrefl
+    - fintype.card_eq
+    - infinite.of_injective_to_set
+    - finite.injective_iff_surjective
+  - path: src/data/finset/interval.lean
+    theorems:
+    - finset.card_Icc_finset
+  - path: src/data/nat/sqrt.lean
+    theorems:
+    - nat.not_exists_sq'
+    - nat.sqrt_aux_2
+  - path: src/data/fin/tuple/reflection.lean
+    theorems:
+    - fin_vec.sum_eq
+    - fin_vec.forall_iff
+  - path: src/data/list/min_max.lean
+    theorems:
+    - list.not_lt_maximum_of_mem'
+    - list.index_of_argmax
+    - list.mem_argmax_iff
+    - list.not_of_mem_foldl_arg_aux
+    - list.foldr_max_of_ne_nil
+    - list.argmax_mem
+    - list.maximum_concat
+  - path: src/analysis/convex/independent.lean
+    theorems:
+    - convex_independent_iff_finset
+    - convex_independent_set_iff_not_mem_convex_hull_diff
+    - subsingleton.convex_independent
+  - path: src/data/fin/tuple/bubble_sort_induction.lean
+    theorems:
+    - tuple.bubble_sort_induction'
+  - path: src/model_theory/encoding.lean
+    theorems:
+    - first_order.language.bounded_formula.card_le
+  - path: src/analysis/convex/krein_milman.lean
+    theorems:
+    - is_compact.has_extreme_point
+    - closure_convex_hull_extreme_points
+  - path: src/data/fin/tuple/sort.lean
+    theorems:
+    - tuple.sort_eq_refl_iff_monotone
+    - tuple.eq_sort_iff'
+    - tuple.monotone_proj
+    - tuple.monotone_sort
+  - path: src/data/nat/gcd/basic.lean
+    theorems:
+    - nat.coprime_self_add_left
+    - nat.coprime_add_mul_left_left
+    - nat.gcd_gcd_self_left_right
+    - nat.coprime.coprime_dvd_left
+    - nat.coprime.gcd_mul_left_cancel
+    - nat.lcm_one_left
+    - nat.gcd_gcd_self_right_right
+    - nat.gcd_mul_gcd_of_coprime_of_mul_eq_mul
+    - nat.coprime_mul_left_add_left
+  - path: src/analysis/convex/extreme.lean
+    theorems:
+    - extreme_points_pi
+    - convex.mem_extreme_points_iff_convex_diff
+    - mem_extreme_points_iff_forall_segment
+  - path: src/data/qpf/multivariate/constructions/fix.lean
+    theorems:
+    - mvqpf.Wrepr_equiv
+    - mvqpf.fix.dest_mk
+    - mvqpf.fix.rec_eq
+  - path: src/analysis/special_functions/non_integrable.lean
+    theorems:
+    - not_interval_integrable_of_sub_inv_is_O_punctured
+    - not_interval_integrable_of_tendsto_norm_at_top_of_deriv_is_O_filter
+  - path: src/data/finset/powerset.lean
+    theorems:
+    - finset.powerset_len_sup
+    - finset.powerset_insert
+    - finset.mem_powerset
+    - finset.powerset_len_nonempty
+  - path: src/analysis/special_functions/log/basic.lean
+    theorems:
+    - real.tendsto_log_comp_add_sub_log
+    - real.exp_log_eq_abs
+    - real.is_o_pow_log_id_at_top
+    - real.tendsto_log_nhds_within_zero
+    - real.continuous_at_log_iff
+  - path: src/analysis/inner_product_space/orientation.lean
+    theorems:
+    - orientation.abs_volume_form_apply_of_pairwise_orthogonal
+    - orthonormal_basis.abs_det_adjust_to_orientation
+    - orientation.volume_form_neg_orientation
+  - path: src/data/sym/card.lean
+    theorems:
+    - sym2.card_image_off_diag
+    - sym.card_sym_eq_choose
+    - finset.card_sym2
+    - sym.card_sym_eq_multichoose
+  - path: src/data/mv_polynomial/basic.lean
+    theorems:
+    - mv_polynomial.X_pow_eq_monomial
+    - mv_polynomial.coeff_map
+    - "mv_polynomial.eval\u2082_mul_monomial"
+    - mv_polynomial.smul_eval
+    - mv_polynomial.coeff_X'
+    - "mv_polynomial.eval\u2082_pow"
+  - path: src/analysis/quaternion.lean
+    theorems:
+    - quaternion.norm_star
+  - path: src/data/dfinsupp/ne_locus.lean
+    theorems:
+    - dfinsupp.ne_locus_eq_support_sub
+    - dfinsupp.ne_locus_self_add_right
+  - path: src/data/zmod/quotient.lean
+    theorems:
+    - order_eq_card_zpowers'
+    - mul_action.orbit_zpowers_equiv_symm_apply'
+    - add_action.orbit_zmultiples_equiv_symm_apply'
+  - path: src/analysis/convex/strict_convex_between.lean
+    theorems:
+    - sbtw.dist_lt_max_dist
+  - path: src/data/list/destutter.lean
+    theorems:
+    - list.destutter'_is_chain'
+  - path: src/data/seq/computation.lean
+    theorems:
+    - computation.results_bind
+    - computation.results_of_terminates'
+    - computation.lift_rel_aux.ret_right
+    - computation.terminates_congr
+    - computation.corec_eq
+  - path: src/data/buffer/basic.lean
+    theorems:
+    - buffer.read_to_buffer'
+    - buffer.size_to_buffer
+    - buffer.read_to_buffer
+    - buffer.length_to_list
+    - buffer.read_append_list_left'
+  - path: src/analysis/convex/strict_convex_space.lean
+    theorems:
+    - eq_line_map_of_dist_eq_mul_of_dist_eq_mul
+    - strict_convex_closed_ball
+    - eq_midpoint_of_dist_eq_half
+    - strict_convex_space.of_norm_add_ne_two
+    - norm_midpoint_lt_iff
+    - norm_add_lt_of_not_same_ray
+  - path: src/data/int/log.lean
+    theorems:
+    - int.zpow_pred_clog_lt_self
+    - int.log_of_right_le_one
+    - int.clog_of_right_le_zero
+  - path: src/set_theory/game/basic.lean
+    theorems:
+    - pgame.quot_right_distrib_sub
+    - pgame.zero_lf_inv'
+    - pgame.quot_right_distrib
+  - path: src/data/pfunctor/univariate/M.lean
+    theorems:
+    - pfunctor.M.bisim
+    - pfunctor.M.ext_aux
+    - pfunctor.approx.head_succ'
+    - pfunctor.M.cases_mk
+    - pfunctor.M.isubtree_cons
+    - pfunctor.M.ext
+    - pfunctor.M.children_mk
+  - path: src/data/multiset/locally_finite.lean
+    theorems:
+    - multiset.Ico_filter_le
+    - multiset.Ico_add_Ico_eq_Ico
+    - multiset.Ico_inter_Ico
+    - multiset.Ico_sub_Ico_left
+    - multiset.map_add_left_Ioo
+    - multiset.Ico_sub_Ico_right
+    - multiset.map_add_left_Ioc
+    - multiset.map_add_right_Ioc
+    - multiset.Ico_eq_zero_iff
+  - path: src/analysis/convex/uniform.lean
+    theorems:
+    - exists_forall_closed_ball_dist_add_le_two_mul_sub
+  - path: src/data/pi/algebra.lean
+    theorems:
+    - "pi.apply_mul_single\u2082"
+  - path: src/data/prod/basic.lean
+    theorems:
+    - function.left_inverse.prod_map
+  - path: src/model_theory/direct_limit.lean
+    theorems:
+    - first_order.language.direct_limit.fun_map_quotient_mk_sigma_mk
+    - first_order.language.direct_limit.lift_unique
+  - path: src/data/set/countable.lean
+    theorems:
+    - set.countable_Union
+    - set.countable_iff_exists_subset_range
+    - set.countable_pi
+    - set.countable.bUnion_iff
+  - path: src/data/list/rdrop.lean
+    theorems:
+    - list.rtake_while_suffix
+    - list.mem_rtake_while_imp
+    - list.rdrop_while_last_not
+    - list.rdrop_while_eq_self_iff
+    - list.rdrop_while_singleton
+  - path: src/data/pfunctor/univariate/basic.lean
+    theorems:
+    - pfunctor.liftp_iff'
+  - path: src/data/nat/bits.lean
+    theorems:
+    - nat.bit_cases_on_injective
+    - nat.bits_append_bit
+    - nat.one_bits
+  - path: src/data/sym/sym2.lean
+    theorems:
+    - sym2.from_rel_top
+    - sym2.rel_bool_spec
+    - sym2.other_invol
+    - sym2.ball
+  - path: src/data/fintype/sum.lean
+    theorems:
+    - fintype.card_subtype_or
+    - fintype.card_subtype_or_disjoint
+    - set.maps_to.exists_equiv_extend_of_card_eq
+    - infinite_sum
+  - path: src/data/set/intervals/unordered_interval.lean
+    theorems:
+    - set.uIcc_injective_left
+  - path: src/data/rbtree/basic.lean
+    theorems:
+    - rbnode.balanced
+  - path: src/data/bitvec/basic.lean
+    theorems:
+    - bitvec.of_nat_to_nat
+    - bitvec.to_nat_lt
+  - path: src/data/list/permutation.lean
+    theorems:
+    - list.mem_foldr_permutations_aux2
+    - list.mem_permutations_aux2'
+    - list.map_permutations'
+    - list.length_foldr_permutations_aux2'
+  - path: src/data/set/intervals/ord_connected.lean
+    theorems:
+    - set.ord_connected_of_Ioo
+    - set.ord_connected_range
+    - set.ord_connected_singleton
+    - set.ord_connected_image
+  - path: src/data/qpf/multivariate/constructions/cofix.lean
+    theorems:
+    - mvqpf.liftr_map
+    - mvqpf.cofix.abs_repr
+    - mvqpf.cofix.dest_corec'
+  - path: src/set_theory/ordinal/topology.lean
+    theorems:
+    - ordinal.mem_closed_iff_bsup
+  - path: src/data/real/golden_ratio.lean
+    theorems:
+    - gold_conj_neg
+    - gold_conj_mul_gold
+  - path: src/data/fin/vec_notation.lean
+    theorems:
+    - matrix.vec_append_eq_ite
+    - matrix.range_cons_empty
+    - matrix.vec_alt1_vec_append
+    - matrix.cons_val_succ'
+    - matrix.cons_vec_bit1_eq_alt1
+  - path: src/data/dfinsupp/basic.lean
+    theorems:
+    - dfinsupp.erase_add
+    - dfinsupp.prod_finset_sum_index
+    - dfinsupp.support_update
+    - dfinsupp.mk_sub
+    - dfinsupp.induction
+    - dfinsupp_sum_add_hom_mem
+    - dfinsupp.single_eq_zero
+  - path: src/data/pfunctor/multivariate/M.lean
+    theorems:
+    - mvpfunctor.M.map_dest
+    - "mvpfunctor.M.bisim\u2080"
+    - mvpfunctor.M.dest_corec
+    - mvpfunctor.M.dest_map
+  - path: src/data/fintype/basic.lean
+    theorems:
+    - finset.insert_compl_self
+    - fintype.choose_subtype_eq
+    - exists_seq_of_forall_finset_exists'
+  - path: src/analysis/special_functions/log/monotone.lean
+    theorems:
+    - real.log_div_self_rpow_antitone_on
+  - path: src/data/polynomial/degree/trailing_degree.lean
+    theorems:
+    - polynomial.le_trailing_degree_C_mul_X_pow
+    - polynomial.le_trailing_degree_X_pow
+    - polynomial.trailing_degree_ne_of_nat_trailing_degree_ne
+  - path: src/analysis/inner_product_space/rayleigh.lean
+    theorems:
+    - continuous_linear_map.image_rayleigh_eq_image_rayleigh_sphere
+    - is_self_adjoint.has_eigenvector_of_is_max_on
+    - is_self_adjoint.linearly_dependent_of_is_local_extr_on
+  - path: src/data/nat/fib.lean
+    theorems:
+    - nat.gcd_fib_add_mul_self
+    - nat.fib_bit1
+    - nat.fib_add_two_strict_mono
+    - nat.fib_succ_eq_sum_choose
+    - nat.fib_lt_fib_succ
+    - nat.fib_dvd
+  - path: src/data/list/lattice.lean
+    theorems:
+    - list.cons_bag_inter_of_neg
+    - list.mem_bag_inter
+    - list.mem_union
+  - path: src/data/rbmap/default.lean
+    theorems:
+    - rbmap.not_mem_of_empty
+    - rbmap.find_entry_insert_of_disj
+    - rbmap.find_eq_find_of_eqv
+    - rbmap.find_correct
+    - rbmap.not_mem_of_find_entry_none
+  - path: src/data/fin/tuple/nat_antidiagonal.lean
+    theorems:
+    - list.nat.antidiagonal_tuple_zero_right
+    - list.nat.mem_antidiagonal_tuple
+    - list.nat.antidiagonal_tuple_one
+  - path: src/data/int/modeq.lean
+    theorems:
+    - int.neg_modeq_neg
+  - path: src/data/multiset/finset_ops.lean
+    theorems:
+    - multiset.ndunion_le
+    - multiset.disjoint_ndinsert_right
+  - path: src/analysis/p_series.lean
+    theorems:
+    - finset.le_sum_condensed
+    - sum_Ioo_inv_sq_le
+    - finset.sum_condensed_le
+    - real.summable_nat_rpow_inv
+  - path: src/model_theory/types.lean
+    theorems:
+    - first_order.language.Theory.complete_type.nonempty_iff
+    - first_order.language.Theory.complete_type.mem_type_of
+    - first_order.language.Theory.complete_type.set_of_mem_eq_univ_iff
+    - first_order.language.Theory.exists_Model_is_realized_in
+  - path: src/data/sym/basic.lean
+    theorems:
+    - sym_option_succ_equiv.encode_decode
+    - sym.append_comm
+    - sym.mem_fill_iff
+    - sym.exists_eq_cons_of_succ
+  - path: src/data/char.lean
+    theorems:
+    - char.of_nat_to_nat
+  - path: src/data/rat/order.lean
+    theorems:
+    - rat.le_antisymm
+    - rat.mul_nonneg
+    - rat.abs_def
+  - path: src/data/list/fin_range.lean
+    theorems:
+    - list.nodup_of_fn_of_injective
+  - path: src/data/finset/pimage.lean
+    theorems:
+    - finset.pimage_inter
+    - finset.mem_pimage
+  - path: src/data/lazy_list/basic.lean
+    theorems:
+    - lazy_list.append_bind
+    - lazy_list.forall_mem_cons
+  - path: src/data/mv_polynomial/supported.lean
+    theorems:
+    - mv_polynomial.supported_le_supported_iff
+    - mv_polynomial.supported_empty
+    - mv_polynomial.mem_supported
+  - path: src/data/list/range.lean
+    theorems:
+    - list.iota_eq_reverse_range'
+    - list.range_sublist
+    - list.range_succ_eq_map
+    - list.unzip_enum_from_eq_prod
+  - path: src/data/polynomial/identities.lean
+    theorems:
+    - polynomial.poly_binom_aux2
+  - path: src/analysis/special_functions/polynomials.lean
+    theorems:
+    - polynomial.tendsto_at_top_iff_leading_coeff_nonneg
+    - polynomial.tendsto_at_bot_iff_leading_coeff_nonpos
+  - path: src/data/set/accumulate.lean
+    theorems:
+    - set.Union_accumulate
+  - path: src/data/polynomial/algebra_map.lean
+    theorems:
+    - polynomial.aeval_endomorphism
+    - polynomial.eval_mul_X_sub_C
+  - path: src/analysis/inner_product_space/orthogonal.lean
+    theorems:
+    - submodule.is_closed_orthogonal
+    - submodule.is_ortho_span
+  - path: src/analysis/schwartz_space.lean
+    theorems:
+    - schwartz_map.is_O_cocompact_rpow
+    - schwartz_map.decay_add_le_aux
+    - schwartz_map.seminorm_aux_smul_le
+    - schwartz_map.decay_neg_aux
+    - schwartz_map.seminorm_le_bound'
+  - path: src/data/vector/zip.lean
+    theorems:
+    - vector.zip_with_nth
+  - path: src/model_theory/skolem.lean
+    theorems:
+    - "first_order.language.card_functions_sum_skolem\u2081"
+    - "first_order.language.card_functions_sum_skolem\u2081_le"
+    - first_order.language.exists_elementary_substructure_card_eq
+  - path: src/data/set/intervals/monotone.lean
+    theorems:
+    - strict_mono_on.Iic_id_le
+  - path: src/set_theory/surreal/basic.lean
+    theorems:
+    - pgame.numeric_to_pgame
+    - pgame.numeric.add
+  - path: src/data/qpf/univariate/basic.lean
+    theorems:
+    - qpf.supp_preservation_iff_liftp_preservation
+    - qpf.cofix.bisim
+    - qpf.fix.rec_eq
+    - qpf.Wrepr_equiv
+    - qpf.cofix.bisim_aux
+  - path: src/data/typevec.lean
+    theorems:
+    - typevec.drop_append1'
+    - typevec.to_subtype_of_subtype
+  - path: src/data/rat/sqrt.lean
+    theorems:
+    - rat.sqrt_eq
+  - path: src/data/int/lemmas.lean
+    theorems:
+    - int.div2_bit
+    - int.nat_abs_eq_iff_sq_eq
+    - int.nat_abs_lt_iff_sq_lt
+  - path: src/data/polynomial/module.lean
+    theorems:
+    - polynomial_module.smul_apply
+    - polynomial_module.comp_smul
+  - path: src/data/set/intervals/pi.lean
+    theorems:
+    - set.pi_univ_Ioc_update_union
+  - path: src/data/polynomial/expand.lean
+    theorems:
+    - polynomial.expand_char
+    - polynomial.nat_degree_expand
+  - path: src/data/finset/preimage.lean
+    theorems:
+    - finset.subset_map_iff
+  - path: src/data/list/dedup.lean
+    theorems:
+    - list.count_dedup
+    - list.sum_map_count_dedup_filter_eq_countp
+  - path: src/data/list/func.lean
+    theorems:
+    - list.func.length_neg
+    - list.func.equiv_of_eq
+  - path: src/analysis/inner_product_space/calculus.lean
+    theorems:
+    - differentiable_on_euclidean
+    - differentiable_at_euclidean
+  - path: src/analysis/convex/stone_separation.lean
+    theorems:
+    - not_disjoint_segment_convex_hull_triple
+  - path: src/data/pfunctor/multivariate/W.lean
+    theorems:
+    - mvpfunctor.W_ind
+    - mvpfunctor.W_dest'_W_mk
+  - path: src/data/rat/defs.lean
+    theorems:
+    - rat.mul_add
+    - rat.neg_def
+    - rat.mk_eq
+  - path: src/data/holor.lean
+    theorems:
+    - holor.cprank_max_upper_bound
+    - holor.slice_sum
+    - holor.sum_unit_vec_mul_slice
+  - path: src/data/finite/card.lean
+    theorems:
+    - finite.card_subtype_lt
+  - path: src/data/polynomial/lifts.lean
+    theorems:
+    - polynomial.monomial_mem_lifts_and_degree_eq
+    - polynomial.erase_mem_lifts
+    - polynomial.lifts_iff_lifts_ring
+  - path: src/data/nat/prime.lean
+    theorems:
+    - nat.min_fac_le_div
+  - path: src/data/list/intervals.lean
+    theorems:
+    - list.Ico.filter_le_of_bot
+  - path: src/data/finsupp/indicator.lean
+    theorems:
+    - finsupp.single_eq_indicator
+  - path: src/data/finset/fold.lean
+    theorems:
+    - finset.fold_image_idem
+    - finset.fold_const
+    - finset.fold_hom
+    - finset.fold_max_add
+  - path: src/data/dfinsupp/lex.lean
+    theorems:
+    - dfinsupp.to_lex_monotone
+    - dfinsupp.lex_lt_of_lt_of_preorder
+  - path: src/data/set/pointwise/big_operators.lean
+    theorems:
+    - set.image_multiset_prod
+  - path: src/data/int/char_zero.lean
+    theorems:
+    - int.cast_div_char_zero
+  - path: src/data/finset/option.lean
+    theorems:
+    - finset.map_some_erase_none
+    - finset.mem_erase_none
+  - path: src/analysis/inner_product_space/symmetric.lean
+    theorems:
+    - linear_map.is_symmetric.coe_re_apply_inner_self_apply
+  - path: src/data/list/duplicate.lean
+    theorems:
+    - list.duplicate_iff_sublist
+    - list.nodup_iff_forall_not_duplicate
+  - path: src/data/finset/nat_antidiagonal.lean
+    theorems:
+    - finset.nat.antidiagonal_succ_succ'
+  - path: src/data/finset/sort.lean
+    theorems:
+    - finset.order_emb_of_fin_unique
+    - finset.order_emb_of_fin_last
+    - finset.order_emb_of_card_le_mem
+    - finset.order_emb_of_fin_singleton
+  - path: src/model_theory/fraisse.lean
+    theorems:
+    - first_order.language.is_ultrahomogeneous.amalgamation_age
+    - first_order.language.age_direct_limit
+    - first_order.language.exists_countable_is_age_of_iff
+    - first_order.language.exists_cg_is_age_of
+  - path: src/data/polynomial/erase_lead.lean
+    theorems:
+    - polynomial.erase_lead_monomial
+    - polynomial.card_support_eq
+  - path: src/data/list/nat_antidiagonal.lean
+    theorems:
+    - list.nat.map_swap_antidiagonal
+  - path: src/data/nat/cast/field.lean
+    theorems:
+    - nat.one_div_lt_one_div
+  - path: src/data/nat/pairing.lean
+    theorems:
+    - nat.unpair_lt
+  - path: src/data/part.lean
+    theorems:
+    - part.le_total_of_le_of_le
+    - part.mem_restrict
+  - path: src/data/nat/factorial/cast.lean
+    theorems:
+    - nat.cast_desc_factorial
+    - nat.cast_factorial
+  - path: src/data/finset/functor.lean
+    theorems:
+    - finset.map_traverse
+    - finset.id_traverse
+  - path: src/data/bool/count.lean
+    theorems:
+    - list.chain'.two_mul_count_bool_eq_ite
+  - path: src/data/set/intervals/monoid.lean
+    theorems:
+    - set.image_const_add_Ioi
+  - path: src/data/nat/dist.lean
+    theorems:
+    - nat.dist_pos_of_ne
+    - nat.dist_eq_intro
+  - path: src/data/dfinsupp/multiset.lean
+    theorems:
+    - multiset.to_dfinsupp_replicate
+  - path: src/data/setoid/partition.lean
+    theorems:
+    - setoid.classes_inj
+    - setoid.card_classes_ker_le
+  - path: src/data/finsupp/multiset.lean
+    theorems:
+    - finsupp.card_to_multiset
+    - finsupp.to_multiset_sum_single
+  - path: src/data/int/interval.lean
+    theorems:
+    - int.card_fintype_Icc_of_le
+    - int.card_fintype_Ico_of_le
+  - path: src/analysis/convex/intrinsic.lean
+    theorems:
+    - intrinsic_closure_diff_intrinsic_frontier
+    - intrinsic_closure_singleton
+    - intrinsic_closure_nonempty
+    - intrinsic_frontier_singleton
+    - intrinsic_closure_idem
+  - path: src/data/qpf/multivariate/basic.lean
+    theorems:
+    - mvqpf.liftp_preservation_iff_uniform
+  - path: src/data/nat/choose/basic.lean
+    theorems:
+    - nat.choose_le_add
+  - path: src/set_theory/game/ordinal.lean
+    theorems:
+    - ordinal.to_pgame_lf
+  - path: src/data/multiset/bind.lean
+    theorems:
+    - multiset.le_bind
+  - path: src/data/set/pairwise/lattice.lean
+    theorems:
+    - set.pairwise_sUnion
+  - path: src/data/list/big_operators/lemmas.lean
+    theorems:
+    - list.alternating_prod_reverse
+    - commute.list_sum_right
+    - mul_opposite.unop_list_prod
+  - path: src/data/real/pi/leibniz.lean
+    theorems:
+    - real.tendsto_sum_pi_div_four
+  - path: src/model_theory/finitely_generated.lean
+    theorems:
+    - first_order.language.Structure.cg_iff_countable
+  - path: src/set_theory/zfc/ordinal.lean
+    theorems:
+    - Set.is_transitive.inter
+    - Set.is_transitive.union
+  - path: src/analysis/inner_product_space/spectrum.lean
+    theorems:
+    - linear_map.is_symmetric.orthogonal_supr_eigenspaces_eq_bot
+    - linear_map.is_symmetric.diagonalization_apply_self_apply
+    - linear_map.is_symmetric.diagonalization_basis_apply_self_apply
+    - linear_map.is_symmetric.has_eigenvector_eigenvector_basis
+    - linear_map.is_symmetric.orthogonal_supr_eigenspaces
+    - eigenvalue_pos_of_pos
+    - linear_map.is_symmetric.orthogonal_supr_eigenspaces_eq_bot'
+  - path: src/data/multiset/nat_antidiagonal.lean
+    theorems:
+    - multiset.nat.card_antidiagonal
+  - path: src/analysis/special_functions/trigonometric/series.lean
+    theorems:
+    - complex.has_sum_cos
+    - real.has_sum_cos
+  - path: src/analysis/locally_convex/polar.lean
+    theorems:
+    - linear_map.tripolar_eq_polar
+  - path: src/set_theory/cardinal/divisibility.lean
+    theorems:
+    - cardinal.prime_of_aleph_0_le
+    - cardinal.is_prime_pow_iff
+  - path: src/data/finset/card.lean
+    theorems:
+    - finset.card_singleton_inter
+    - finset.inj_on_of_card_image_eq
+  - path: src/data/analysis/filter.lean
+    theorems:
+    - filter.realizer.ne_bot_iff
+  - path: src/analysis/sum_integral_comparisons.lean
+    theorems:
+    - antitone_on.integral_le_sum_Ico
+    - antitone_on.sum_le_integral_Ico
+  - path: src/data/semiquot.lean
+    theorems:
+    - semiquot.pure_is_pure
+    - semiquot.get_mem
+    - semiquot.lift_on_of_mem
+  - path: src/data/nat/periodic.lean
+    theorems:
+    - nat.filter_multiset_Ico_card_eq_of_periodic
+  - path: src/data/mv_polynomial/funext.lean
+    theorems:
+    - mv_polynomial.funext
+  - path: src/data/finset/sups.lean
+    theorems:
+    - finset.disj_sups_subset_sups
+  - path: src/data/fintype/perm.lean
+    theorems:
+    - card_perms_of_finset
+    - length_perms_of_list
+  - path: src/data/int/basic.lean
+    theorems:
+    - int.nat_abs_sign_of_nonzero
+    - int.sign_coe_nat_of_nonzero
+    - int.div_mul_cancel_of_mod_eq_zero
+  - path: src/data/option/basic.lean
+    theorems:
+    - option.lift_or_get_choice
+    - option.join_eq_join
+  - path: src/analysis/convex/star.lean
+    theorems:
+    - star_convex_iff_ord_connected
+  - path: src/data/polynomial/degree/card_pow_degree.lean
+    theorems:
+    - polynomial.card_pow_degree_is_euclidean
+  - path: src/data/mv_polynomial/comap.lean
+    theorems:
+    - mv_polynomial.comap_comp
+  - path: src/data/list/join.lean
+    theorems:
+    - list.drop_take_succ_join_eq_nth_le
+    - list.drop_sum_join
+    - list.join_reverse
+  - path: src/data/multiset/pi.lean
+    theorems:
+    - multiset.nodup.pi
+  - path: src/data/mv_polynomial/comm_ring.lean
+    theorems:
+    - "mv_polynomial.eval\u2082_hom_X"
+    - mv_polynomial.total_degree_sub
+    - mv_polynomial.degree_of_sub_lt
+  - path: src/model_theory/language_map.lean
+    theorems:
+    - first_order.language.card_with_constants
+  - path: src/data/nat/cast/basic.lean
+    theorems:
+    - nat.cast_tsub
+  - path: src/analysis/special_functions/trigonometric/arctan_deriv.lean
+    theorems:
+    - real.has_strict_deriv_at_arctan
+  - path: src/data/set/mul_antidiagonal.lean
+    theorems:
+    - set.mul_antidiagonal.finite_of_is_pwo
+  - path: src/data/matrix/notation.lean
+    theorems:
+    - matrix.vec_mul_vec_cons
+  - path: src/data/list/to_finsupp.lean
+    theorems:
+    - list.to_finsupp_cons_eq_single_add_emb_domain
+    - list.to_finsupp_eq_sum_map_enum_single
+  - path: src/data/real/sign.lean
+    theorems:
+    - real.sign_mul_pos_of_ne_zero
+    - real.inv_sign
+  - path: src/data/mv_polynomial/pderiv.lean
+    theorems:
+    - mv_polynomial.pderiv_monomial
+  - path: src/analysis/inner_product_space/adjoint.lean
+    theorems:
+    - continuous_linear_map.adjoint_aux_adjoint_aux
+  - path: src/analysis/special_functions/polar_coord.lean
+    theorems:
+    - polar_coord_source_ae_eq_univ
+    - has_fderiv_at_polar_coord_symm
+  - path: src/data/multiset/antidiagonal.lean
+    theorems:
+    - multiset.card_antidiagonal
+  - path: src/data/polynomial/partial_fractions.lean
+    theorems:
+    - div_eq_quo_add_sum_rem_div
+  - path: src/data/finsupp/order.lean
+    theorems:
+    - finsupp.support_sup
+    - finsupp.support_inf
+  - path: src/data/real/pi/bounds.lean
+    theorems:
+    - real.pi_upper_bound_start
+    - real.pi_gt_sqrt_two_add_series
+    - real.pi_lower_bound_start
+  - path: src/data/set/pairwise/basic.lean
+    theorems:
+    - set.pairwise_insert_of_symmetric_of_not_mem
+    - set.pairwise_insert
+  - path: src/data/W/cardinal.lean
+    theorems:
+    - W_type.cardinal_mk_eq_sum
+    - W_type.cardinal_mk_le_max_aleph_0_of_finite
+  - path: src/data/tree.lean
+    theorems:
+    - tree.num_leaves_pos
+  - path: src/data/nat/choose/central.lean
+    theorems:
+    - nat.two_dvd_central_binom_succ
+    - nat.succ_dvd_central_binom
+  - path: src/data/seq/parallel.lean
+    theorems:
+    - computation.terminates_parallel
+  - path: src/analysis/inner_product_space/positive.lean
+    theorems:
+    - continuous_linear_map.is_positive_iff_complex
+  - path: src/data/finsupp/to_dfinsupp.lean
+    theorems:
+    - sigma_finsupp_equiv_dfinsupp_support
+  - path: src/data/mv_polynomial/polynomial.lean
+    theorems:
+    - mv_polynomial.eval_polynomial_eval_fin_succ_equiv
+  - path: src/data/nat/size.lean
+    theorems:
+    - nat.shiftl'_ne_zero_left
+  - path: src/data/nat/choose/cast.lean
+    theorems:
+    - nat.cast_choose_two
+  - path: src/data/nat/upto.lean
+    theorems:
+    - nat.upto.wf
+  - path: src/data/finsupp/pointwise.lean
+    theorems:
+    - finsupp.support_mul
+  - path: src/data/finset/slice.lean
+    theorems:
+    - set.sized_Union
+  - path: src/data/sigma/order.lean
+    theorems:
+    - sigma.le_def
+  - path: src/data/polynomial/induction.lean
+    theorems:
+    - polynomial.mem_span_C_coeff
+  - path: src/analysis/convex/strict.lean
+    theorems:
+    - strict_convex.add
+  - path: src/data/set/opposite.lean
+    theorems:
+    - set.singleton_unop
+  - path: src/data/set/n_ary.lean
+    theorems:
+    - set.image2_inter_right
+  - path: src/model_theory/basic.lean
+    theorems:
+    - "first_order.sequence\u2082.lift_mk"
+    - first_order.language.card_sum
+  - path: src/set_theory/game/short.lean
+    theorems:
+    - pgame.short_birthday
+  - path: src/data/nat/with_bot.lean
+    theorems:
+    - nat.with_bot.add_eq_three_iff
+  - path: src/data/list/palindrome.lean
+    theorems:
+    - list.palindrome.append_reverse
+  - path: src/data/bitvec/core.lean
+    theorems:
+    - bitvec.to_nat_of_nat
+  - path: src/analysis/convex/measure.lean
+    theorems:
+    - convex.add_haar_frontier
+  - path: src/data/fintype/card_embedding.lean
+    theorems:
+    - fintype.card_embedding_eq
+  - path: src/analysis/convex/contractible.lean
+    theorems:
+    - star_convex.contractible_space
+  - path: src/data/vector/mem.lean
+    theorems:
+    - vector.mem_map_succ_iff
+  project: data/benchmarks/mathlib

@@ -1,0 +1,4050 @@
+name: leandojo_random_val
+num_files: 1019
+language: LEAN
+dfs_data_path_for_retrieval: null
+dfs_metadata_filename_for_retrieval: null
+few_shot_data_path_for_retrieval: null
+few_shot_metadata_filename_for_retrieval: null
+datasets:
+- files:
+  - path: src/data/complex/exponential.lean
+    theorems:
+    - real.cos_sq
+    - real.tan_mul_cos
+    - real.neg_one_le_sin
+    - real.cos_pos_of_le_one
+    - real.exp_lt_exp
+    - real.exp_bound'
+    - complex.cos_neg
+  - path: src/data/sym/sym2.lean
+    theorems:
+    - sym2.mem_mk_right
+    - sym2.mem_iff
+  - path: src/topology/homotopy/basic.lean
+    theorems:
+    - continuous_map.homotopic.equivalence
+    - continuous_map.homotopic.trans
+  - path: src/topology/order/hom/basic.lean
+    theorems:
+    - continuous_order_hom.coe_comp
+  - path: src/data/buffer/parser/basic.lean
+    theorems:
+    - parser.foldr_eq_done
+    - parser.prog.decorate_error_iff
+    - parser.many_sublist_of_done
+    - parser.many1_eq_fail
+  - path: src/analysis/calculus/fderiv.lean
+    theorems:
+    - is_bounded_linear_map.has_fderiv_at
+    - has_strict_fderiv_at.restrict_scalars
+    - has_fderiv_within_at_inter'
+    - differentiable_on.iterate
+    - differentiable_on.add_const
+    - has_fderiv_within_at.lim
+    - has_strict_fderiv_at.iterate
+    - has_fderiv_within_at.mul
+    - has_fderiv_at.sub
+    - fderiv_within_const_mul
+    - has_strict_fderiv_at.const_add
+  - path: src/group_theory/submonoid/operations.lean
+    theorems:
+    - submonoid.map_map
+    - mul_equiv.submonoid_map_symm_apply
+    - submonoid.map_le_of_le_comap
+    - submonoid.mem_map_of_mem
+    - submonoid.map_surjective_of_surjective
+    - submonoid.mrange_snd
+    - submonoid.eq_top_iff'
+    - submonoid.mk_mul_mk
+  - path: src/data/nat/count.lean
+    theorems:
+    - nat.count_succ_eq_count_iff
+    - nat.count_mono_left
+  - path: src/ring_theory/unique_factorization_domain.lean
+    theorems:
+    - associates.factors_eq_some_iff_ne_zero
+    - unique_factorization_monoid.normalized_factors_pow
+    - associates.prod_mono
+    - associates.eq_of_factors_eq_factors
+  - path: src/algebra/order/hom/monoid.lean
+    theorems:
+    - order_monoid_hom.coe_order_hom
+    - order_monoid_hom.coe_id
+    - order_monoid_with_zero_hom.cancel_right
+  - path: src/algebraic_geometry/Gamma_Spec_adjunction.lean
+    theorems:
+    - "algebraic_geometry.\u0393_Spec.left_triangle"
+  - path: src/data/multiset/basic.lean
+    theorems:
+    - multiset.filter_sub
+    - multiset.attach_map_coe'
+    - multiset.count_ne_zero
+    - multiset.mem_cons
+    - multiset.ssubset_cons
+    - multiset.map_replicate
+    - multiset.coe_eq_coe
+    - multiset.card_lt_of_lt
+  - path: src/topology/metric_space/emetric_space.lean
+    theorems:
+    - emetric.diam_le_iff
+    - emetric.second_countable_of_almost_dense_set
+    - emetric.mem_ball_comm
+    - emetric.closed_ball_prod_same
+    - emetric.controlled_of_uniform_embedding
+    - emetric.inseparable_iff
+  - path: src/set_theory/cardinal/basic.lean
+    theorems:
+    - cardinal.mk_Union_le
+    - cardinal.exists_nat_eq_of_le_nat
+    - cardinal.lift_mk_shrink''
+    - cardinal.lift_supr
+    - cardinal.powerlt_succ
+    - cardinal.powerlt_mono_left
+    - cardinal.mk_ne_zero
+  - path: src/data/stream/init.lean
+    theorems:
+    - stream.head_iterate
+  - path: src/topology/category/Top/limits/pullbacks.lean
+    theorems:
+    - Top.colimit_topology
+    - Top.pullback_snd_image_fst_preimage
+  - path: src/data/fun_like/fintype.lean
+    theorems:
+    - fun_like.finite
+  - path: src/data/nat/parity.lean
+    theorems:
+    - nat.succ_mod_two_add_mod_two
+    - nat.bit1_div_two
+  - path: src/geometry/euclidean/sphere/basic.lean
+    theorems:
+    - euclidean_geometry.subset_sphere
+    - euclidean_geometry.mem_sphere
+  - path: src/data/part.lean
+    theorems:
+    - part.inter_mem_inter
+    - part.ret_eq_some
+    - part.eq_get_iff_mem
+    - part.inter_get_eq
+  - path: src/topology/semicontinuous.lean
+    theorems:
+    - lower_semicontinuous_at.add'
+    - upper_semicontinuous_on_infi
+    - is_closed.lower_semicontinuous_within_at_indicator
+    - lower_semicontinuous_iff_is_closed_preimage
+    - continuous.comp_lower_semicontinuous_antitone
+    - lower_semicontinuous_within_at.add
+  - path: src/algebra/order/group/defs.lean
+    theorems:
+    - exists_one_lt'
+    - lt_mul_inv_iff_mul_lt
+    - inv_le_one_of_one_le
+  - path: src/algebra/opposites.lean
+    theorems:
+    - mul_opposite.op_bijective
+    - mul_opposite.unop_surjective
+  - path: src/order/succ_pred/relation.lean
+    theorems:
+    - trans_gen_of_succ_of_lt
+    - refl_trans_gen_of_pred_of_ge
+  - path: src/category_theory/sites/types.lean
+    theorems:
+    - category_theory.eval_types_glue
+    - category_theory.discrete_sieve_mem
+    - category_theory.eval_app
+  - path: src/set_theory/game/birthday.lean
+    theorems:
+    - pgame.birthday_eq_zero
+    - pgame.to_pgame_birthday
+  - path: src/data/ordmap/ordset.lean
+    theorems:
+    - ordnode.bounded.to_nil
+    - ordnode.valid'.mono_right
+    - ordnode.all_dual
+  - path: src/data/polynomial/lifts.lean
+    theorems:
+    - polynomial.lifts_iff_set_range
+  - path: src/data/pnat/factors.lean
+    theorems:
+    - prime_multiset.prod_smul
+  - path: src/data/num/lemmas.lean
+    theorems:
+    - znum.zneg_neg
+    - num.cmp_to_nat
+    - pos_num.cast_one
+  - path: src/number_theory/dioph.lean
+    theorems:
+    - dioph.vec_ex1_dioph
+    - poly.map_apply
+    - dioph.dioph_fn_iff_pfun
+  - path: src/measure_theory/function/lp_space.lean
+    theorems:
+    - measure_theory.snorm_ess_sup_indicator_le
+    - "measure_theory.Lp.tendsto_Lp_of_tendsto_\u2112p"
+    - measure_theory.snorm_trim
+    - "measure_theory.mem_\u2112p.left_of_add_measure"
+  - path: src/topology/sheaves/sheaf_condition/pairwise_intersections.lean
+    theorems:
+    - Top.sheaf.obj_sup_iso_prod_eq_locus_inv_snd
+  - path: src/ring_theory/noetherian.lean
+    theorems:
+    - is_noetherian_def
+  - path: src/algebra/order/kleene.lean
+    theorems:
+    - kstar_eq_self
+  - path: src/group_theory/abelianization.lean
+    theorems:
+    - rank_closure_commutator_representations_le
+  - path: src/model_theory/types.lean
+    theorems:
+    - first_order.language.Theory.complete_type.not_mem_iff
+  - path: src/data/set/intervals/basic.lean
+    theorems:
+    - set.Ioo_insert_right
+    - set.Icc_eq_singleton_iff
+    - set.Ico_eq_empty
+    - set.Ioc_union_Ioo_eq_Ioo
+    - set.Ioi_insert
+    - set.Ioc_inter_Iic
+    - set.Ioo_union_right
+    - set.Ico_diff_Iio
+    - set.Iio_union_Ici_of_le
+  - path: src/data/polynomial/eval.lean
+    theorems:
+    - "polynomial.eval\u2082_eq_sum_range"
+    - polynomial.comp_one
+    - polynomial.map_X
+    - "polynomial.eval\u2082_eq_sum_range'"
+    - "polynomial.eval\u2082_list_sum"
+    - "polynomial.eval\u2082_zero"
+    - polynomial.map_one
+    - polynomial.map_comp
+    - "polynomial.eval\u2082_nat_cast"
+    - polynomial.map_C
+  - path: src/data/polynomial/reverse.lean
+    theorems:
+    - polynomial.rev_at_fun_eq
+    - polynomial.coeff_one_reverse
+  - path: src/field_theory/adjoin.lean
+    theorems:
+    - intermediate_field.fg_of_fg_to_subalgebra
+    - intermediate_field.exists_finset_of_mem_supr'
+    - intermediate_field.coe_top
+    - alg_hom.map_field_range
+    - intermediate_field.top_equiv_symm_apply_coe
+  - path: src/measure_theory/measure/measure_space.lean
+    theorems:
+    - measure_theory.ae_restrict_union_eq
+    - measure_theory.measure.is_finite_measure_map
+    - measure_theory.measure_diff_add_inter
+    - measurable_embedding.map_comap
+    - measure_theory.measure.quasi_measure_preserving.liminf_preimage_iterate_ae_eq
+    - measure_theory.measure.restrict_union_congr
+    - measure_theory.measure_trim_to_measurable_eq_zero
+    - measure_theory.measure.quasi_measure_preserving.image_zpow_ae_eq
+    - measure_theory.measure.restrict_congr_mono
+    - measure_theory.measure.sum_fintype
+    - measure_theory.measure.ae_smul_measure_iff
+  - path: src/measure_theory/function/strongly_measurable/basic.lean
+    theorems:
+    - ae_strongly_measurable_id
+    - measure_theory.ae_fin_strongly_measurable.sup
+    - finset.ae_strongly_measurable_prod'
+  - path: src/data/polynomial/unit_trinomial.lean
+    theorems:
+    - polynomial.trinomial_trailing_coeff'
+  - path: src/linear_algebra/basic.lean
+    theorems:
+    - linear_equiv.coe_curry
+    - linear_map.smul_right_apply
+    - linear_map.range_coe
+    - linear_map.range_neg
+  - path: src/analysis/special_functions/japanese_bracket.lean
+    theorems:
+    - sqrt_one_add_norm_sq_le
+  - path: src/order/pfilter.lean
+    theorems:
+    - order.is_pfilter.of_def
+  - path: src/topology/maps.lean
+    theorems:
+    - inducing.image_mem_nhds_within
+    - inducing_of_inducing_compose
+  - path: src/topology/metric_space/basic.lean
+    theorems:
+    - closed_ball_pi
+    - metric.mem_closed_ball_comm
+    - dist_triangle_right
+    - mul_opposite.dist_op
+    - mul_opposite.dist_unop
+    - metric.mem_uniformity_dist
+  - path: src/topology/basic.lean
+    theorems:
+    - closure_nonempty_iff
+    - dense.inter_of_open_left
+    - is_open_iff_eventually
+    - closure_eq_self_union_frontier
+  - path: src/topology/instances/rat.lean
+    theorems:
+    - rat.uniform_embedding_coe_real
+  - path: src/algebra/category/Group/epi_mono.lean
+    theorems:
+    - Group.surjective_of_epi_auxs.h_apply_from_coset'
+    - Group.ker_eq_bot_of_mono
+    - "Group.surjective_of_epi_auxs.\u03C4_apply_from_coset"
+    - Group.surjective_of_epi_auxs.g_apply_from_coset
+  - path: src/linear_algebra/matrix/sesquilinear_form.lean
+    theorems:
+    - "linear_map.to_matrix\u2082_aux_apply"
+  - path: src/measure_theory/function/simple_func.lean
+    theorems:
+    - measure_theory.simple_func.extend_comp_eq
+    - measure_theory.simple_func.apply_mk
+    - measure_theory.simple_func.fin_meas_supp_iff
+    - measure_theory.simple_func.add_lintegral
+  - path: src/data/pequiv.lean
+    theorems:
+    - pequiv.of_set_eq_refl
+  - path: src/topology/metric_space/lipschitz.lean
+    theorems:
+    - lipschitz_on_with.iff_le_add_mul
+  - path: src/analysis/special_functions/complex/arg.lean
+    theorems:
+    - complex.arg_coe_angle_to_real_eq_arg
+    - complex.arg_one
+  - path: src/set_theory/cardinal/cofinality.lean
+    theorems:
+    - cardinal.bsup_lt_ord_of_is_regular
+    - cardinal.is_strong_limit.two_power_lt
+    - cardinal.deriv_family_lt_ord
+    - cardinal.is_regular_succ
+  - path: src/data/nat/factorization/prime_pow.lean
+    theorems:
+    - is_prime_pow_iff_min_fac_pow_factorization_eq
+  - path: src/ring_theory/algebraic.lean
+    theorems:
+    - polynomial_smul_apply
+    - inv_eq_of_aeval_div_X_ne_zero
+  - path: src/combinatorics/simple_graph/connectivity.lean
+    theorems:
+    - simple_graph.walk.concat_ne_nil
+    - simple_graph.walk.darts_cons
+  - path: src/measure_theory/integral/lebesgue.lean
+    theorems:
+    - measure_theory.lintegral_dirac'
+    - measure_theory.lintegral_Union_le
+    - measure_theory.lintegral_add_right
+    - measure_theory.tendsto_lintegral_of_dominated_convergence'
+  - path: src/category_theory/limits/shapes/wide_pullbacks.lean
+    theorems:
+    - "category_theory.limits.wide_pullback.\u03C0_arrow"
+  - path: src/group_theory/subgroup/basic.lean
+    theorems:
+    - subgroup.mul_mem_cancel_right
+    - subgroup.normal_closure_eq_self
+    - subgroup.mem_prod
+    - monoid_hom.ker_one
+    - subgroup_class.subtype_comp_inclusion
+    - subgroup.inclusion_range
+    - subgroup.mem_sup_right
+    - subgroup.mul_injective_of_disjoint
+    - subgroup.eq_top_iff'
+  - path: src/data/real/cardinality.lean
+    theorems:
+    - cardinal.cantor_function_aux_ff
+  - path: src/linear_algebra/matrix/schur_complement.lean
+    theorems:
+    - "matrix.schur_complement_eq\u2082\u2082"
+  - path: src/algebra/module/submodule/pointwise.lean
+    theorems:
+    - submodule.span_smul
+    - submodule.mem_neg
+  - path: src/order/filter/pointwise.lean
+    theorems:
+    - filter.is_unit_pure
+    - filter.ne_bot.vsub
+    - filter.zero_smul_filter
+  - path: src/algebra/ring/defs.lean
+    theorems:
+    - sub_mul_add_eq_of_mul_add_eq_mul_add
+    - distrib_three_right
+  - path: src/order/filter/basic.lean
+    theorems:
+    - filter.principal_eq_map_coe_top
+    - filter.mem_principal
+    - filter.nonempty_of_ne_bot
+    - filter.tendsto_of_is_empty
+    - filter.tendsto_comap_iff
+    - filter.bind_mono
+    - filter.tendsto.of_tendsto_comp
+    - filter.frequently_iff
+    - filter.not_le
+    - filter.comap_supr
+    - filter.eventually.ne_of_lt
+    - filter.nonempty_of_mem
+    - filter.inf_principal_eq_bot
+    - filter.map_swap4_eq_comap
+    - filter.principal_singleton
+    - filter.mem_supr
+  - path: src/algebra/char_p/basic.lean
+    theorems:
+    - char_p.ring_char_ne_one
+    - frobenius_one
+    - int.cast_inj_on_of_ring_char_ne_two
+    - add_pow_char_pow_of_commute
+  - path: src/data/fintype/basic.lean
+    theorems:
+    - finset.coe_filter_univ
+    - finset.compl_filter
+    - fintype.finset_equiv_set_symm_apply
+  - path: src/data/pnat/basic.lean
+    theorems:
+    - pnat.add_coe
+    - pnat.rec_on_one
+    - nat.succ_pnat_lt_succ_pnat
+  - path: src/category_theory/generator.lean
+    theorems:
+    - category_theory.is_separator_op_iff
+    - category_theory.is_coseparating_unop_iff
+  - path: src/number_theory/von_mangoldt.lean
+    theorems:
+    - nat.arithmetic_function.log_mul_moebius_eq_von_mangoldt
+  - path: src/data/list/basic.lean
+    theorems:
+    - list.intercalate_split_on
+    - list.init_append_of_ne_nil
+    - list.mem_of_mem_head'
+    - list.map_filter_eq_foldr
+    - list.last_eq_of_concat_eq
+    - list.forall_mem_map_iff
+    - list.ilast'_mem
+    - list.split_on_p_aux_spec
+    - list.cons_diff
+    - list.foldl_eq_of_comm'
+    - list.head'_map
+    - list.filter_map_cons_none
+    - list.bind_singleton'
+    - list.filter_subset
+  - path: src/analysis/special_functions/bernstein.lean
+    theorems:
+    - bernstein_approximation_uniform
+  - path: src/data/real/ennreal.lean
+    theorems:
+    - ennreal.top_sub_coe
+    - ennreal.mul_le_iff_le_inv
+    - ennreal.to_nnreal_sum
+    - ennreal.mul_eq_mul_left
+    - ennreal.coe_ne_zero
+    - ennreal.to_real_of_real
+    - ennreal.lt_top_of_sum_ne_top
+    - ennreal.inv_eq_zero
+    - ennreal.coe_nnreal_eq
+    - ennreal.to_nnreal_pos_iff
+  - path: src/analysis/inner_product_space/pi_L2.lean
+    theorems:
+    - orthonormal.exists_orthonormal_basis_extension_of_card_eq
+    - orthonormal_basis.repr_apply_apply
+    - complex.map_isometry_of_orthonormal
+  - path: src/topology/bases.lean
+    theorems:
+    - topological_space.is_topological_basis.mem_nhds
+  - path: src/category_theory/category/preorder.lean
+    theorems:
+    - category_theory.equivalence.to_order_iso_apply
+  - path: src/algebra/gcd_monoid/finset.lean
+    theorems:
+    - finset.lcm_empty
+  - path: src/group_theory/submonoid/inverses.lean
+    theorems:
+    - submonoid.left_inv_left_inv_le
+  - path: src/algebra/divisibility/units.lean
+    theorems:
+    - units.mul_left_dvd
+  - path: src/algebra/star/self_adjoint.lean
+    theorems:
+    - is_self_adjoint.smul_mem_skew_adjoint
+  - path: src/algebra/monoid_algebra/basic.lean
+    theorems:
+    - add_monoid_algebra.single_mul_apply
+    - add_monoid_algebra.mul_single_apply_aux
+    - add_monoid_algebra.map_domain_mul
+  - path: src/number_theory/padics/ring_homs.lean
+    theorems:
+    - padic_int.appr_lt
+  - path: src/data/matrix/block.lean
+    theorems:
+    - matrix.block_diagonal'_sub
+  - path: src/algebra/modeq.lean
+    theorems:
+    - add_comm_group.add_zsmul_modeq
+    - add_comm_group.modeq.add_left_cancel'
+  - path: src/topology/algebra/module/basic.lean
+    theorems:
+    - continuous_linear_map.map_add
+    - continuous_linear_map.comp_neg
+    - continuous_linear_equiv.coe_injective
+    - continuous_linear_equiv.skew_prod_symm_apply
+    - continuous_linear_map.smul_comp
+  - path: src/geometry/euclidean/angle/unoriented/right_angle.lean
+    theorems:
+    - inner_product_geometry.angle_add_lt_pi_div_two_of_inner_eq_zero
+  - path: src/algebra/gcd_monoid/basic.lean
+    theorems:
+    - lcm_mul_right
+    - exists_eq_pow_of_mul_eq_pow
+  - path: src/data/zmod/basic.lean
+    theorems:
+    - zmod.val_min_abs_zero
+    - zmod.coe_unit_of_coprime
+    - zmod.ring_hom_surjective
+  - path: src/data/list/infix.lean
+    theorems:
+    - list.inits_eq_tails
+    - list.insert_of_mem
+  - path: src/data/sigma/order.lean
+    theorems:
+    - sigma.lex.le_def
+  - path: src/topology/discrete_quotient.lean
+    theorems:
+    - discrete_quotient.le_comap_id_iff
+    - discrete_quotient.refl
+  - path: src/analysis/analytic/basic.lean
+    theorems:
+    - formal_multilinear_series.summable_nnnorm_mul_pow
+    - formal_multilinear_series.has_fpower_series_on_ball_change_origin
+    - formal_multilinear_series.change_origin_eval
+    - has_fpower_series_on_ball.eventually_has_sum_sub
+    - analytic_on_const
+  - path: src/topology/instances/irrational.lean
+    theorems:
+    - eventually_residual_irrational
+    - irrational.eventually_forall_le_dist_cast_rat_of_denom_le
+  - path: src/dynamics/circle/rotation_number/translation_number.lean
+    theorems:
+    - circle_deg1_lift.pow_monotone
+    - circle_deg1_lift.translation_number_conj_eq
+    - "circle_deg1_lift.translation_number_eq_of_tendsto\u2080'"
+  - path: src/group_theory/group_action/group.lean
+    theorems:
+    - smul_left_cancel
+  - path: src/logic/basic.lean
+    theorems:
+    - iff_and_self
+    - or_and_distrib_left
+    - not_and_self_iff
+    - of_not_imp
+    - or_iff_not_imp_left
+  - path: src/dynamics/fixed_points/basic.lean
+    theorems:
+    - function.inv_on_fixed_pts_comp
+  - path: src/data/polynomial/degree/definitions.lean
+    theorems:
+    - polynomial.monic_X
+    - polynomial.degree_add_le
+    - polynomial.nat_degree_pow_le
+    - polynomial.leading_coeff_quadratic
+  - path: src/ring_theory/graded_algebra/homogeneous_ideal.lean
+    theorems:
+    - homogeneous_ideal.mem_irrelevant_iff
+  - path: src/category_theory/sums/basic.lean
+    theorems:
+    - category_theory.sum.swap_map_inr
+  - path: src/data/nat/gcd/basic.lean
+    theorems:
+    - nat.coprime.mul_add_mul_ne_mul
+    - nat.gcd_add_mul_left_right
+  - path: src/analysis/special_functions/log/base.lean
+    theorems:
+    - real.b_ne_one
+  - path: src/algebra/lie/subalgebra.lean
+    theorems:
+    - lie_subalgebra.mem_map
+  - path: src/group_theory/solvable.lean
+    theorems:
+    - map_derived_series_le_derived_series
+  - path: src/algebra/regular/basic.lean
+    theorems:
+    - is_regular_iff_subsingleton
+    - is_regular.and_of_mul_of_mul
+  - path: src/data/polynomial/monic.lean
+    theorems:
+    - polynomial.monic.mul_left_ne_zero
+    - polynomial.monic_multiset_prod_of_monic
+  - path: src/algebra/group_power/lemmas.lean
+    theorems:
+    - int.pow_right_injective
+    - zpow_eq_zpow_iff'
+    - zsmul_int_int
+    - zsmul_int_one
+    - zmultiples_hom_symm_apply
+    - pow_bit1_pos_iff
+  - path: src/group_theory/perm/list.lean
+    theorems:
+    - list.mem_of_form_perm_ne_self
+    - list.form_perm_pow_apply_head
+  - path: src/analysis/special_functions/trigonometric/deriv.lean
+    theorems:
+    - differentiable_on.csinh
+    - real.differentiable_at_sinh
+    - complex.differentiable_at_cos
+    - differentiable_within_at.csinh
+    - differentiable_at.cosh
+  - path: src/algebra/order/group/abs.lean
+    theorems:
+    - lt_abs
+    - abs_le_abs_of_nonpos
+    - abs_of_pos
+    - abs_nonpos_iff
+  - path: src/analysis/convex/jensen.lean
+    theorems:
+    - convex_on.map_center_mass_le
+  - path: src/data/finset/basic.lean
+    theorems:
+    - finset.eq_of_mem_singleton
+    - finset.subset.rfl
+    - finset.disjoint_bUnion_right
+    - finset.bUnion_insert
+    - finset.sdiff_ssubset
+    - finset.pairwise_cons
+    - finset.filter_subset_filter
+    - multiset.to_finset_bind_dedup
+    - finset.mem_cons
+    - finset.subset_singleton_iff
+    - finset.empty_to_list
+    - finset.ssubset_iff_subset_ne
+    - finset.forall_mem_insert
+    - finset.piecewise_insert_of_ne
+    - finset.inter_congr_left
+    - finset.disjoint_sdiff
+  - path: src/set_theory/ordinal/fixed_point.lean
+    theorems:
+    - ordinal.foldr_le_nfp_bfamily
+  - path: src/data/int/gcd.lean
+    theorems:
+    - int.gcd_assoc
+    - int.lcm_assoc
+    - int.gcd_greatest
+    - int.gcd_dvd_gcd_mul_right_right
+    - tactic.norm_num.nat_coprime_helper_1
+  - path: src/group_theory/p_group.lean
+    theorems:
+    - is_p_group.nontrivial_iff_card
+    - is_p_group.ker_is_p_group_of_injective
+    - is_p_group.exists_fixed_point_of_prime_dvd_card_of_fixed_point
+  - path: src/algebra/support.lean
+    theorems:
+    - function.mul_support_disjoint_iff
+    - function.mul_support_along_fiber_finite_of_finite
+  - path: src/order/with_bot.lean
+    theorems:
+    - with_bot.bot_ne_coe
+    - with_bot.to_dual_lt_iff
+    - with_bot.unbot_coe
+    - with_bot.map_coe
+  - path: src/topology/algebra/continuous_affine_map.lean
+    theorems:
+    - continuous_affine_map.coe_zero
+    - continuous_affine_map.coe_to_affine_map
+  - path: src/geometry/euclidean/angle/oriented/right_angle.lean
+    theorems:
+    - orientation.oangle_sub_right_smul_rotation_pi_div_two
+    - euclidean_geometry.oangle_right_eq_arccos_of_oangle_eq_pi_div_two
+    - orientation.norm_div_tan_oangle_sub_left_of_oangle_eq_pi_div_two
+  - path: src/probability/density.lean
+    theorems:
+    - measure_theory.pdf_undef
+  - path: src/category_theory/preadditive/basic.lean
+    theorems:
+    - category_theory.preadditive.has_equalizers_of_has_kernels
+  - path: src/algebra/lie/submodule.lean
+    theorems:
+    - lie_hom.mem_ker
+    - submodule.exists_lie_submodule_coe_eq_iff
+  - path: src/analysis/normed_space/multilinear.lean
+    theorems:
+    - continuous_linear_map.norm_comp_continuous_multilinear_map_le
+    - continuous_multilinear_map.le_op_norm_mul_pow_of_le
+  - path: src/data/sigma/interval.lean
+    theorems:
+    - sigma.card_Icc
+  - path: src/analysis/analytic/linear.lean
+    theorems:
+    - continuous_linear_map.fpower_series_radius
+  - path: src/geometry/manifold/cont_mdiff_mfderiv.lean
+    theorems:
+    - cont_mdiff_on.cont_mdiff_on_tangent_map_within_aux
+  - path: src/order/upper_lower/basic.lean
+    theorems:
+    - is_upper_set_Inter
+    - mem_lower_closure
+    - upper_set.coe_Ioi
+    - is_lower_set_Inter
+  - path: src/order/complete_lattice.lean
+    theorems:
+    - is_lub_Sup
+    - supr_sup
+    - supr_eq_of_forall_le_of_forall_lt_exists_gt
+    - supr_le
+    - monotone.infi_comp_eq
+    - infi_nat_gt_zero_eq
+    - supr_supr_eq_left
+    - infi_const
+    - binfi_mono
+    - Sup_Prop_eq
+  - path: src/analysis/calculus/deriv.lean
+    theorems:
+    - deriv_const_add'
+    - has_strict_deriv_at.sum
+    - has_deriv_at.sub
+    - iter_deriv_pow
+    - differentiable_within_at.inv
+    - deriv_const_smul
+    - has_deriv_within_at_neg
+    - filter.eventually_eq.has_deriv_at_filter_iff
+    - has_deriv_within_at_congr_set
+    - continuous_linear_map.has_deriv_at_filter
+    - polynomial.differentiable_on_aeval
+    - has_deriv_at.has_deriv_within_at
+    - has_fderiv_at_filter.has_deriv_at_filter
+    - has_deriv_at.smul
+  - path: src/group_theory/perm/support.lean
+    theorems:
+    - equiv.perm.disjoint_one_left
+  - path: src/order/filter/filter_product.lean
+    theorems:
+    - filter.germ.const_sup
+  - path: src/algebra/free_monoid/basic.lean
+    theorems:
+    - free_monoid.of_list_singleton
+  - path: src/data/list/count.lean
+    theorems:
+    - list.le_count_iff_replicate_sublist
+  - path: src/data/multiset/powerset.lean
+    theorems:
+    - multiset.bind_powerset_len
+  - path: src/topology/continuous_function/bounded.lean
+    theorems:
+    - bounded_continuous_function.nnreal.upper_bound
+    - bounded_continuous_function.coe_comp_continuous
+    - bounded_continuous_function.coe_sum
+  - path: src/analysis/normed_space/linear_isometry.lean
+    theorems:
+    - linear_isometry.comp_assoc
+    - linear_isometry_equiv.image_eq_preimage
+    - linear_isometry.coe_id
+    - linear_isometry_equiv.to_linear_equiv_trans
+  - path: src/combinatorics/young/young_diagram.lean
+    theorems:
+    - young_diagram.row_len_of_row_lens
+    - young_diagram.col_len_anti
+  - path: src/algebra/monoid_algebra/to_direct_sum.lean
+    theorems:
+    - add_monoid_algebra.to_direct_sum_mul
+    - direct_sum.to_add_monoid_algebra_to_direct_sum
+  - path: src/measure_theory/measure/finite_measure.lean
+    theorems:
+    - measure_theory.finite_measure.tendsto_zero_of_tendsto_zero_mass
+  - path: src/algebra/cubic_discriminant.lean
+    theorems:
+    - cubic.card_roots_of_disc_ne_zero
+    - cubic.monic_of_b_eq_one
+  - path: src/analysis/normed/group/basic.lean
+    theorems:
+    - prod.norm_def
+    - continuous.nnnorm'
+    - dist_self_mul_left
+    - norm_pos_iff''
+    - seminormed_group.tendsto_uniformly_on_one
+    - lipschitz_on_with_iff_norm_div_le
+  - path: src/set_theory/cardinal/ordinal.lean
+    theorems:
+    - cardinal.one_lt_two
+    - cardinal.beth_pos
+    - cardinal.exists_aleph
+    - cardinal.aleph_idx_lt
+    - cardinal.beth_mono
+  - path: src/data/mv_polynomial/basic.lean
+    theorems:
+    - mv_polynomial.map_right_inverse
+    - mv_polynomial.aeval_zero'
+    - mv_polynomial.C_injective
+  - path: src/measure_theory/measure/measure_space_def.lean
+    theorems:
+    - measure_theory.ae_le_of_ae_lt
+  - path: src/order/hom/lattice.lean
+    theorems:
+    - lattice_hom.cancel_right
+    - inf_hom.with_bot_id
+    - sup_hom.with_top_comp
+    - inf_top_hom.cancel_left
+  - path: src/data/setoid/partition.lean
+    theorems:
+    - setoid.eqv_class_mem
+    - indexed_partition.index_out'
+    - indexed_partition.index_some
+  - path: src/algebra/geom_sum.lean
+    theorems:
+    - geom_sum_pos_iff
+    - "commute.geom_sum\u2082_Ico_mul"
+  - path: src/order/ord_continuous.lean
+    theorems:
+    - left_ord_continuous.order_dual
+    - right_ord_continuous.mono
+  - path: src/topology/instances/ennreal.lean
+    theorems:
+    - ennreal.tsum_coe_ne_top_iff_summable
+  - path: src/analysis/convex/segment.lean
+    theorems:
+    - mem_open_segment_translate
+    - convex.mem_Ico
+    - open_segment_subset_iff
+  - path: src/data/rat/defs.lean
+    theorems:
+    - rat.inv_mul_cancel
+  - path: src/data/set/pointwise/smul.lean
+    theorems:
+    - set.union_vsub_inter_subset_union
+    - set.union_vsub
+    - "set.smul_set_symm_diff\u2080"
+    - set.smul_set_inter_subset
+    - set.image2_vsub
+  - path: src/set_theory/ordinal/arithmetic.lean
+    theorems:
+    - ordinal.omega_le
+    - ordinal.lt_blsub_iff
+    - ordinal.sup_eq_bsup'
+    - ordinal.mul_div_cancel
+    - ordinal.add_sub_cancel
+    - ordinal.bsup_one
+    - ordinal.card_mul
+    - ordinal.pred_lt_iff_is_succ
+    - ordinal.blsub_id
+    - ordinal.not_succ_is_limit
+  - path: src/data/finmap.lean
+    theorems:
+    - finmap.disjoint.symm_iff
+    - finmap.sigma_keys_lookup
+    - finmap.insert_insert
+  - path: src/data/set/basic.lean
+    theorems:
+    - set.inter_symm_diff_distrib_left
+    - set.inter_subset_ite
+    - set.empty_disjoint
+    - set.mem_union
+    - set.subset_eq_empty
+    - subsingleton.set_cases
+    - set.symm_diff_subset_union
+    - set.nontrivial.mono
+    - set.mem_of_mem_inter_left
+    - set.eq_empty_of_forall_not_mem
+    - set.diff_self
+    - set.univ_inter
+    - set.subset_diff_union
+    - disjoint.union_left
+    - set.diff_union_diff_cancel
+    - set.mem_compl
+    - set.insert_union
+  - path: src/group_theory/monoid_localization.lean
+    theorems:
+    - submonoid.localization_map.eq'
+  - path: src/ring_theory/ore_localization/basic.lean
+    theorems:
+    - ore_localization.mul_one_div
+  - path: src/algebra/algebra/spectrum.lean
+    theorems:
+    - spectrum.unit_mem_mul_iff_mem_swap_mul
+    - spectrum.vadd_eq
+    - spectrum.nonempty_of_is_alg_closed_of_finite_dimensional
+    - spectrum.resolvent_eq
+    - spectrum.one_eq
+  - path: src/topology/algebra/group/basic.lean
+    theorems:
+    - subset_interior_div
+    - tendsto_inv_nhds_within_Ioi_inv
+    - topological_group.of_nhds_one
+    - inv_closure
+  - path: src/analysis/inner_product_space/basic.lean
+    theorems:
+    - inner_eq_norm_mul_iff_div
+    - norm_add_mul_self
+    - linear_equiv.isometry_of_inner_to_linear_equiv
+    - inner_product_space.core.inner_sub_left
+    - real_inner_le_norm
+    - continuous_at.inner
+    - parallelogram_law_with_nnnorm
+    - inner_zero_left
+  - path: src/analysis/special_functions/trigonometric/basic.lean
+    theorems:
+    - real.cos_nonneg_of_neg_pi_div_two_le_of_le
+    - nnreal.coe_real_pi
+    - real.cos_pi_div_eight
+    - real.sin_pi_sub
+  - path: src/topology/algebra/star_subalgebra.lean
+    theorems:
+    - elemental_star_algebra.is_closed
+  - path: src/probability/variance.lean
+    theorems:
+    - probability_theory.evariance_zero
+  - path: src/category_theory/groupoid/free_groupoid.lean
+    theorems:
+    - category_theory.groupoid.free.free_groupoid_functor_id
+  - path: src/geometry/manifold/cont_mdiff.lean
+    theorems:
+    - cont_mdiff_top
+    - smooth_within_at_id
+    - cont_mdiff.clm_prod_map
+    - cont_mdiff_within_at.of_le
+    - cont_mdiff_at_extend
+    - cont_mdiff_within_at_iff
+    - cont_mdiff_at_of_mem_maximal_atlas
+  - path: src/algebra/category/Module/adjunctions.lean
+    theorems:
+    - "Module.free.\u03BC_natural"
+  - path: src/combinatorics/simple_graph/subgraph.lean
+    theorems:
+    - simple_graph.subgraph.restrict_coe_subgraph
+    - simple_graph.subgraph.mem_neighbor_set
+    - simple_graph.subgraph.adj.of_spanning_coe
+  - path: src/analysis/normed/group/hom_completion.lean
+    theorems:
+    - normed_add_group_hom.completion_sub
+  - path: src/category_theory/limits/shapes/binary_products.lean
+    theorems:
+    - category_theory.limits.prod.symmetry'
+    - category_theory.limits.coprod_comparison_inr
+  - path: src/category_theory/bicategory/basic.lean
+    theorems:
+    - category_theory.bicategory.pentagon_inv
+    - category_theory.bicategory.whisker_right_iff
+  - path: src/algebra/field/basic.lean
+    theorems:
+    - to_dual_rat_cast
+  - path: src/topology/order/basic.lean
+    theorems:
+    - Iio_mem_nhds
+    - monotone.map_Sup_of_continuous_at
+    - filter.eventually.exists_lt
+    - antitone.map_supr_of_continuous_at
+    - tendsto_nhds_bot_mono
+    - is_lub.is_lub_of_tendsto
+  - path: src/category_theory/limits/has_limits.lean
+    theorems:
+    - "category_theory.limits.colimit.\u03B9_map"
+    - "category_theory.limits.colimit.iso_colimit_cocone_\u03B9_hom"
+  - path: src/topology/continuous_on.lean
+    theorems:
+    - continuous_within_at.congr_of_eventually_eq
+    - nhds_within_has_basis
+    - continuous_on_iff_is_closed
+  - path: src/data/nat/basic.lean
+    theorems:
+    - nat.and_forall_succ
+    - nat.eq_mul_of_div_eq_right
+    - nat.mul_div_mul_right
+    - nat.le_induction
+    - nat.lt_one_add_iff
+  - path: src/analysis/normed_space/extend.lean
+    theorems:
+    - "linear_map.extend_to_\U0001D55C'_apply"
+  - path: src/topology/local_extr.lean
+    theorems:
+    - is_local_min_on.inf
+    - is_local_min.sup
+    - is_local_max.neg
+  - path: src/analysis/inner_product_space/orientation.lean
+    theorems:
+    - orthonormal_basis.det_to_matrix_orthonormal_basis_of_opposite_orientation
+  - path: src/measure_theory/function/conditional_expectation/basic.lean
+    theorems:
+    - measure_theory.condexp_ae_eq_condexp_L1
+    - measure_theory.inner_condexp_L2_left_eq_right
+    - measure_theory.condexp_zero
+    - measure_theory.set_integral_condexp_L2_indicator
+    - measure_theory.integrable_condexp_L2_indicator
+    - measure_theory.Lp_meas_subgroup_to_Lp_trim_norm_map
+    - measure_theory.set_integral_condexp_L1_clm
+  - path: src/geometry/euclidean/circumcenter.lean
+    theorems:
+    - euclidean_geometry.circumsphere_eq_of_cospherical
+    - euclidean_geometry.exists_circumsphere_eq_of_cospherical_subset
+  - path: src/measure_theory/decomposition/lebesgue.lean
+    theorems:
+    - measure_theory.signed_measure.mutually_singular_singular_part
+  - path: src/data/rat/order.lean
+    theorems:
+    - rat.lt_one_iff_num_lt_denom
+    - rat.nonneg_add
+    - rat.nonneg_iff_zero_le
+  - path: src/data/set/function.lean
+    theorems:
+    - equiv.inv_on
+    - equiv.bij_on_image
+    - strict_anti_on.comp
+    - set.restrict_preimage_surjective
+    - set.inj_on.image_inter
+    - function.injective.comp_inj_on
+    - strict_mono_on.inj_on
+    - set.restrict_ite_compl
+    - equiv.bij_on_symm
+    - set.eq_on_union
+  - path: src/data/dfinsupp/basic.lean
+    theorems:
+    - dfinsupp.map_range_def
+    - monoid_hom.coe_dfinsupp_prod
+    - dfinsupp.neg_apply
+    - dfinsupp.map_range_id
+    - dfinsupp.support_zip_with
+    - dfinsupp.subtype_domain_sum
+    - dfinsupp.sigma_uncurry_smul
+    - dfinsupp.extend_with_none
+  - path: src/control/ulift.lean
+    theorems:
+    - ulift.map_up
+  - path: src/logic/function/iterate.lean
+    theorems:
+    - list.foldl_const
+    - "function.semiconj\u2082.iterate"
+    - function.commute.self_iterate
+  - path: src/data/set/image.lean
+    theorems:
+    - subtype.exists_set_subtype
+    - set.surjective_onto_range
+    - set.range_inr
+    - set.powerset_insert
+  - path: src/topology/metric_space/infsep.lean
+    theorems:
+    - set.einfsep_pair_le_left
+    - set.einfsep_triple
+  - path: src/probability/probability_mass_function/monad.lean
+    theorems:
+    - pmf.bind_const
+    - pmf.bind_bind
+  - path: src/topology/category/Top/opens.lean
+    theorems:
+    - topological_space.opens.map_iso_hom_app
+  - path: src/topology/algebra/const_mul_action.lean
+    theorems:
+    - is_open_map_quotient_mk_mul
+    - is_closed.smul
+    - "is_open_map_smul\u2080"
+  - path: src/data/list/cycle.lean
+    theorems:
+    - cycle.next_mem
+    - cycle.mem_coe_iff
+    - list.next_cons_cons_eq
+    - list.next_singleton
+  - path: src/category_theory/glue_data.lean
+    theorems:
+    - category_theory.glue_data.diagram_iso_hom_app_left
+  - path: src/group_theory/perm/basic.lean
+    theorems:
+    - equiv.swap_apply_apply
+  - path: src/analysis/asymptotics/asymptotics.lean
+    theorems:
+    - asymptotics.is_O_with_neg_left
+    - asymptotics.is_o_abs_left
+    - asymptotics.is_O_norm_left
+    - asymptotics.is_O_neg_right
+  - path: src/algebra/module/bimodule.lean
+    theorems:
+    - subbimodule.smul_mem
+  - path: src/data/finsupp/defs.lean
+    theorems:
+    - finsupp.single_apply_eq_zero
+    - finsupp.ext_iff'
+    - finsupp.induction_linear
+    - finsupp.single_eq_zero
+    - finsupp.nonzero_iff_exists
+  - path: src/analysis/convex/basic.lean
+    theorems:
+    - directed.convex_Union
+  - path: src/topology/path_connected.lean
+    theorems:
+    - is_open.is_connected_iff_is_path_connected
+    - path_connected_space_iff_univ
+    - path.truncate_one_one
+  - path: src/category_theory/functor/category.lean
+    theorems:
+    - category_theory.nat_trans.mono_of_mono_app
+    - category_theory.nat_trans.id_hcomp_app
+    - category_theory.nat_trans.epi_of_epi_app
+  - path: src/measure_theory/integral/interval_integral.lean
+    theorems:
+    - interval_integral.norm_integral_le_of_norm_le
+    - interval_integrable.mono
+    - interval_integral.integral_pos_iff_support_of_nonneg_ae
+  - path: src/algebra/periodic.lean
+    theorems:
+    - function.antiperiodic.const_inv_mul
+    - function.periodic.sub_nsmul_eq
+    - function.antiperiodic.mul_const
+    - function.periodic.div_const
+    - function.periodic.int_mul
+  - path: src/geometry/euclidean/angle/unoriented/affine.lean
+    theorems:
+    - euclidean_geometry.angle_eq_angle_of_angle_eq_pi
+    - euclidean_geometry.sin_eq_zero_iff_angle_eq_zero_or_angle_eq_pi
+    - euclidean_geometry.angle_eq_angle_of_angle_eq_pi_of_angle_eq_pi
+    - "sbtw.angle\u2081\u2083\u2082_eq_zero"
+  - path: src/data/finset/lattice.lean
+    theorems:
+    - finset.induction_on_max_value
+    - finset.sup_ite
+    - finset.sup_product_left
+    - finset.max_of_nonempty
+    - finset.min_le_of_eq
+    - finset.inf_le_of_le
+  - path: src/data/real/pointwise.lean
+    theorems:
+    - real.mul_infi_of_nonneg
+  - path: src/data/bundle.lean
+    theorems:
+    - bundle.coe_snd_map_smul
+  - path: src/geometry/manifold/charted_space.lean
+    theorems:
+    - achart_val
+    - mem_achart_source
+    - model_prod_range_prod_id
+  - path: src/group_theory/order_of_element.lean
+    theorems:
+    - order_of_pos_iff
+    - pow_ne_one_of_lt_order_of'
+  - path: src/data/sum/basic.lean
+    theorems:
+    - sum.swap_swap_eq
+    - sum.map_injective
+    - sum.get_right_map
+    - sum.is_right_swap
+  - path: src/ring_theory/int/basic.lean
+    theorems:
+    - int.associated_iff_nat_abs
+  - path: src/algebra/group_with_zero/power.lean
+    theorems:
+    - zpow_eq_zero
+    - "zpow_one_add\u2080"
+  - path: src/data/sigma/lex.lean
+    theorems:
+    - sigma.lex_swap
+  - path: src/measure_theory/integral/average.lean
+    theorems:
+    - measure_theory.measure_smul_average
+    - measure_theory.measure_smul_set_average
+  - path: src/category_theory/abelian/exact.lean
+    theorems:
+    - "category_theory.abelian.exact_iff_exact_coimage_\u03C0"
+    - category_theory.abelian.exact_epi_comp_iff
+  - path: src/information_theory/hamming.lean
+    theorems:
+    - hamming_dist_comm
+  - path: src/algebra/free.lean
+    theorems:
+    - free_semigroup.mul_seq
+    - free_semigroup.traverse_pure
+    - free_semigroup.lift_of_mul
+  - path: src/group_theory/submonoid/membership.lean
+    theorems:
+    - mul_mem_class.mul_right_mem_add_closure
+  - path: src/algebra/group/basic.lean
+    theorems:
+    - inv_eq_iff_eq_inv
+    - bit1_add'
+    - div_eq_iff_eq_mul'
+  - path: src/set_theory/game/pgame.lean
+    theorems:
+    - pgame.lf_move_right_of_le
+    - pgame.zero_lf_one
+    - pgame.wf_is_option
+    - pgame.add_lf_add_left
+    - pgame.subsequent.mk_left
+    - pgame.lt_or_equiv_of_le
+    - pgame.lf_of_move_right_le
+    - pgame.sub_congr_left
+  - path: src/category_theory/limits/opposites.lean
+    theorems:
+    - category_theory.limits.has_limits_of_shape_of_has_colimits_of_shape_op
+  - path: src/analysis/convex/between.lean
+    theorems:
+    - not_sbtw_self_right
+    - sbtw_comm
+    - wbtw_one_zero_iff
+  - path: src/category_theory/shift/basic.lean
+    theorems:
+    - category_theory.shift_shift'
+    - category_theory.shift_functor_add_add_zero_inv_app
+  - path: src/algebra/lie/classical.lean
+    theorems:
+    - lie_algebra.special_linear.sl_non_abelian
+  - path: src/logic/equiv/basic.lean
+    theorems:
+    - equiv.perm.extend_domain_refl
+    - equiv.option_equiv_sum_punit_coe
+  - path: src/number_theory/fermat_psp.lean
+    theorems:
+    - fermat_psp.psp_from_prime_gt_p
+  - path: src/category_theory/abelian/basic.lean
+    theorems:
+    - category_theory.abelian.image_iso_image_inv
+    - category_theory.abelian.mono_inr_of_is_colimit
+    - category_theory.abelian.mono_inl_of_is_colimit
+  - path: src/number_theory/legendre_symbol/mul_character.lean
+    theorems:
+    - mul_char.mul_one
+    - mul_char.is_nontrivial_iff
+  - path: src/algebra/star/prod.lean
+    theorems:
+    - prod.snd_star
+  - path: src/algebraic_geometry/prime_spectrum/basic.lean
+    theorems:
+    - prime_spectrum.prime_spectrum_prod_symm_inr_as_ideal
+    - prime_spectrum.vanishing_ideal_Union
+  - path: src/measure_theory/measure/hausdorff.lean
+    theorems:
+    - lipschitz_with.hausdorff_measure_image_le
+    - measure_theory.outer_measure.isometry_equiv_comap_mk_metric
+  - path: src/topology/uniform_space/uniform_convergence.lean
+    theorems:
+    - tendsto_locally_uniformly.tendsto_comp
+  - path: src/data/fintype/option.lean
+    theorems:
+    - fintype.card_option
+  - path: src/category_theory/preadditive/biproducts.lean
+    theorems:
+    - category_theory.limits.biprod.desc_eq
+  - path: src/order/bounds/basic.lean
+    theorems:
+    - is_glb.inter_Iic_of_mem
+    - is_glb.union
+    - is_least_bot_iff
+    - is_greatest_Icc
+  - path: src/probability/probability_mass_function/constructions.lean
+    theorems:
+    - pmf.bind_map
+  - path: src/algebra/order/floor.lean
+    theorems:
+    - nat.floor_add_one
+    - nat.ceil_eq_iff
+    - nat.map_floor
+  - path: src/data/fin/tuple/basic.lean
+    theorems:
+    - fin.contract_nth_apply_of_gt
+    - fin.elim0'_append
+    - fin.exists_fin_succ_pi
+  - path: src/measure_theory/measure/probability_measure.lean
+    theorems:
+    - measure_theory.finite_measure.normalize_eq_inv_mass_smul_of_nonzero
+  - path: src/algebra/order/hom/ring.lean
+    theorems:
+    - order_ring_hom.comp_apply
+  - path: src/computability/primrec.lean
+    theorems:
+    - "nat.primrec'.prim_iff\u2082"
+    - primrec.subtype_mk
+    - primrec.sum_inr
+  - path: src/measure_theory/measure/vector_measure.lean
+    theorems:
+    - measure_theory.vector_measure.map_range_zero
+    - measure_theory.vector_measure.mutually_singular.neg_right_iff
+  - path: src/algebra/algebra/tower.lean
+    theorems:
+    - is_scalar_tower.coe_to_alg_hom
+    - submodule.smul_mem_span_smul'
+  - path: src/algebraic_topology/simplicial_object.lean
+    theorems:
+    - "category_theory.cosimplicial_object.\u03B4_comp_\u03B4''"
+  - path: src/geometry/euclidean/monge_point.lean
+    theorems:
+    - affine.triangle.dist_orthocenter_reflection_circumcenter
+  - path: src/linear_algebra/dimension.lean
+    theorems:
+    - rank_range_of_surjective
+  - path: src/algebra/big_operators/basic.lean
+    theorems:
+    - finset.prod_ite_index
+    - finset.prod_pair
+    - units.coe_prod
+    - finset.sum_boole
+    - finset.prod_map
+  - path: src/data/seq/computation.lean
+    theorems:
+    - computation.get_eq_of_promises
+    - computation.equiv_of_mem
+    - computation.get_bind
+    - computation.lift_rel_aux.ret_left
+    - computation.equiv.symm
+    - computation.terminates_iff
+    - computation.exists_of_mem_bind
+  - path: src/combinatorics/set_family/intersecting.lean
+    theorems:
+    - set.intersecting.not_mem
+  - path: src/algebra/category/fgModule/basic.lean
+    theorems:
+    - fgModule.coevaluation_evaluation
+  - path: src/tactic/norm_fin.lean
+    theorems:
+    - tactic.norm_fin.normalize_fin_lt.nat_add
+  - path: src/order/filter/ultrafilter.lean
+    theorems:
+    - ultrafilter.em
+    - ultrafilter.mem_pure
+    - ultrafilter.of_coe
+  - path: src/order/atoms.lean
+    theorems:
+    - is_atomistic_dual_iff_is_coatomistic
+    - is_atomic_iff_is_coatomic
+  - path: src/algebra/lie/nilpotent.lean
+    theorems:
+    - lie_module.antitone_lower_central_series
+    - lie_algebra.non_trivial_center_of_is_nilpotent
+  - path: src/algebra/homology/homological_complex.lean
+    theorems:
+    - cochain_complex.prev
+    - homological_complex.id_f
+  - path: src/analysis/convex/function.lean
+    theorems:
+    - concave_on.ge_on_segment'
+    - concave_on_id
+  - path: src/order/filter/lift.lean
+    theorems:
+    - filter.lift_inf
+    - filter.mem_lift'
+  - path: src/analysis/calculus/bump_function_inner.lean
+    theorems:
+    - cont_diff_bump.neg
+  - path: src/data/hash_map.lean
+    theorems:
+    - hash_map.valid.as_list_nodup
+    - hash_map.keys_empty
+  - path: src/computability/NFA.lean
+    theorems:
+    - NFA.eval_from_singleton
+  - path: src/data/list/lemmas.lean
+    theorems:
+    - list.inj_on_insert_nth_index_of_not_mem
+    - list.foldl_range_eq_of_range_eq
+  - path: src/order/filter/extr.lean
+    theorems:
+    - is_min_on.inter
+    - is_max_on.inf
+    - is_min_on.on_preimage
+    - is_min_on.max
+  - path: src/algebraic_geometry/projective_spectrum/topology.lean
+    theorems:
+    - projective_spectrum.zero_locus_Union
+    - projective_spectrum.vanishing_ideal_singleton
+    - projective_spectrum.basic_open_zero
+  - path: src/analysis/special_functions/pow.lean
+    theorems:
+    - nnreal.one_le_rpow
+    - nnreal.rpow_le_rpow
+    - cpow_eq_nhds
+    - continuous_on.cpow
+    - ennreal.coe_rpow_def
+    - nnreal.eventually_pow_one_div_le
+    - complex.zero_cpow
+  - path: src/topology/instances/real.lean
+    theorems:
+    - real.tendsto_inv
+  - path: src/topology/metric_space/hausdorff_distance.lean
+    theorems:
+    - metric.Hausdorff_dist_le_diam
+    - metric.cthickening_singleton
+    - metric.closed_ball_subset_cthickening
+    - metric.Hausdorff_dist_empty'
+  - path: src/logic/denumerable.lean
+    theorems:
+    - nat.subtype.exists_succ
+  - path: src/linear_algebra/clifford_algebra/even.lean
+    theorems:
+    - clifford_algebra.even.alg_hom_ext
+  - path: src/topology/separation.lean
+    theorems:
+    - function.left_inverse.closed_embedding
+    - is_open_ne_fun
+    - closure_singleton
+    - is_compact.inter
+    - is_closed.exists_closed_singleton
+    - singleton_mem_nhds_within_of_mem_discrete
+  - path: src/data/real/irrational.lean
+    theorems:
+    - irrational.of_pow
+    - irrational.ne_one
+    - irrational_div_int_iff
+    - irrational_rat_add_iff
+  - path: src/model_theory/semantics.lean
+    theorems:
+    - first_order.language.bounded_formula.realize_iff
+    - first_order.language.Lhom.on_Theory_model
+    - first_order.language.card_le_of_model_distinct_constants_theory
+    - first_order.language.formula.realize_equal
+  - path: src/order/conditionally_complete_lattice/basic.lean
+    theorems:
+    - with_top.is_lub_Sup'
+    - is_glb.cInf_eq
+    - le_csupr_of_le
+    - order_iso.map_csupr
+    - cSup_singleton
+    - order_iso.map_csupr_set
+  - path: src/data/fun_like/basic.lean
+    theorems:
+    - fun_like.coe_eq_coe_fn
+  - path: src/category_theory/limits/lattice.lean
+    theorems:
+    - category_theory.limits.complete_lattice.finite_coproduct_eq_finset_sup
+  - path: src/topology/sober.lean
+    theorems:
+    - is_generic_point_closure
+    - is_generic_point.eq
+    - is_generic_point.is_irreducible
+  - path: src/algebra/order/field/basic.lean
+    theorems:
+    - sub_one_div_inv_le_two
+    - mul_inv_lt_iff'
+    - one_le_div_iff
+    - div_lt_div_left
+    - div_le_one
+  - path: src/data/list/perm.lean
+    theorems:
+    - list.perm_of_mem_permutations_aux
+    - list.perm.permutations'
+    - list.perm.inter
+  - path: src/data/pfunctor/univariate/M.lean
+    theorems:
+    - pfunctor.M.bisim
+  - path: src/order/bounded_order.lean
+    theorems:
+    - strict_mono.maximal_preimage_top
+  - path: src/category_theory/types.lean
+    theorems:
+    - category_theory.functor_to_types.map_inv_map_hom_apply
+  - path: src/algebra/tropical/basic.lean
+    theorems:
+    - tropical.trop_equiv_coe_fn
+    - tropical.add_eq_right_iff
+  - path: src/data/sign.lean
+    theorems:
+    - sign_neg
+    - sign_type.nonneg_iff
+  - path: src/analysis/calculus/fderiv_measurable.lean
+    theorems:
+    - fderiv_measurable_aux.le_of_mem_A
+  - path: src/measure_theory/measure/outer_measure.lean
+    theorems:
+    - measure_theory.smul_extend
+    - measure_theory.outer_measure.map_comap_of_surjective
+    - measure_theory.outer_measure.zero_caratheodory
+  - path: src/data/set/countable.lean
+    theorems:
+    - set.maps_to.countable_of_inj_on
+    - set.countable_is_bot
+    - set.countable_iff_exists_subset_range
+  - path: src/algebra/ring/boolean_ring.lean
+    theorems:
+    - boolean_ring.inf_sup_self
+  - path: src/analysis/complex/circle.lean
+    theorems:
+    - norm_sq_eq_of_mem_circle
+  - path: src/data/seq/wseq.lean
+    theorems:
+    - stream.wseq.head_terminates_of_nth_terminates
+    - stream.wseq.mem_append_left
+    - stream.wseq.mem_map
+    - stream.wseq.to_list'_cons
+    - stream.wseq.lift_rel.refl
+    - stream.wseq.to_list_of_list
+    - stream.wseq.exists_of_mem_bind
+  - path: src/data/finset/locally_finite.lean
+    theorems:
+    - finset.uIcc_subset_uIcc_left
+    - finset.uIcc_subset_uIcc_iff_le'
+    - finset.mem_uIcc_of_le
+    - finset.Ioo_self
+    - set.infinite.exists_gt
+    - finset.Icc_subset_Icc_left
+  - path: src/algebra/category/Group/basic.lean
+    theorems:
+    - CommGroup.ext
+  - path: src/logic/function/basic.lean
+    theorems:
+    - function.update_injective
+    - function.injective.ne_iff'
+    - function.injective.surjective_comp_right'
+  - path: src/number_theory/padics/padic_numbers.lean
+    theorems:
+    - padic.coe_div
+    - padic.coe_zero
+    - padic.complete'
+  - path: src/probability/kernel/basic.lean
+    theorems:
+    - probability_theory.kernel.ext
+    - probability_theory.kernel.set_lintegral_const
+  - path: src/set_theory/ordinal/natural_ops.lean
+    theorems:
+    - ordinal.nadd_le_iff
+    - ordinal.lt_of_nadd_lt_nadd_left
+    - ordinal.zero_nadd
+    - ordinal.blsub_nadd_of_mono
+  - path: src/data/real/hyperreal.lean
+    theorems:
+    - hyperreal.coe_ne_one
+    - hyperreal.infinite_mul_of_not_infinitesimal_infinite
+    - hyperreal.is_st_mul
+    - hyperreal.epsilon_mul_omega
+    - hyperreal.exists_st_iff_not_infinite
+  - path: src/data/nat/digits.lean
+    theorems:
+    - nat.of_digits_zmod
+  - path: src/ring_theory/power_series/basic.lean
+    theorems:
+    - polynomial.coe_to_power_series.ring_hom_apply
+    - power_series.X_inv
+    - mv_polynomial.coe_add
+    - mv_power_series.algebra_map_apply'
+    - power_series.algebra_map_apply
+    - polynomial.coe_to_power_series.alg_hom_apply
+    - power_series.map_id
+    - power_series.X_pow_dvd_iff
+  - path: src/algebra/order/nonneg/field.lean
+    theorems:
+    - nonneg.inv_mk
+  - path: src/analysis/quaternion.lean
+    theorems:
+    - quaternion.coe_complex_one
+    - quaternion.summable_coe
+  - path: src/data/rbtree/insert.lean
+    theorems:
+    - rbnode.ins.induction
+    - rbnode.mem_ins_of_mem
+    - rbnode.find_balance2_gt
+  - path: src/topology/algebra/infinite_sum/order.lean
+    theorems:
+    - sum_le_tsum
+  - path: src/combinatorics/composition.lean
+    theorems:
+    - composition.lt_size_up_to_index_succ
+    - composition.mem_range_embedding_iff
+    - composition_as_set.length_lt_card_boundaries
+  - path: src/ring_theory/artinian.lean
+    theorems:
+    - is_artinian.exists_pow_succ_smul_dvd
+  - path: src/data/complex/basic.lean
+    theorems:
+    - complex.abs_le_abs_re_add_abs_im
+    - complex.conj_eq_iff_re
+    - complex.I_im
+  - path: src/group_theory/index.lean
+    theorems:
+    - subgroup.relindex_eq_zero_of_le_left
+  - path: src/algebra/order/nonneg/ring.lean
+    theorems:
+    - nonneg.mk_nat_cast
+  - path: src/data/int/order/basic.lean
+    theorems:
+    - int.mod_lt_of_pos
+    - int.div_eq_of_eq_mul_right
+  - path: src/order/heyting/hom.lean
+    theorems:
+    - coheyting_hom.comp_assoc
+  - path: src/measure_theory/integral/set_to_l1.lean
+    theorems:
+    - measure_theory.L1.simple_func.set_to_L1s_clm_zero_left'
+    - measure_theory.L1.set_to_fun_eq_set_to_L1
+    - measure_theory.set_to_fun_zero_left'
+    - measure_theory.L1.simple_func.set_to_L1s_clm_mono_left
+    - measure_theory.L1.set_to_L1_smul
+    - measure_theory.tendsto_set_to_fun_approx_on_of_measurable_of_range_subset
+    - measure_theory.L1.simple_func.set_to_L1s_congr_measure
+    - measure_theory.L1.simple_func.set_to_L1s_zero_left'
+    - measure_theory.L1.norm_set_to_L1_le_mul_norm
+    - measure_theory.L1.simple_func.set_to_L1s_add
+  - path: src/ring_theory/dedekind_domain/ideal.lean
+    theorems:
+    - ideal.le_mul_of_no_prime_factors
+  - path: src/algebra/module/linear_map.lean
+    theorems:
+    - linear_map.restrict_scalars_injective
+    - is_linear_map.map_zero
+    - module.End.nat_cast_apply
+  - path: src/order/cover.lean
+    theorems:
+    - wcovby.fst
+  - path: src/order/filter/at_top_bot.lean
+    theorems:
+    - filter.map_neg_at_bot
+    - filter.tendsto_at_top_pure
+    - filter.at_bot_basis
+    - filter.prod_map_at_top_eq
+    - filter.at_top_basis
+    - filter.tendsto_const_mul_at_top_of_pos
+  - path: src/category_theory/discrete_category.lean
+    theorems:
+    - category_theory.discrete.eq_of_hom
+  - path: src/data/matrix/basic.lean
+    theorems:
+    - matrix.update_row_subsingleton
+    - matrix.map_apply
+    - matrix.vec_mul_neg
+    - matrix.mul_smul
+    - matrix.submatrix_id_id
+    - matrix.scalar_apply_ne
+  - path: src/order/heyting/basic.lean
+    theorems:
+    - sdiff_le_hnot
+  - path: src/geometry/euclidean/angle/oriented/basic.lean
+    theorems:
+    - complex.oangle
+  - path: src/data/list/range.lean
+    theorems:
+    - list.enum_from_map_fst
+    - list.range'_eq_map_range
+  - path: src/data/rbtree/main.lean
+    theorems:
+    - rbtree.find_insert_of_disj
+  - path: src/data/finsupp/basic.lean
+    theorems:
+    - finsupp.map_domain_sum
+    - finsupp.dom_congr_refl
+    - finsupp.equiv_map_domain_zero
+    - finsupp.graph_inj
+    - finsupp.erase_sub
+    - finsupp.coe_sum_elim
+    - finsupp.equiv_congr_left_apply
+  - path: src/order/grade.lean
+    theorems:
+    - is_min_grade_iff
+  - path: src/combinatorics/hindman.lean
+    theorems:
+    - hindman.exists_FP_of_finite_cover
+  - path: src/linear_algebra/matrix/symmetric.lean
+    theorems:
+    - matrix.is_symm.transpose
+    - matrix.is_symm.submatrix
+    - matrix.is_symm.neg
+  - path: src/analysis/inner_product_space/calculus.lean
+    theorems:
+    - cont_diff_within_at.norm_sq
+  - path: src/geometry/euclidean/angle/oriented/affine.lean
+    theorems:
+    - euclidean_geometry.oangle_self_left
+    - collinear.oangle_sign_of_same_ray_vsub
+  - path: src/order/hom/basic.lean
+    theorems:
+    - order_iso.with_top_congr_symm
+    - order_iso.apply_eq_iff_eq
+  - path: src/topology/uniform_space/equicontinuity.lean
+    theorems:
+    - equicontinuous.closure
+  - path: src/group_theory/subgroup/finite.lean
+    theorems:
+    - subgroup.multiset_prod_mem
+  - path: src/data/set/pointwise/interval.lean
+    theorems:
+    - set.image_neg_Icc
+    - set.abs_sub_le_of_uIcc_subset_uIcc
+  - path: src/measure_theory/integral/integral_eq_improper.lean
+    theorems:
+    - measure_theory.ae_cover_Iio
+    - measure_theory.ae_cover_Ioc
+    - measure_theory.integral_comp_rpow_Ioi
+  - path: src/category_theory/bicategory/free.lean
+    theorems:
+    - category_theory.free_bicategory.mk_associator_inv
+  - path: src/measure_theory/measure/stieltjes.lean
+    theorems:
+    - stieltjes_function.measure_Ico
+  - path: src/group_theory/commensurable.lean
+    theorems:
+    - commensurable.equivalence
+  - path: src/category_theory/groupoid/subgroupoid.lean
+    theorems:
+    - category_theory.subgroupoid.ker_is_normal
+  - path: src/analysis/special_functions/trigonometric/angle.lean
+    theorems:
+    - real.angle.sub_coe_pi_eq_add_coe_pi
+    - real.angle.ne_neg_self_iff
+    - real.angle.to_real_pi
+  - path: src/data/finsupp/big_operators.lean
+    theorems:
+    - list.support_sum_subset
+  - path: src/combinatorics/catalan.lean
+    theorems:
+    - tree.trees_of_nodes_eq_zero
+  - path: src/algebraic_topology/fundamental_groupoid/simply_connected.lean
+    theorems:
+    - simply_connected_def
+  - path: src/analysis/asymptotics/theta.lean
+    theorems:
+    - asymptotics.is_Theta_norm_right
+  - path: src/algebra/hom/equiv/basic.lean
+    theorems:
+    - mul_equiv.ext
+  - path: src/topology/sheaves/presheaf.lean
+    theorems:
+    - Top.presheaf.pushforward.comp_eq
+  - path: src/category_theory/single_obj.lean
+    theorems:
+    - monoid_hom.comp_to_functor
+  - path: src/data/sum/order.lean
+    theorems:
+    - sum.lex.inl_bot
+  - path: src/data/set/pointwise/basic.lean
+    theorems:
+    - set.nonempty.of_div_right
+    - set.add_mul_subset
+    - "set.div_Union\u2082"
+    - set.nonempty.mul_zero
+    - "set.Union\u2082_div"
+  - path: src/measure_theory/measurable_space.lean
+    theorems:
+    - measurable.sum_elim
+    - filter.eventually.exists_measurable_mem_of_small_sets
+    - measurable_from_quotient
+    - measurable_of_empty
+    - measurable_space.comap_eq_generate_from
+  - path: src/algebra/algebra/subalgebra/basic.lean
+    theorems:
+    - subalgebra.mem_to_submodule
+  - path: src/analysis/special_functions/trigonometric/chebyshev.lean
+    theorems:
+    - polynomial.chebyshev.complex_of_real_eval_T
+  - path: src/topology/algebra/order/monotone_convergence.lean
+    theorems:
+    - tendsto_at_top_is_lub
+    - is_lub_of_tendsto_at_bot
+  - path: src/computability/halting.lean
+    theorems:
+    - partrec.merge'
+  - path: src/order/omega_complete_partial_order.lean
+    theorems:
+    - "prod.\u03C9Sup_zip"
+  - path: src/algebra/order/smul.lean
+    theorems:
+    - smul_nonneg
+  - path: src/algebra/module/localized_module.lean
+    theorems:
+    - is_localized_module.mk'_eq_mk'_iff
+    - is_localized_module.mk'_mul_mk'
+  - path: src/data/mv_polynomial/variables.lean
+    theorems:
+    - mv_polynomial.degrees_rename
+    - mv_polynomial.vars_map_of_injective
+    - mv_polynomial.total_degree_mul
+  - path: src/data/rat/nnrat.lean
+    theorems:
+    - nnrat.coe_add
+    - nnrat.coe_mul
+  - path: src/linear_algebra/affine_space/combination.lean
+    theorems:
+    - finset.weighted_vsub_empty
+  - path: src/tactic/ring_exp.lean
+    theorems:
+    - tactic.ring_exp.pow_pp_pf_one
+  - path: src/group_theory/specific_groups/dihedral.lean
+    theorems:
+    - dihedral_group.sr_mul_self
+  - path: src/measure_theory/integral/set_integral.lean
+    theorems:
+    - filter.tendsto.integral_sub_linear_is_o_ae
+    - "measure_theory.integral_add_compl\u2080"
+  - path: src/data/rat/cast.lean
+    theorems:
+    - rat.cast_zpow
+    - rat.cast_div_of_ne_zero
+    - rat.cast_min
+  - path: src/logic/equiv/defs.lean
+    theorems:
+    - equiv.coe_fn_injective
+    - equiv.congr_fun
+    - equiv.symm_symm_apply
+  - path: src/probability/kernel/invariance.lean
+    theorems:
+    - probability_theory.kernel.map_measure_apply
+  - path: src/ring_theory/ideal/local_ring.lean
+    theorems:
+    - ring_equiv.local_ring
+  - path: src/linear_algebra/finite_dimensional.lean
+    theorems:
+    - finite_dimensional.basis_unique.repr_eq_zero_iff
+    - linear_map.injective_iff_surjective_of_finrank_eq_finrank
+    - finite_dimensional.cardinal_mk_le_finrank_of_linear_independent
+  - path: src/analysis/seminorm.lean
+    theorems:
+    - seminorm.ball_eq_emptyset
+    - seminorm.ball_sup
+  - path: src/order/rel_classes.lean
+    theorems:
+    - comm_of
+    - is_strict_order.swap
+  - path: src/field_theory/ratfunc.lean
+    theorems:
+    - ratfunc.num_mul_denom_add_denom_mul_num_ne_zero
+    - ratfunc.lift_alg_hom_apply
+    - ratfunc.of_fraction_ring_injective
+    - ratfunc.lift_alg_hom_apply_div
+    - ratfunc.eval_add
+    - ratfunc.algebra_map_eq_C
+    - ratfunc.coe_injective
+  - path: src/analysis/calculus/taylor.lean
+    theorems:
+    - taylor_within_eval_succ
+  - path: src/logic/function/conjugate.lean
+    theorems:
+    - "function.semiconj\u2082.eq"
+  - path: src/analysis/special_functions/complex/log.lean
+    theorems:
+    - filter.tendsto.clog
+    - complex.of_real_log
+  - path: src/analysis/normed_space/banach_steinhaus.lean
+    theorems:
+    - banach_steinhaus
+  - path: src/analysis/asymptotics/asymptotic_equivalent.lean
+    theorems:
+    - asymptotics.is_equivalent.tendsto_nhds
+  - path: src/ring_theory/polynomial/chebyshev.lean
+    theorems:
+    - polynomial.chebyshev.map_T
+  - path: src/algebra/module/submodule/basic.lean
+    theorems:
+    - submodule.to_add_submonoid_strict_mono
+  - path: src/algebra/order/lattice_group.lean
+    theorems:
+    - lattice_ordered_comm_group.inf_eq_div_pos_div
+    - inv_inf_eq_sup_inv
+  - path: src/data/bool/all_any.lean
+    theorems:
+    - list.all_iff_forall
+  - path: src/combinatorics/simple_graph/matching.lean
+    theorems:
+    - simple_graph.subgraph.is_matching.even_card
+  - path: src/dynamics/omega_limit.lean
+    theorems:
+    - flow.omega_limit_image_subset
+    - nonempty_omega_limit
+  - path: src/data/bool/basic.lean
+    theorems:
+    - bool.ff_eq_to_bool_iff
+    - bool.bor_bnot_self
+  - path: src/topology/metric_space/contracting.lean
+    theorems:
+    - contracting_with.fixed_point_unique'
+    - contracting_with.efixed_point_mem'
+  - path: src/topology/uniform_space/completion.lean
+    theorems:
+    - uniform_space.completion.extension_coe
+    - "uniform_space.completion.induction_on\u2083"
+    - uniform_space.completion.extension_unique
+  - path: src/measure_theory/measure/portmanteau.lean
+    theorems:
+    - measure_theory.tendsto_measure_of_le_liminf_measure_of_limsup_measure_le
+  - path: src/order/filter/bases.lean
+    theorems:
+    - filter.has_basis.le_iff
+    - filter.has_basis.mem_iff
+    - filter.has_basis.to_has_basis
+  - path: src/order/liminf_limsup.lean
+    theorems:
+    - filter.Liminf_le_Liminf
+    - filter.complete_lattice_hom.apply_limsup_iterate
+    - filter.is_bounded_under.mono_le
+    - filter.limsup_le_of_le
+    - filter.bliminf_eq_supr_binfi_of_nat
+  - path: src/measure_theory/function/ae_eq_fun.lean
+    theorems:
+    - measure_theory.ae_eq_fun.inv_mk
+  - path: src/topology/algebra/monoid.lean
+    theorems:
+    - continuous_finset_prod
+  - path: src/data/list/big_operators/basic.lean
+    theorems:
+    - list.prod_is_unit
+    - list.prod_take_succ
+    - list.head_mul_tail_prod_of_ne_nil
+  - path: src/data/set/intervals/monotone.lean
+    theorems:
+    - monotone_on.Iic
+    - monotone.Icc
+  - path: src/category_theory/preadditive/yoneda/basic.lean
+    theorems:
+    - category_theory.whiskering_preadditive_yoneda
+  - path: src/algebra/direct_limit.lean
+    theorems:
+    - module.direct_limit.exists_of
+  - path: src/algebra/module/submodule/lattice.lean
+    theorems:
+    - submodule.add_mem_sup
+    - submodule.mem_Inf
+  - path: src/order/filter/n_ary.lean
+    theorems:
+    - "filter.map\u2082_right"
+    - "filter.map\u2082_eq_bot_iff"
+    - "filter.map\u2082_pure_left"
+  - path: src/category_theory/quotient.lean
+    theorems:
+    - category_theory.quotient.functor_map_eq_iff
+  - path: src/topology/urysohns_lemma.lean
+    theorems:
+    - urysohns.CU.continuous_lim
+  - path: src/group_theory/schur_zassenhaus.lean
+    theorems:
+    - subgroup.exists_right_complement'_of_coprime_aux'
+  - path: src/analysis/convex/side.lean
+    theorems:
+    - function.injective.w_same_side_map_iff
+    - affine_subspace.s_opp_side_point_reflection
+  - path: src/topology/continuous_function/basic.lean
+    theorems:
+    - continuous_map.ext
+  - path: src/category_theory/limits/mono_coprod.lean
+    theorems:
+    - category_theory.limits.mono_coprod.binary_cofan_inr
+  - path: src/computability/tm_to_partrec.lean
+    theorems:
+    - turing.partrec_to_TM2.tr_pos_num_nat_end
+  - path: src/analysis/inner_product_space/adjoint.lean
+    theorems:
+    - submodule.adjoint_orthogonal_projection
+  - path: src/analysis/normed_space/affine_isometry.lean
+    theorems:
+    - affine_isometry.diam_image
+    - affine_isometry_equiv.coe_vadd_const
+  - path: src/linear_algebra/multilinear/basic.lean
+    theorems:
+    - multilinear_map.zero_comp_linear_map
+  - path: src/data/qpf/multivariate/constructions/cofix.lean
+    theorems:
+    - mvqpf.cofix.bisim
+  - path: src/algebraic_geometry/sheafed_space.lean
+    theorems:
+    - "algebraic_geometry.SheafedSpace.\u0393_obj"
+  - path: src/order/minimal.lean
+    theorems:
+    - maximals_eq_minimals
+  - path: src/data/polynomial/basic.lean
+    theorems:
+    - polynomial.sum_def
+    - polynomial.X_mul_monomial
+    - polynomial.update_zero_eq_erase
+  - path: src/set_theory/game/nim.lean
+    theorems:
+    - pgame.equiv_nim_grundy_value
+    - pgame.nim_zero_equiv
+  - path: src/linear_algebra/tensor_algebra/basic.lean
+    theorems:
+    - "tensor_algebra.\u03B9_range_disjoint_one"
+  - path: src/data/matrix/notation.lean
+    theorems:
+    - matrix.smul_vec2
+    - matrix.head_val'
+    - matrix.cons_transpose
+  - path: src/algebra/group_with_zero/units/lemmas.lean
+    theorems:
+    - mul_div_mul_left
+  - path: src/number_theory/pell_matiyasevic.lean
+    theorems:
+    - pell.yn_succ
+  - path: src/data/finset/prod.lean
+    theorems:
+    - finset.product_sdiff_off_diag
+    - finset.nonempty.product
+  - path: src/order/antichain.lean
+    theorems:
+    - is_antichain.preimage_embedding
+    - is_antichain.mono_on
+  - path: src/category_theory/sites/dense_subsite.lean
+    theorems:
+    - category_theory.cover_dense.types.app_hom_valid_glue
+  - path: src/number_theory/padics/padic_integers.lean
+    theorems:
+    - padic_int.norm_eq_pow_val
+  - path: src/analysis/normed_space/finite_dimension.lean
+    theorems:
+    - exists_mem_frontier_inf_dist_compl_eq_dist
+    - linear_isometry.to_linear_isometry_equiv_apply
+  - path: src/algebra/hom/group_action.lean
+    theorems:
+    - mul_action_hom.comp_apply
+    - mul_action_hom.map_smul
+  - path: src/data/sum/interval.lean
+    theorems:
+    - sum.Ioc_inl_inr
+    - sum.Ioo_inl_inl
+  - path: src/measure_theory/group/arithmetic.lean
+    theorems:
+    - list.measurable_prod
+  - path: src/ring_theory/ideal/cotangent.lean
+    theorems:
+    - ideal.mem_to_cotangent_ker
+  - path: src/analysis/complex/cauchy_integral.lean
+    theorems:
+    - complex.integral_boundary_rect_eq_zero_of_differentiable_on
+  - path: src/order/monotone/basic.lean
+    theorems:
+    - monotone_app
+    - antitone_on_const
+    - antitone.comp_monotone
+    - antitone.antitone_on
+    - strict_mono.comp_strict_anti_on
+    - strict_mono.ite'
+  - path: src/model_theory/definability.lean
+    theorems:
+    - first_order.language.definable_set.not_mem_bot
+    - first_order.language.definable_set.mem_sup
+  - path: src/algebra/algebra/unitization.lean
+    theorems:
+    - unitization.coe_zero
+    - unitization.coe_smul
+  - path: src/data/list/nodup.lean
+    theorems:
+    - list.nth_le_index_of
+    - list.nodup_reverse
+  - path: src/order/monotone/monovary.lean
+    theorems:
+    - monotone_on.antivary_on
+    - antivary_on.comp_right
+  - path: src/linear_algebra/tensor_power.lean
+    theorems:
+    - "tensor_power.mul_algebra_map\u2080"
+  - path: src/linear_algebra/basis.lean
+    theorems:
+    - basis.restrict_scalars_apply
+    - basis.constr_comp
+    - basis.singleton_repr
+    - basis.ext'
+    - basis.coe_sum_coords_eq_finsum
+  - path: src/data/fintype/order.lean
+    theorems:
+    - fintype.bdd_above_range
+  - path: src/linear_algebra/bilinear_map.lean
+    theorems:
+    - linear_map.ker_lsmul
+  - path: src/category_theory/limits/shapes/biproducts.lean
+    theorems:
+    - "category_theory.limits.biproduct.\u03B9_map"
+    - "category_theory.limits.binary_bicone.fst_kernel_fork_\u03B9"
+    - "category_theory.limits.binary_bicone.to_cone_\u03C0_app_left"
+  - path: src/computability/epsilon_NFA.lean
+    theorems:
+    - "NFA.to_\u03B5_NFA_correct"
+  - path: src/ring_theory/kaehler.lean
+    theorems:
+    - kaehler_differential.map_D
+    - kaehler_differential.map_comp_der
+  - path: src/data/list/lex.lean
+    theorems:
+    - list.lex.append_right
+  - path: src/topology/locally_finite.lean
+    theorems:
+    - locally_finite.exists_forall_eventually_at_top_eventually_eq'
+  - path: src/algebra/module/torsion.lean
+    theorems:
+    - submodule.quotient_torsion.torsion_eq_bot
+    - submodule.torsion_by_singleton_eq
+  - path: src/data/fin/vec_notation.lean
+    theorems:
+    - matrix.range_empty
+  - path: src/order/jordan_holder.lean
+    theorems:
+    - composition_series.top_snoc
+    - composition_series.strict_mono
+  - path: src/set_theory/cardinal/continuum.lean
+    theorems:
+    - cardinal.continuum_add_nat
+  - path: src/category_theory/action.lean
+    theorems:
+    - category_theory.action_category.id_val
+  - path: src/group_theory/exponent.lean
+    theorems:
+    - monoid.exponent_min'
+  - path: src/algebra/order/absolute_value.lean
+    theorems:
+    - is_absolute_value.abv_sub
+  - path: src/field_theory/fixed.lean
+    theorems:
+    - fixed_points.minpoly.monic
+  - path: src/data/set/intervals/with_bot_top.lean
+    theorems:
+    - with_bot.image_coe_Ici
+    - with_top.image_coe_Ici
+  - path: src/ring_theory/hahn_series.lean
+    theorems:
+    - hahn_series.order_pow
+    - hahn_series.C_injective
+    - hahn_series.coeff_injective
+  - path: src/control/applicative.lean
+    theorems:
+    - functor.comp.pure_seq_eq_map
+  - path: src/analysis/normed_space/star/continuous_functional_calculus.lean
+    theorems:
+    - star_subalgebra.coe_is_unit
+  - path: src/control/fix.lean
+    theorems:
+    - part.fix_def'
+  - path: src/analysis/locally_convex/bounded.lean
+    theorems:
+    - normed_space.is_bounded_iff_subset_smul_ball
+  - path: src/linear_algebra/clifford_algebra/contraction.lean
+    theorems:
+    - clifford_algebra.contract_right_one
+    - clifford_algebra.contract_left_one
+    - clifford_algebra.contract_right_algebra_map
+  - path: src/geometry/manifold/diffeomorph.lean
+    theorems:
+    - diffeomorph.coe_coe
+    - diffeomorph.continuous
+  - path: src/category_theory/limits/shapes/finite_limits.lean
+    theorems:
+    - category_theory.limits.has_finite_wide_pullbacks_of_has_finite_limits
+  - path: src/group_theory/finiteness.lean
+    theorems:
+    - monoid.fg_iff
+  - path: src/data/int/nat_prime.lean
+    theorems:
+    - int.succ_dvd_or_succ_dvd_of_succ_sum_dvd_mul
+  - path: src/number_theory/number_field/embeddings.lean
+    theorems:
+    - number_field.infinite_place.mk_real_coe
+  - path: src/data/analysis/topology.lean
+    theorems:
+    - ctop.realizer.ext'
+  - path: src/ring_theory/non_unital_subsemiring/basic.lean
+    theorems:
+    - non_unital_subsemiring.map_id
+    - subsemigroup.non_unital_subsemiring_closure_to_add_submonoid
+  - path: src/algebra/order/to_interval_mod.lean
+    theorems:
+    - to_Ico_mod_apply_left
+    - to_Ico_div_sub_zsmul
+    - to_Ico_div_eq_floor
+  - path: src/order/hom/complete_lattice.lean
+    theorems:
+    - Inf_hom.coe_comp
+    - Sup_hom.coe_comp
+    - Sup_hom.cancel_right
+  - path: src/order/filter/cofinite.lean
+    theorems:
+    - filter.at_top_le_cofinite
+  - path: src/algebra/star/pointwise.lean
+    theorems:
+    - set.Union_star
+  - path: src/category_theory/limits/shapes/pullbacks.lean
+    theorems:
+    - category_theory.limits.has_pullback_of_right_iso
+    - category_theory.limits.pushout_cocone_of_left_iso_inl
+    - category_theory.limits.has_pushout_of_left_iso
+    - category_theory.limits.inl_eq_inr_of_epi_eq
+  - path: src/algebra/lie/free.lean
+    theorems:
+    - free_lie_algebra.lift_aux_map_mul
+    - free_lie_algebra.rel.sub_left
+  - path: src/category_theory/abelian/diagram_lemmas/four.lean
+    theorems:
+    - category_theory.abelian.mono_of_epi_of_mono_of_mono
+  - path: src/data/vector/mem.lean
+    theorems:
+    - vector.not_mem_nil
+  - path: src/analysis/convex/integral.lean
+    theorems:
+    - ae_eq_const_or_exists_average_ne_compl
+  - path: src/topology/metric_space/pi_nat.lean
+    theorems:
+    - pi_nat.res_zero
+    - pi_nat.dist_nonneg
+    - pi_nat.first_diff_comm
+    - pi_nat.res_injective
+  - path: src/algebra/euclidean_domain/defs.lean
+    theorems:
+    - euclidean_domain.val_dvd_le
+  - path: src/linear_algebra/affine_space/affine_map.lean
+    theorems:
+    - linear_map.coe_to_affine_map
+    - affine_map.fst_linear
+    - affine_map.line_map_apply_module
+  - path: src/measure_theory/constructions/borel_space.lean
+    theorems:
+    - measurable_coe_nnreal_ennreal
+    - measurable_of_is_open
+    - continuous.ae_measurable2
+  - path: src/algebra/lie/weights.lean
+    theorems:
+    - lie_algebra.root_space_product_tmul
+    - lie_algebra.zero_root_space_eq_top_of_nilpotent
+  - path: src/algebraic_topology/dold_kan/p_infty.lean
+    theorems:
+    - algebraic_topology.dold_kan.P_infty_f_add_Q_infty_f
+  - path: src/data/fin/basic.lean
+    theorems:
+    - fin.cast_le_zero
+    - fin.coe_add_nat
+    - fin.mk_bit1
+    - fin.nontrivial_iff_two_le
+    - fin.coe_rev
+    - fin.cast_add_cast_lt
+    - fin.last_add_one
+  - path: src/combinatorics/additive/salem_spencer.lean
+    theorems:
+    - "mul_salem_spencer.mul_left\u2080"
+  - path: src/combinatorics/set_family/compression/uv.lean
+    theorems:
+    - uv.compress_self
+  - path: src/number_theory/arithmetic_function.lean
+    theorems:
+    - nat.arithmetic_function.int_coe_apply
+    - nat.arithmetic_function.card_factors_one
+  - path: src/algebra/order/monoid/with_top.lean
+    theorems:
+    - with_top.one_le_coe
+    - with_top.add_coe_eq_top_iff
+    - with_bot.add_lt_add_left
+    - with_bot.unbot_one'
+  - path: src/dynamics/ergodic/measure_preserving.lean
+    theorems:
+    - measure_theory.measure_preserving.exists_mem_image_mem
+  - path: src/algebra/continued_fractions/computation/terminates_iff_rat.lean
+    theorems:
+    - generalized_continued_fraction.coe_of_rat_eq
+  - path: src/probability/kernel/measurable_integral.lean
+    theorems:
+    - measure_theory.strongly_measurable.integral_kernel_prod_right'
+  - path: src/topology/uniform_space/basic.lean
+    theorems:
+    - symm_of_uniformity
+    - to_topological_space_inf
+  - path: src/ring_theory/multiplicity.lean
+    theorems:
+    - multiplicity.multiplicity_add_of_gt
+    - multiplicity.multiplicity_pow_self_of_prime
+  - path: src/data/set/n_ary.lean
+    theorems:
+    - set.image2_subset_right
+  - path: src/analysis/normed/field/infinite_sum.lean
+    theorems:
+    - summable_norm_sum_mul_antidiagonal_of_summable_norm
+  - path: src/topology/list.lean
+    theorems:
+    - vector.tendsto_cons
+  - path: src/data/nat/factorization/basic.lean
+    theorems:
+    - nat.factorization_le_factorization_mul_left
+    - nat.dvd_ord_proj_of_dvd
+  - path: src/category_theory/subobject/comma.lean
+    theorems:
+    - category_theory.costructured_arrow.project_quotient_factors
+  - path: src/algebra/monoid_algebra/division.lean
+    theorems:
+    - add_monoid_algebra.of'_mul_div_of
+    - add_monoid_algebra.mul_of'_mod_of
+    - add_monoid_algebra.zero_div_of
+  - path: src/category_theory/abelian/non_preadditive.lean
+    theorems:
+    - category_theory.non_preadditive_abelian.neg_neg
+    - category_theory.non_preadditive_abelian.sub_zero
+  - path: src/data/list/nodup_equiv_fin.lean
+    theorems:
+    - list.sublist_of_order_embedding_nth_eq
+  - path: src/tactic/omega/misc.lean
+    theorems:
+    - omega.pred_mono_2
+  - path: src/data/real/sqrt.lean
+    theorems:
+    - real.sqrt_zero
+    - real.sqrt_le_sqrt
+  - path: src/number_theory/pythagorean_triples.lean
+    theorems:
+    - pythagorean_triple_comm
+    - pythagorean_triple.ne_zero_of_coprime
+  - path: src/linear_algebra/matrix/nonsingular_inverse.lean
+    theorems:
+    - matrix.det_nonsing_inv_mul_det
+    - matrix.inv_of_eq_nonsing_inv
+  - path: src/analysis/calculus/implicit.lean
+    theorems:
+    - has_strict_fderiv_at.eq_implicit_function_of_complemented
+  - path: src/analysis/normed_space/lp_equiv.lean
+    theorems:
+    - coe_add_equiv_lp_pi_Lp
+  - path: src/analysis/normed_space/star/multiplier.lean
+    theorems:
+    - double_centralizer.norm_fst
+    - double_centralizer.nat_cast_fst
+    - double_centralizer.pow_fst
+  - path: src/order/succ_pred/interval_succ.lean
+    theorems:
+    - antitone.pairwise_disjoint_on_Ioc_succ
+  - path: src/category_theory/idempotents/karoubi.lean
+    theorems:
+    - category_theory.idempotents.karoubi.eq_to_hom_f
+  - path: src/computability/turing_machine.lean
+    theorems:
+    - "turing.reaches\u2080.tail'"
+    - turing.blank_rel.refl
+    - turing.TM2to1.tr_respects
+    - "turing.tape.map_mk\u2081"
+  - path: src/order/rel_iso/basic.lean
+    theorems:
+    - rel_hom.coe_fn_mk
+    - rel_iso.ext_iff
+    - rel_embedding.is_preorder
+  - path: src/algebra/hom/group.lean
+    theorems:
+    - monoid_hom.inv_apply
+    - monoid_hom.comp_mul
+    - monoid_hom.ext
+  - path: src/linear_algebra/contraction.lean
+    theorems:
+    - rtensor_hom_equiv_hom_rtensor_apply
+  - path: src/data/nat/cast/basic.lean
+    theorems:
+    - nat.cast_commute
+    - to_lex_nat_cast
+  - path: src/topology/algebra/module/linear_pmap.lean
+    theorems:
+    - linear_pmap.is_closable_iff_exists_closed_extension
+  - path: src/algebra/lie/basic.lean
+    theorems:
+    - lie_module_hom.map_neg
+    - lie_skew
+    - lie_module_hom.coe_add
+  - path: src/analysis/special_functions/exp.lean
+    theorems:
+    - real.is_bounded_under_le_exp_comp
+    - filter.tendsto.exp
+    - continuous_on.cexp
+  - path: src/ring_theory/tensor_product.lean
+    theorems:
+    - subalgebra.finite_dimensional_sup
+  - path: src/ring_theory/witt_vector/defs.lean
+    theorems:
+    - witt_vector.one_coeff_zero
+    - witt_vector.zero_coeff
+  - path: src/topology/algebra/with_zero_topology.lean
+    theorems:
+    - with_zero_topology.order_closed_topology
+  - path: src/order/succ_pred/limit.lean
+    theorems:
+    - order.not_is_succ_limit_succ_of_not_is_max
+  - path: src/ring_theory/polynomial/basic.lean
+    theorems:
+    - ideal.mem_map_C_iff
+    - polynomial.linear_independent_powers_iff_aeval
+    - polynomial.sup_ker_aeval_le_ker_aeval_mul
+    - polynomial.monic.geom_sum'
+  - path: src/measure_theory/integral/circle_integral.lean
+    theorems:
+    - circle_map_mem_closed_ball
+    - abs_circle_map_zero
+  - path: src/algebra/homology/exact.lean
+    theorems:
+    - category_theory.epi_iff_exact_zero_right
+  - path: src/group_theory/submonoid/pointwise.lean
+    theorems:
+    - "add_submonoid.le_pointwise_smul_iff\u2080"
+  - path: src/category_theory/path_category.lean
+    theorems:
+    - category_theory.paths.lift_unique
+    - category_theory.paths.lift_to_path
+  - path: src/topology/metric_space/hausdorff_dimension.lean
+    theorems:
+    - dimH_le_of_hausdorff_measure_ne_top
+  - path: src/analysis/convex/exposed.lean
+    theorems:
+    - mem_exposed_points_iff_exposed_singleton
+    - is_exposed.subset
+  - path: src/data/polynomial/partial_fractions.lean
+    theorems:
+    - div_eq_quo_add_sum_rem_div
+  - path: src/data/fintype/sum.lean
+    theorems:
+    - fintype.card_subtype_or
+  - path: src/data/list/intervals.lean
+    theorems:
+    - list.Ico.eq_cons
+    - list.Ico.succ_top
+    - list.Ico.filter_lt_of_le_bot
+  - path: src/algebra/associated.lean
+    theorems:
+    - associates.quot_mk_eq_mk
+    - associates.mk_eq_mk_iff_associated
+    - prime.not_square
+    - eq_of_prime_pow_eq
+    - associates.is_unit_iff_eq_one
+  - path: src/data/set/intervals/proj_Icc.lean
+    theorems:
+    - set.strict_mono_on_proj_Icc
+    - set.proj_Icc_eq_left
+  - path: src/algebra/module/pid.lean
+    theorems:
+    - module.p_pow_smul_lift
+  - path: src/control/traversable/basic.lean
+    theorems:
+    - applicative_transformation.preserves_map'
+  - path: src/analysis/convex/cone/basic.lean
+    theorems:
+    - convex.subset_to_cone
+    - inner_dual_cone_union
+    - convex_cone.mem_zero
+    - convex_cone.smul_mem_iff
+    - convex_cone.salient_positive
+    - convex_hull_to_cone_eq_Inf
+  - path: src/ring_theory/witt_vector/frobenius_fraction_field.lean
+    theorems:
+    - witt_vector.recursion_main.root_exists
+  - path: src/topology/algebra/uniform_group.lean
+    theorems:
+    - uniform_continuous.inv
+    - uniform_group.to_uniform_space_eq
+  - path: src/ring_theory/mv_polynomial/weighted_homogeneous.lean
+    theorems:
+    - mv_polynomial.weighted_homogeneous_component_C_mul
+  - path: src/probability/conditional_probability.lean
+    theorems:
+    - probability_theory.cond_is_probability_measure
+  - path: src/category_theory/limits/exact_functor.lean
+    theorems:
+    - category_theory.LeftExactFunctor.forget_obj
+  - path: src/category_theory/monoidal/center.lean
+    theorems:
+    - category_theory.center.tensor_f
+  - path: src/model_theory/syntax.lean
+    theorems:
+    - first_order.language.Lhom.mem_on_Theory
+  - path: src/dynamics/minimal.lean
+    theorems:
+    - is_open.exists_smul_mem
+  - path: src/data/set/lattice.lean
+    theorems:
+    - set.subset_sInter_iff
+    - set.bUnion_and
+    - "set.Union\u2082_eq_univ_iff"
+    - "set.compl_Inter\u2082"
+    - set.Union_ite
+    - set.bInter_and
+  - path: src/algebra/hom/non_unital_alg.lean
+    theorems:
+    - non_unital_alg_hom.congr_fun
+  - path: src/ring_theory/polynomial/eisenstein/basic.lean
+    theorems:
+    - polynomial.dvd_pow_nat_degree_of_aeval_eq_zero
+  - path: src/measure_theory/constructions/prod.lean
+    theorems:
+    - measure_theory.set_integral_prod
+    - measure_theory.measure.prod_eq_generate_from
+  - path: src/number_theory/bernoulli.lean
+    theorems:
+    - bernoulli_spec'
+  - path: src/linear_algebra/finsupp.lean
+    theorems:
+    - finsupp.disjoint_supported_supported
+    - submodule.finsupp_sum_mem
+  - path: src/ring_theory/trace.lean
+    theorems:
+    - algebra.trace_form_to_matrix
+  - path: src/geometry/manifold/algebra/left_invariant_derivation.lean
+    theorems:
+    - left_invariant_derivation.map_sub
+    - left_invariant_derivation.coe_derivation
+  - path: src/analysis/normed_space/enorm.lean
+    theorems:
+    - enorm.coe_max
+  - path: src/analysis/special_functions/exp_deriv.lean
+    theorems:
+    - differentiable.exp
+  - path: src/logic/equiv/local_equiv.lean
+    theorems:
+    - local_equiv.is_image.of_image_eq
+    - local_equiv.prod_coe
+  - path: src/analysis/normed_space/lp_space.lean
+    theorems:
+    - lp.norm_single
+    - lp.norm_nonneg'
+  - path: src/topology/fiber_bundle/constructions.lean
+    theorems:
+    - trivialization.prod.left_inv
+  - path: src/analysis/normed_space/int.lean
+    theorems:
+    - int.nnnorm_coe_units
+  - path: src/data/polynomial/degree/lemmas.lean
+    theorems:
+    - polynomial.nat_degree_C_mul
+    - polynomial.coeff_pow_of_nat_degree_le
+    - polynomial.nat_degree_C_mul_le
+  - path: src/order/basic.lean
+    theorems:
+    - le_of_le_of_eq
+    - decidable.le_iff_eq_or_lt
+    - le_of_eq_of_le'
+    - subrelation_iff_le
+  - path: src/data/nat/fib.lean
+    theorems:
+    - nat.fib_gcd
+  - path: src/geometry/manifold/vector_bundle/basic.lean
+    theorems:
+    - bundle.cont_mdiff_at_total_space
+  - path: src/algebra/star/big_operators.lean
+    theorems:
+    - star_prod
+  - path: src/group_theory/free_group.lean
+    theorems:
+    - free_group.red.append_append
+    - free_group.mul_bind
+    - free_group.red.step.inv_rev
+    - free_group.lift.of
+  - path: src/topology/algebra/filter_basis.lean
+    theorems:
+    - group_filter_basis.nhds_one_eq
+  - path: src/data/nat/nth.lean
+    theorems:
+    - nat.nth_mem_of_infinite
+  - path: src/data/int/bitwise.lean
+    theorems:
+    - int.shiftl_coe_nat
+    - int.bodd_bit1
+  - path: src/linear_algebra/matrix/transvection.lean
+    theorems:
+    - matrix.mul_transvection_apply_of_ne
+  - path: src/order/well_founded_set.lean
+    theorems:
+    - pi.is_pwo
+    - set.is_pwo.insert
+    - set.partially_well_ordered_on.iff_not_exists_is_min_bad_seq
+  - path: src/algebra/is_prime_pow.lean
+    theorems:
+    - nat.disjoint_divisors_filter_prime_pow
+  - path: src/ring_theory/integral_closure.lean
+    theorems:
+    - normalize_scale_roots_monic
+    - is_field_of_is_integral_of_is_field'
+    - is_integral_algebra_map_iff
+    - is_integral_of_mem_closure''
+    - is_integral_of_noetherian
+  - path: src/logic/relation.lean
+    theorems:
+    - reflexive_ne_imp_iff
+    - symmetric.comap
+  - path: src/geometry/manifold/mfderiv.lean
+    theorems:
+    - mdifferentiable_at.const_smul
+    - has_mfderiv_at.mfderiv
+    - local_homeomorph.mdifferentiable.mfderiv_bijective
+  - path: src/algebra/direct_sum/module.lean
+    theorems:
+    - direct_sum.is_internal.submodule_supr_eq_top
+  - path: src/data/finset/pointwise.lean
+    theorems:
+    - finset.one_mem_div_iff
+    - finset.zero_smul_subset
+    - finset.card_smul_finset
+  - path: src/linear_algebra/alternating.lean
+    theorems:
+    - alternating_map.curry_left_comp_alternating_map
+    - alternating_map.coe_multilinear_map
+  - path: src/group_theory/sylow.lean
+    theorems:
+    - sylow.dvd_card_of_dvd_card
+    - is_p_group.exists_le_sylow
+  - path: src/data/nat/squarefree.lean
+    theorems:
+    - nat.squarefree.ext_iff
+  - path: src/analysis/special_functions/integrals.lean
+    theorems:
+    - integral_cos_pow_three
+    - integral_sin_pow_antitone
+  - path: src/measure_theory/measurable_space_def.lean
+    theorems:
+    - measurable_set.inter
+    - measurable_set.disjointed
+    - measurable_space.generate_from_insert_empty
+    - measurable.comp
+  - path: src/topology/inseparable.lean
+    theorems:
+    - is_open.not_inseparable
+  - path: src/data/lazy_list/basic.lean
+    theorems:
+    - lazy_list.append_nil
+  - path: src/algebra/order/pointwise.lean
+    theorems:
+    - Inf_mul
+  - path: src/order/compactly_generated.lean
+    theorems:
+    - complemented_lattice_of_is_atomistic
+    - directed_on.inf_Sup_eq
+  - path: src/data/set/prod.lean
+    theorems:
+    - set.off_diag_mono
+    - set.mk_mem_prod
+  - path: src/field_theory/abel_ruffini.lean
+    theorems:
+    - splits_X_pow_sub_one_of_X_pow_sub_C
+    - gal_X_pow_is_solvable
+    - solvable_by_rad.induction1
+  - path: src/linear_algebra/prod.lean
+    theorems:
+    - submodule.prod_eq_top_iff
+  - path: src/algebra/lie/matrix.lean
+    theorems:
+    - lie_equiv_matrix'_apply
+  - path: src/algebra/group/prod.lean
+    theorems:
+    - mul_hom.coe_snd
+    - monoid_hom.comp_coprod
+    - monoid_hom.prod_apply
+  - path: src/data/real/golden_ratio.lean
+    theorems:
+    - one_sub_gold_conj
+    - gold_pos
+  - path: src/analysis/inner_product_space/projection.lean
+    theorems:
+    - linear_isometry.map_orthogonal_projection'
+  - path: src/probability/process/stopping.lean
+    theorems:
+    - measure_theory.is_stopping_time.measurable_set_eq_of_countable'
+    - measure_theory.prog_measurable.stopped_process
+    - measure_theory.is_stopping_time.measurable_set_lt_of_is_lub
+    - measure_theory.is_stopping_time.measurable_set_eq_stopping_time
+  - path: src/algebra/graded_monoid.lean
+    theorems:
+    - list.dprod_monoid
+    - set_like.list_dprod_eq
+  - path: src/ring_theory/adjoin/basic.lean
+    theorems:
+    - algebra.adjoin_union_coe_submodule
+  - path: src/logic/equiv/option.lean
+    theorems:
+    - equiv.option_congr_symm
+    - equiv.remove_none_none
+  - path: src/topology/partition_of_unity.lean
+    theorems:
+    - bump_covering.to_partition_of_unity_zero_of_zero
+  - path: src/algebra/big_operators/ring.lean
+    theorems:
+    - finset.prod_sub_ordered
+  - path: src/linear_algebra/invariant_basis_number.lean
+    theorems:
+    - card_le_of_injective
+  - path: src/representation_theory/Action.lean
+    theorems:
+    - Action.functor_category_equivalence.inverse_def
+    - "category_theory.monoidal_functor.map_Action_\u03BC_inv_hom"
+  - path: src/data/option/basic.lean
+    theorems:
+    - option.bind_some'
+  - path: src/ring_theory/ideal/operations.lean
+    theorems:
+    - submodule.infi_colon_supr
+    - ideal.is_radical.comap
+    - ideal.comap_map_comap
+    - ideal.mul_mono
+    - ideal.le_map_of_comap_le_of_surjective
+    - ideal.prod_eq_bot
+  - path: src/data/finsupp/to_dfinsupp.lean
+    theorems:
+    - sigma_finsupp_equiv_dfinsupp_single
+  - path: src/linear_algebra/affine_space/midpoint.lean
+    theorems:
+    - midpoint_sub_add
+  - path: src/ring_theory/fractional_ideal.lean
+    theorems:
+    - fractional_ideal.mem_singleton_mul
+    - fractional_ideal.mk'_mul_coe_ideal_eq_coe_ideal
+    - fractional_ideal.map_add
+    - fractional_ideal.div_span_singleton
+    - fractional_ideal.canonical_equiv_flip
+    - fractional_ideal.span_singleton_zero
+  - path: src/topology/instances/nat.lean
+    theorems:
+    - nat.preimage_ball
+  - path: src/data/set/intervals/unordered_interval.lean
+    theorems:
+    - set.uIcc_subset_uIcc_iff_le'
+    - set.forall_uIoc_iff
+  - path: src/ring_theory/is_tensor_product.lean
+    theorems:
+    - algebra.is_pushout.symm
+  - path: src/field_theory/subfield.lean
+    theorems:
+    - subfield.zpow_mem
+  - path: src/analysis/calculus/lhopital.lean
+    theorems:
+    - deriv.lhopital_zero_at_bot_on_Iio
+  - path: src/data/rel.lean
+    theorems:
+    - rel.preimage_mono
+  - path: src/algebra/lie/abelian.lean
+    theorems:
+    - lie_module.mem_ker
+  - path: src/ring_theory/is_adjoin_root.lean
+    theorems:
+    - is_adjoin_root_monic.coeff_injective
+    - is_adjoin_root.aequiv_root
+  - path: src/field_theory/polynomial_galois_group.lean
+    theorems:
+    - polynomial.gal.card_of_separable
+  - path: src/topology/filter.lean
+    theorems:
+    - filter.tendsto_nhds
+  - path: src/ring_theory/valuation/valuation_subring.lean
+    theorems:
+    - valuation_subring.valuation_lt_one_or_eq_one
+  - path: src/ring_theory/subsemiring/basic.lean
+    theorems:
+    - ring_hom.sclosure_preimage_le
+    - subsemiring.copy_eq
+  - path: src/order/partition/equipartition.lean
+    theorems:
+    - finpartition.is_equipartition.average_le_card_part
+  - path: src/measure_theory/integral/riesz_markov_kakutani.lean
+    theorems:
+    - riesz_content_aux_sup_le
+  - path: src/algebra/group/ext.lean
+    theorems:
+    - right_cancel_monoid.ext
+  - path: src/ring_theory/non_zero_divisors.lean
+    theorems:
+    - mul_left_mem_non_zero_divisors_eq_zero_iff
+  - path: src/data/nat/part_enat.lean
+    theorems:
+    - part_enat.some_eq_coe
+    - part_enat.get_coe
+  - path: src/analysis/inner_product_space/two_dim.lean
+    theorems:
+    - orientation.inner_right_angle_rotation_swap
+  - path: src/category_theory/limits/shapes/types.lean
+    theorems:
+    - category_theory.limits.types.binary_product_cone_snd
+  - path: src/measure_theory/function/l2_space.lean
+    theorems:
+    - measure_theory.L2.smul_left'
+  - path: src/field_theory/intermediate_field.lean
+    theorems:
+    - intermediate_field.range_val
+  - path: src/algebra/indicator_function.lean
+    theorems:
+    - set.indicator_nonpos_le_indicator
+  - path: src/geometry/manifold/smooth_manifold_with_corners.lean
+    theorems:
+    - ext_chart_at_source
+    - smooth_manifold_with_corners.chart_mem_maximal_atlas
+    - ext_chart_at_target_mem_nhds_within
+    - model_with_corners.continuous_within_at_symm
+    - ext_chart_at_preimage_mem_nhds_within
+  - path: src/group_theory/subgroup/pointwise.lean
+    theorems:
+    - subgroup.smul_closure
+  - path: src/algebraic_geometry/elliptic_curve/point.lean
+    theorems:
+    - weierstrass_curve.point.some_add_some_of_Y_eq
+    - weierstrass_curve.add_polynomial_eq
+  - path: src/data/real/basic.lean
+    theorems:
+    - real.mk_near_of_forall_near
+    - real.cauchy_zero
+    - real.mk_inf
+  - path: src/algebra/euclidean_domain/basic.lean
+    theorems:
+    - euclidean_domain.div_one
+  - path: src/data/int/basic.lean
+    theorems:
+    - int.pred_neg_pred
+  - path: src/data/matrix/kronecker.lean
+    theorems:
+    - matrix.kronecker_map_smul_left
+    - matrix.inv_kronecker
+  - path: src/topology/algebra/order/intermediate_value.lean
+    theorems:
+    - is_preconnected.intermediate_value_Iic
+  - path: src/analysis/special_functions/trigonometric/inverse.lean
+    theorems:
+    - real.maps_to_sin_Ioo
+  - path: src/category_theory/bicategory/functor.lean
+    theorems:
+    - category_theory.pseudofunctor.to_oplax_map_comp
+  - path: src/group_theory/perm/sign.lean
+    theorems:
+    - equiv.perm.perm_inv_on_of_perm_on_finite
+    - equiv.perm.sign_swap
+  - path: src/algebra/continued_fractions/basic.lean
+    theorems:
+    - generalized_continued_fraction.pair.coe_to_generalized_continued_fraction_pair
+  - path: src/analysis/calculus/cont_diff_def.lean
+    theorems:
+    - fderiv_iterated_fderiv
+    - cont_diff_iff_continuous_differentiable
+    - has_ftaylor_series_up_to_succ_iff_right
+  - path: src/group_theory/semidirect_product.lean
+    theorems:
+    - semidirect_product.right_hom_surjective
+  - path: src/ring_theory/roots_of_unity.lean
+    theorems:
+    - roots_of_unity.coe_pow
+    - mem_roots_of_unity'
+  - path: src/group_theory/quotient_group.lean
+    theorems:
+    - quotient_group.monoid_hom_ext
+    - quotient_group.map_map
+    - quotient_group.lift_mk
+  - path: src/data/list/pairwise.lean
+    theorems:
+    - list.pairwise_join
+  - path: src/algebra/star/subalgebra.lean
+    theorems:
+    - star_subalgebra.gc
+    - star_subalgebra.adjoin_eq_star_closure_adjoin
+    - star_subalgebra.coe_bot
+  - path: src/linear_algebra/unitary_group.lean
+    theorems:
+    - matrix.unitary_group.star_mul_self
+  - path: src/tactic/abel.lean
+    theorems:
+    - tactic.abel.subst_into_smul
+    - tactic.abel.const_add_termg
+  - path: src/analysis/normed_space/bounded_linear_maps.lean
+    theorems:
+    - is_bounded_bilinear_map.continuous_right
+    - is_bounded_bilinear_map.is_bounded_linear_map_right
+  - path: src/topology/locally_constant/algebra.lean
+    theorems:
+    - locally_constant.coe_one
+  - path: src/topology/algebra/module/character_space.lean
+    theorems:
+    - weak_dual.character_space.coe_to_clm
+  - path: src/algebra/ne_zero.lean
+    theorems:
+    - ne_zero.of_pos
+  - path: src/measure_theory/integral/bochner.lean
+    theorems:
+    - measure_theory.mul_meas_ge_le_integral_of_nonneg
+    - measure_theory.integral_zero
+  - path: src/linear_algebra/linear_independent.lean
+    theorems:
+    - linear_independent_empty_type
+    - surjective_of_linear_independent_of_span
+  - path: src/geometry/euclidean/basic.lean
+    theorems:
+    - euclidean_geometry.dist_affine_combination
+  - path: src/data/seq/seq.lean
+    theorems:
+    - stream.seq.mem_map
+  - path: src/category_theory/limits/constructions/binary_products.lean
+    theorems:
+    - has_binary_products_of_has_terminal_and_pullbacks
+  - path: src/measure_theory/function/ae_eq_of_integral.lean
+    theorems:
+    - measure_theory.ae_le_of_forall_set_integral_le
+  - path: src/algebra/algebra/operations.lean
+    theorems:
+    - submodule.mul_le_mul_left
+  - path: src/data/mv_polynomial/equiv.lean
+    theorems:
+    - mv_polynomial.eval_eq_eval_mv_eval'
+  - path: src/tactic/push_neg.lean
+    theorems:
+    - push_neg.not_implies_eq
+    - imp_of_not_imp_not
+  - path: src/geometry/manifold/algebra/monoid.lean
+    theorems:
+    - smooth_finprod_cond
+  - path: src/data/matrix/pequiv.lean
+    theorems:
+    - pequiv.equiv_to_pequiv_to_matrix
+  - path: src/data/pfun.lean
+    theorems:
+    - pfun.comp_assoc
+    - pfun.dom_to_subtype
+  - path: src/analysis/bounded_variation.lean
+    theorems:
+    - evariation_on.mono
+  - path: src/category_theory/limits/preserves/shapes/biproducts.lean
+    theorems:
+    - category_theory.functor.biprod_comparison'_comp_biprod_comparison
+  - path: src/algebra/group_power/order.lean
+    theorems:
+    - le_max_of_sq_le_mul
+    - sq_nonneg
+    - one_le_sq_iff
+    - sq_lt_one_iff
+  - path: src/combinatorics/simple_graph/metric.lean
+    theorems:
+    - simple_graph.dist_comm_aux
+  - path: src/topology/homotopy/path.lean
+    theorems:
+    - path.homotopic.refl
+  - path: src/data/finset/sups.lean
+    theorems:
+    - finset.forall_sups_iff
+    - finset.bUnion_image_sup_right
+  - path: src/ring_theory/nilpotent.lean
+    theorems:
+    - commute.is_nilpotent_add
+  - path: src/data/bool/count.lean
+    theorems:
+    - list.chain'.count_ff_le_count_tt_add_one
+    - list.count_bnot_add_count
+  - path: src/algebra/algebra/equiv.lean
+    theorems:
+    - alg_equiv.injective
+    - alg_equiv.aut_congr_refl
+  - path: src/data/set/finite.lean
+    theorems:
+    - set.card_lt_card
+    - set.finite_image_fst_and_snd_iff
+  - path: src/linear_algebra/matrix/to_lin.lean
+    theorems:
+    - linear_map.to_matrix_apply'
+    - matrix.to_lin_symm
+    - linear_map.to_matrix'_mul
+  - path: src/linear_algebra/affine_space/finite_dimensional.lean
+    theorems:
+    - coplanar.finite_dimensional_vector_span
+    - affine_basis.finite_dimensional
+  - path: src/data/nat/bitwise.lean
+    theorems:
+    - nat.land_zero
+    - nat.lor_assoc
+  - path: src/analysis/box_integral/partition/basic.lean
+    theorems:
+    - box_integral.prepartition.Union_eq_empty
+  - path: src/ring_theory/witt_vector/mul_coeff.lean
+    theorems:
+    - witt_vector.mul_poly_of_interest_aux3
+  - path: src/data/int/dvd/pow.lean
+    theorems:
+    - int.dvd_of_pow_dvd
+  - path: src/set_theory/ordinal/exponential.lean
+    theorems:
+    - ordinal.log_of_left_le_one
+  - path: src/algebra/continued_fractions/continuants_recurrence.lean
+    theorems:
+    - generalized_continued_fraction.denominators_recurrence
+  - path: src/algebra/category/Algebra/basic.lean
+    theorems:
+    - Algebra.id_apply
+  - path: src/measure_theory/function/egorov.lean
+    theorems:
+    - measure_theory.egorov.not_convergent_seq_antitone
+  - path: src/topology/continuous_function/zero_at_infty.lean
+    theorems:
+    - zero_at_infty_continuous_map.coe_comp_to_continuous_fun
+  - path: src/data/semiquot.lean
+    theorems:
+    - semiquot.map_def
+  - path: src/analysis/convex/caratheodory.lean
+    theorems:
+    - caratheodory.mem_convex_hull_erase
+  - path: src/analysis/box_integral/partition/split.lean
+    theorems:
+    - box_integral.prepartition.split_many_empty
+  - path: src/linear_algebra/quadratic_form/basic.lean
+    theorems:
+    - quadratic_form.polar_neg_right
+    - quadratic_form.congr_fun
+  - path: src/topology/instances/ereal.lean
+    theorems:
+    - ereal.tendsto_nhds_top_iff_real
+    - ereal.continuous_neg
+  - path: src/data/finset/noncomm_prod.lean
+    theorems:
+    - multiset.noncomm_fold_cons
+    - multiset.noncomm_prod_map_aux
+    - multiset.noncomm_prod_eq_prod
+  - path: src/order/boolean_algebra.lean
+    theorems:
+    - inf_compl_eq_bot'
+    - eq_compl_iff_is_compl
+  - path: src/model_theory/fraisse.lean
+    theorems:
+    - first_order.language.equiv.age_eq_age
+    - first_order.language.embedding.age_subset_age
+    - first_order.language.age_direct_limit
+  - path: src/number_theory/l_series.lean
+    theorems:
+    - nat.arithmetic_function.l_series_add
+  - path: src/analysis/asymptotics/superpolynomial_decay.lean
+    theorems:
+    - asymptotics.superpolynomial_decay_zero
+  - path: src/data/finset/pairwise.lean
+    theorems:
+    - set.pairwise_disjoint.elim_finset
+    - list.pairwise_of_coe_to_finset_pairwise
+  - path: src/algebra/homology/homotopy.lean
+    theorems:
+    - prev_d_nat
+  - path: src/order/lattice.lean
+    theorems:
+    - inf_sup_left
+    - monotone.map_inf_le
+  - path: src/topology/quasi_separated.lean
+    theorems:
+    - is_quasi_separated.image_of_embedding
+  - path: src/measure_theory/integral/peak_function.lean
+    theorems:
+    - tendsto_set_integral_peak_smul_of_integrable_on_of_continuous_within_at_aux
+  - path: src/topology/uniform_space/compact.lean
+    theorems:
+    - is_compact.uniform_continuous_at_of_continuous_at
+  - path: src/probability/moments.lean
+    theorems:
+    - probability_theory.ae_strongly_measurable_exp_mul_sum
+    - probability_theory.indep_fun.mgf_add
+  - path: src/probability/independence/zero_one.lean
+    theorems:
+    - probability_theory.indep_supr_directed_limsup
+  - path: src/data/finset/image.lean
+    theorems:
+    - finset.mem_image
+    - finset.coe_image
+    - finset.image_eq_empty
+    - finset.mem_range_iff_mem_finset_range_of_mod_eq'
+  - path: src/algebra/monoid_algebra/grading.lean
+    theorems:
+    - add_monoid_algebra.mem_grade_by_iff
+  - path: src/ring_theory/ideal/basic.lean
+    theorems:
+    - ideal.mem_span_pair
+    - ideal.sum_pow_mem_span_pow
+    - ideal.span_le
+  - path: src/analysis/normed_space/star/gelfand_duality.lean
+    theorems:
+    - weak_dual.character_space.mem_spectrum_iff_exists
+  - path: src/algebra/group_with_zero/units/basic.lean
+    theorems:
+    - units.mk0_one
+  - path: src/data/multiset/finset_ops.lean
+    theorems:
+    - multiset.mem_ndinsert_self
+  - path: src/topology/sheaves/stalks.lean
+    theorems:
+    - Top.presheaf.mono_iff_stalk_mono
+  - path: src/topology/category/UniformSpace.lean
+    theorems:
+    - UniformSpace.coe_mk
+  - path: src/topology/algebra/open_subgroup.lean
+    theorems:
+    - open_subgroup.mem_comap
+    - submodule.is_open_mono
+  - path: src/topology/uniform_space/cauchy.lean
+    theorems:
+    - uniform_space.complete_of_cauchy_seq_tendsto
+    - cauchy_seq.subseq_subseq_mem
+  - path: src/ring_theory/finite_type.lean
+    theorems:
+    - add_monoid_algebra.mv_polynomial_aeval_of_surjective_of_closure
+    - add_monoid_algebra.fg_of_finite_type
+  - path: src/algebra/star/basic.lean
+    theorems:
+    - star_nat_cast
+  - path: src/data/list/lattice.lean
+    theorems:
+    - list.inter_subset_left
+  - path: src/analysis/locally_convex/abs_convex.lean
+    theorems:
+    - gauge_seminorm_family_ball
+  - path: src/topology/sheaves/sheaf.lean
+    theorems:
+    - Top.sheaf.id_app
+  - path: src/topology/partial.lean
+    theorems:
+    - ptendsto'_nhds
+  - path: src/linear_algebra/clifford_algebra/even_equiv.lean
+    theorems:
+    - clifford_algebra.equiv_even.neg_e0_mul_v
+    - "clifford_algebra.even_to_neg_\u03B9"
+  - path: src/linear_algebra/dual.lean
+    theorems:
+    - module.eval_equiv_to_linear_map
+  - path: src/topology/order.lean
+    theorems:
+    - eq_bot_of_singletons_open
+    - continuous_le_rng
+  - path: src/analysis/normed/group/seminorm.lean
+    theorems:
+    - nonarch_add_group_norm.apply_one
+    - nonarch_add_group_seminorm.smul_apply
+  - path: src/combinatorics/simple_graph/prod.lean
+    theorems:
+    - simple_graph.walk.of_box_prod_left_box_prod_right
+  - path: src/probability/cond_count.lean
+    theorems:
+    - probability_theory.cond_count_inter'
+  - path: src/analysis/complex/operator_norm.lean
+    theorems:
+    - complex.of_real_clm_nnnorm
+  - path: src/algebra/homology/quasi_iso.lean
+    theorems:
+    - homotopy_equiv.to_quasi_iso_inv
+  - path: src/analysis/normed_space/compact_operator.lean
+    theorems:
+    - is_compact_operator.continuous
+    - is_compact_operator.cod_restrict
+  - path: src/set_theory/ordinal/basic.lean
+    theorems:
+    - ordinal.lift.principal_seg_coe
+    - ordinal.typein.principal_seg_coe
+    - cardinal.lift_ord
+    - ordinal.card_type
+  - path: src/order/monotone/odd.lean
+    theorems:
+    - monotone_of_odd_of_monotone_on_nonneg
+  - path: src/order/galois_connection.lean
+    theorems:
+    - galois_connection.compose
+    - "galois_connection.l_supr\u2082"
+  - path: src/data/quot.lean
+    theorems:
+    - trunc.lift_mk
+    - "quot.induction_on\u2082"
+  - path: src/data/finsupp/multiset.lean
+    theorems:
+    - finsupp.to_multiset_zero
+  - path: src/linear_algebra/charpoly/basic.lean
+    theorems:
+    - linear_map.charpoly_def
+  - path: src/analysis/normed_space/M_structure.lean
+    theorems:
+    - is_Lprojection.join
+    - is_Lprojection.coe_top
+  - path: src/number_theory/liouville/liouville_with.lean
+    theorems:
+    - liouville_with.mul_nat
+    - liouville_with.nat_mul_iff
+    - liouville_with.ne_cast_int
+  - path: src/order/filter/pi.lean
+    theorems:
+    - filter.pi_ne_bot
+  - path: src/group_theory/complement.lean
+    theorems:
+    - subgroup.transfer_transversal_apply
+    - subgroup.mem_left_transversals.to_equiv_apply
+    - subgroup.is_complement'.card_mul
+  - path: src/topology/subset_properties.lean
+    theorems:
+    - is_compact_of_finite_subcover
+  - path: src/ring_theory/subring/basic.lean
+    theorems:
+    - ring_hom.map_range
+  - path: src/data/nat/choose/basic.lean
+    theorems:
+    - nat.choose_eq_zero_iff
+    - nat.add_choose_mul_factorial_mul_factorial
+  - path: src/analysis/special_functions/trigonometric/inverse_deriv.lean
+    theorems:
+    - real.has_deriv_within_at_arccos_Iic
+  - path: src/representation_theory/basic.lean
+    theorems:
+    - representation.as_module_equiv_map_smul
+    - representation.as_group_hom_apply
+  - path: src/set_theory/game/impartial.lean
+    theorems:
+    - pgame.impartial.add_self
+    - pgame.impartial_def
+    - pgame.impartial.lf_zero_iff
+  - path: src/number_theory/cyclotomic/basic.lean
+    theorems:
+    - cyclotomic_ring.adjoin_algebra_injective
+    - is_cyclotomic_extension.iff_union_singleton_one
+  - path: src/topology/locally_constant/basic.lean
+    theorems:
+    - is_locally_constant.is_clopen_fiber
+  - path: src/group_theory/group_action/conj_act.lean
+    theorems:
+    - conj_act.to_conj_act_zero
+  - path: src/data/set/pairwise/basic.lean
+    theorems:
+    - set.pairwise_iff_of_refl
+    - set.pairwise_disjoint_empty
+  - path: src/ring_theory/discrete_valuation_ring/tfae.lean
+    theorems:
+    - discrete_valuation_ring.tfae
+  - path: src/algebra/lie/ideal_operations.lean
+    theorems:
+    - lie_submodule.sup_lie
+  - path: src/algebra/lie/skew_adjoint.lean
+    theorems:
+    - skew_adjoint_lie_subalgebra_equiv_symm_apply
+  - path: src/representation_theory/Rep.lean
+    theorems:
+    - "Rep.of_\u03C1"
+  - path: src/field_theory/minpoly/is_integrally_closed.lean
+    theorems:
+    - minpoly.is_integrally_closed_dvd_iff
+  - path: src/analysis/calculus/dslope.lean
+    theorems:
+    - continuous_linear_map.dslope_comp
+  - path: src/analysis/normed_space/operator_norm.lean
+    theorems:
+    - "continuous_linear_map.le_op_norm\u2082"
+    - semilinear_map_class.bound_of_shell_semi_normed
+  - path: src/analysis/inner_product_space/dual.lean
+    theorems:
+    - inner_product_space.innerSL_norm
+  - path: src/algebra/parity.lean
+    theorems:
+    - odd.pow_neg_iff
+  - path: src/topology/sequences.lean
+    theorems:
+    - is_compact.is_seq_compact
+    - is_closed.is_seq_closed
+  - path: src/data/real/ereal.lean
+    theorems:
+    - ereal.coe_eq_one
+    - ereal.neg_bot
+  - path: src/data/int/cast/lemmas.lean
+    theorems:
+    - int.cast_lt
+  - path: src/linear_algebra/projection.lean
+    theorems:
+    - linear_map.is_proj.eq_conj_prod_map'
+    - linear_map.of_is_compl_smul
+  - path: src/combinatorics/quiver/cast.lean
+    theorems:
+    - quiver.hom.cast_eq_cast
+  - path: src/data/pi/algebra.lean
+    theorems:
+    - subsingleton.pi_mul_single_eq
+  - path: src/ring_theory/polynomial/cyclotomic/basic.lean
+    theorems:
+    - polynomial.int_cyclotomic_spec
+  - path: src/order/ideal.lean
+    theorems:
+    - order.ideal.mem_principal
+  - path: src/algebra/symmetrized.lean
+    theorems:
+    - sym_alg.unsym_injective
+    - sym_alg.unsym_neg
+  - path: src/linear_algebra/span.lean
+    theorems:
+    - submodule.span_le
+    - submodule.prod_top
+  - path: src/data/rbtree/find.lean
+    theorems:
+    - rbnode.mem_of_mem_exact
+  - path: src/category_theory/sites/grothendieck.lean
+    theorems:
+    - category_theory.grothendieck_topology.top_mem
+  - path: src/data/fun_like/equiv.lean
+    theorems:
+    - equiv_like.comp_injective
+  - path: src/category_theory/functor/epi_mono.lean
+    theorems:
+    - category_theory.functor.mono_map_iff_mono
+  - path: src/data/option/n_ary.lean
+    theorems:
+    - "option.map\u2082_map_left_anticomm"
+  - path: src/model_theory/elementary_maps.lean
+    theorems:
+    - first_order.language.elementary_embedding.coe_to_hom
+  - path: src/linear_algebra/determinant.lean
+    theorems:
+    - basis.det_units_smul_self
+    - linear_map.det_id
+  - path: src/topology/algebra/infinite_sum/basic.lean
+    theorems:
+    - pi.has_sum
+    - tsum_comm
+    - tsum_add_tsum_compl
+    - tsum_prod
+    - tsum_finset_bUnion_disjoint
+  - path: src/ring_theory/witt_vector/witt_polynomial.lean
+    theorems:
+    - witt_polynomial_eq_sum_C_mul_X_pow
+  - path: src/logic/equiv/set.lean
+    theorems:
+    - equiv.preimage_eq_iff_eq_image
+  - path: src/analysis/special_functions/pow_deriv.lean
+    theorems:
+    - has_deriv_at_of_real_cpow
+  - path: src/linear_algebra/affine_space/basis.lean
+    theorems:
+    - affine_basis.coe_reindex
+  - path: src/order/disjoint.lean
+    theorems:
+    - codisjoint.mono_right
+    - codisjoint_right_comm
+  - path: src/logic/equiv/fintype.lean
+    theorems:
+    - equiv.extend_subtype_apply_of_not_mem
+  - path: src/topology/algebra/nonarchimedean/adic_topology.lean
+    theorems:
+    - ideal.has_basis_nhds_adic
+  - path: src/algebra/polynomial/big_operators.lean
+    theorems:
+    - polynomial.nat_degree_list_prod_le
+  - path: src/analysis/specific_limits/normed.lean
+    theorems:
+    - tendsto_norm_at_top_at_top
+  - path: src/group_theory/coset.lean
+    theorems:
+    - subgroup.quotient_subgroup_of_map_of_le_apply_mk
+  - path: src/order/complete_boolean_algebra.lean
+    theorems:
+    - bsupr_inf_bsupr
+    - punit.Inf_eq
+  - path: src/topology/local_homeomorph.lean
+    theorems:
+    - local_homeomorph.image_source_inter_eq'
+    - local_homeomorph.eventually_nhds_within'
+  - path: src/order/compare.lean
+    theorems:
+    - cmp_of_dual
+  - path: src/analysis/convex/combination.lean
+    theorems:
+    - convex_hull_basis_eq_std_simplex
+    - finset.center_mass_ite_eq
+  - path: src/data/polynomial/module.lean
+    theorems:
+    - polynomial_module.eval_single
+  - path: src/ring_theory/adjoin_root.lean
+    theorems:
+    - adjoin_root.is_root_root
+  - path: src/category_theory/monoidal/natural_transformation.lean
+    theorems:
+    - category_theory.monoidal_nat_trans.comp_to_nat_trans
+  - path: src/combinatorics/hales_jewett.lean
+    theorems:
+    - combinatorics.line.prod_apply
+  - path: src/analysis/box_integral/partition/filter.lean
+    theorems:
+    - box_integral.integration_params.r_cond.min
+  - path: src/order/fixed_points.lean
+    theorems:
+    - order_hom.is_greatest_gfp
+    - order_hom.le_gfp
+  - path: src/analysis/special_functions/log/basic.lean
+    theorems:
+    - real.log_nat_eq_sum_factorization
+    - real.le_exp_log
+  - path: src/probability/martingale/borel_cantelli.lean
+    theorems:
+    - measure_theory.martingale.ae_not_tendsto_at_top_at_top
+  - path: src/number_theory/fermat4.lean
+    theorems:
+    - fermat_42.minimal_comm
+  - path: src/combinatorics/set_family/harris_kleitman.lean
+    theorems:
+    - is_lower_set.member_subfamily
+    - is_lower_set.member_subfamily_subset_non_member_subfamily
+  - path: src/analysis/convolution.lean
+    theorems:
+    - bdd_above.continuous_convolution_left_of_integrable
+  - path: src/measure_theory/covering/besicovitch.lean
+    theorems:
+    - besicovitch.ae_tendsto_rn_deriv
+  - path: src/order/iterate.lean
+    theorems:
+    - monotone.iterate_le_of_le
+  - path: src/analysis/convex/topology.lean
+    theorems:
+    - convex.combo_closure_interior_subset_interior
+  - path: src/algebra/module/injective.lean
+    theorems:
+    - module.Baer.extension_of.le_max
+  - path: src/algebra/lie/normalizer.lean
+    theorems:
+    - lie_subalgebra.le_normalizer
+  - path: src/data/is_R_or_C/basic.lean
+    theorems:
+    - is_R_or_C.conj_re
+    - is_R_or_C.of_real_sub
+    - is_R_or_C.inv_im
+  - path: src/algebraic_topology/fundamental_groupoid/basic.lean
+    theorems:
+    - path.homotopy.continuous_trans_assoc_reparam_aux
+  - path: src/algebra/group_with_zero/divisibility.lean
+    theorems:
+    - eq_of_forall_dvd
+  - path: src/algebra/order/ring/defs.lean
+    theorems:
+    - zero_le_mul_left
+  - path: src/data/list/zip.lean
+    theorems:
+    - list.map_prod_right_eq_zip
+  - path: src/ring_theory/witt_vector/init_tail.lean
+    theorems:
+    - witt_vector.select_is_poly
+  - path: src/algebra/ring/units.lean
+    theorems:
+    - units.divp_sub_divp
+  - path: src/algebra/group/type_tags.lean
+    theorems:
+    - multiplicative.to_add_symm_eq
+  - path: src/topology/algebra/star.lean
+    theorems:
+    - continuous_at_star
+  - path: src/probability/independence/basic.lean
+    theorems:
+    - probability_theory.indep.indep_sets
+    - probability_theory.indep_sets.bUnion
+  - path: src/category_theory/limits/final.lean
+    theorems:
+    - category_theory.functor.final.zigzag_of_eqv_gen_quot_rel
+  - path: src/data/finite/card.lean
+    theorems:
+    - finite.card_pos_iff
+  - path: src/ring_theory/laurent_series.lean
+    theorems:
+    - power_series.coe_smul
+  - path: src/ring_theory/localization/fraction_ring.lean
+    theorems:
+    - is_fraction_ring.lift_algebra_map
+  - path: src/algebra/group/conj.lean
+    theorems:
+    - is_conj.conjugates_of_eq
+    - is_conj_iff_conjugates_of_eq
+  - path: src/field_theory/perfect_closure.lean
+    theorems:
+    - perfect_closure.mk_zero
+  - path: src/combinatorics/colex.lean
+    theorems:
+    - colex.sdiff_le_sdiff_iff_le
+  - path: src/measure_theory/pi_system.lean
+    theorems:
+    - measurable_space.dynkin_system.generate_le
+  - path: src/order/filter/prod.lean
+    theorems:
+    - filter.prod_mem_prod
+  - path: src/data/int/log.lean
+    theorems:
+    - int.le_zpow_iff_clog_le
+  - path: src/category_theory/limits/types.lean
+    theorems:
+    - category_theory.limits.types.filtered_colimit.rel_of_quot_rel
+  - path: src/algebra/order/monoid/lemmas.lean
+    theorems:
+    - mul_lt_of_mul_lt_right
+  - path: src/topology/sets/compacts.lean
+    theorems:
+    - topological_space.compacts.coe_prod
+  - path: src/analysis/calculus/cont_diff.lean
+    theorems:
+    - norm_iterated_fderiv_comp_le
+    - cont_diff.clm_comp
+    - local_homeomorph.cont_diff_at_symm
+  - path: src/topology/metric_space/isometric_smul.lean
+    theorems:
+    - dist_div_right
+  - path: src/order/locally_finite.lean
+    theorems:
+    - finset.Iic_eq_Icc
+  - path: src/ring_theory/valuation/basic.lean
+    theorems:
+    - valuation.is_equiv.map
+    - add_valuation.is_equiv.symm
+  - path: src/number_theory/ramification_inertia.lean
+    theorems:
+    - ideal.factors.inertia_deg_ne_zero
+  - path: src/data/finset/card.lean
+    theorems:
+    - finset.card_pos
+    - finset.strong_induction_eq
+  - path: src/algebra/algebra/basic.lean
+    theorems:
+    - algebra.bit0_smul_bit1
+  - path: src/category_theory/subobject/lattice.lean
+    theorems:
+    - category_theory.subobject.inf_eq_map_pullback
+    - category_theory.subobject.inf_arrow_factors_right
+  - path: src/measure_theory/function/l1_space.lean
+    theorems:
+    - measure_theory.integrable.norm_to_L1_eq_lintegral_norm
+  - path: src/linear_algebra/matrix/circulant.lean
+    theorems:
+    - matrix.circulant_single_one
+  - path: src/measure_theory/covering/vitali_family.lean
+    theorems:
+    - vitali_family.frequently_filter_at_iff
+  - path: src/category_theory/limits/over.lean
+    theorems:
+    - category_theory.under.mono_iff_mono_right
+  - path: src/linear_algebra/bilinear_form.lean
+    theorems:
+    - bilin_form.is_alt.ortho_comm
+    - bilin_form.lin_mul_lin_comp_right
+    - bilin_form.is_Ortho.nondegenerate_iff_not_is_ortho_basis_self
+    - bilin_form.is_symm_zero
+  - path: src/number_theory/modular_forms/basic.lean
+    theorems:
+    - modular_form.one_coe_eq_one
+  - path: src/analysis/normed/group/pointwise.lean
+    theorems:
+    - closed_ball_mul_singleton
+  - path: src/group_theory/perm/cycle/basic.lean
+    theorems:
+    - equiv.perm.support_cycle_of_eq_nil_iff
+  - path: src/data/polynomial/degree/trailing_degree.lean
+    theorems:
+    - polynomial.trailing_monic.trailing_coeff
+  - path: src/logic/encodable/basic.lean
+    theorems:
+    - quotient.rep_spec
+  - path: src/set_theory/zfc/basic.lean
+    theorems:
+    - pSet.resp.equiv.symm
+  - path: src/data/dfinsupp/ne_locus.lean
+    theorems:
+    - dfinsupp.map_range_ne_locus_eq
+  - path: src/group_theory/free_abelian_group_finsupp.lean
+    theorems:
+    - free_abelian_group.to_finsupp_comp_to_free_abelian_group
+  - path: src/analysis/locally_convex/polar.lean
+    theorems:
+    - linear_map.polar_weak_closed
+  - path: src/linear_algebra/matrix/pos_def.lean
+    theorems:
+    - matrix.pos_semidef.submatrix
+  - path: src/group_theory/subsemigroup/membership.lean
+    theorems:
+    - subsemigroup.mem_Sup_of_mem
+    - subsemigroup.coe_Sup_of_directed_on
+  - path: src/data/list/alist.lean
+    theorems:
+    - alist.lookup_union_left
+    - alist.singleton_entries
+  - path: src/order/bounds/order_iso.lean
+    theorems:
+    - order_iso.upper_bounds_image
+  - path: src/ring_theory/coprime/basic.lean
+    theorems:
+    - is_coprime.of_mul_add_right_left
+    - is_coprime.map
+  - path: src/analysis/calculus/mean_value.lean
+    theorems:
+    - strict_mono_of_deriv_pos
+  - path: src/set_theory/ordinal/principal.lean
+    theorems:
+    - ordinal.principal_mul_one
+    - ordinal.op_eq_self_of_principal
+  - path: src/data/list/nat_antidiagonal.lean
+    theorems:
+    - list.nat.antidiagonal_succ'
+  - path: src/analysis/special_functions/compare_exp.lean
+    theorems:
+    - complex.is_exp_cmp_filter.of_bounded_under_abs_im
+  - path: src/measure_theory/group/integration.lean
+    theorems:
+    - measure_theory.integral_smul_eq_self
+  - path: src/category_theory/preadditive/opposite.lean
+    theorems:
+    - category_theory.op_add
+  - path: src/measure_theory/integral/integrable_on.lean
+    theorems:
+    - measure_theory.integrable_at_filter.inf_ae_iff
+  - path: src/algebra/dual_number.lean
+    theorems:
+    - dual_number.fst_eps
+  - path: src/measure_theory/decomposition/radon_nikodym.lean
+    theorems:
+    - measure_theory.measure.absolutely_continuous_iff_with_density_rn_deriv_eq
+  - path: src/category_theory/limits/shapes/comm_sq.lean
+    theorems:
+    - category_theory.is_pullback.paste_horiz_iff
+  - path: src/analysis/normed/order/lattice.lean
+    theorems:
+    - lipschitz_with_pos
+  - path: src/probability/integration.lean
+    theorems:
+    - probability_theory.indep_fun.integrable_left_of_integrable_mul
+  - path: src/data/fintype/card.lean
+    theorems:
+    - fintype.card_of_finset
+  - path: src/analysis/analytic/composition.lean
+    theorems:
+    - formal_multilinear_series.comp_coeff_one
+  - path: src/category_theory/concrete_category/basic.lean
+    theorems:
+    - category_theory.concrete_category.epi_iff_surjective_of_preserves_pushout
+  - path: src/set_theory/ordinal/notation.lean
+    theorems:
+    - onote.sub_NF_below
+  - path: src/order/conditionally_complete_lattice/group.lean
+    theorems:
+    - le_mul_cinfi
+  - path: src/data/polynomial/expand.lean
+    theorems:
+    - polynomial.monic.expand
+  - path: src/analysis/box_integral/divergence_theorem.lean
+    theorems:
+    - box_integral.has_integral_GP_pderiv
+    - box_integral.has_integral_GP_divergence_of_forall_has_deriv_within_at
+  - path: src/algebra/order/field/power.lean
+    theorems:
+    - zpow_strict_anti
+  - path: src/topology/instances/matrix.lean
+    theorems:
+    - has_sum.matrix_block_diagonal
+  - path: src/algebra/homology/single.lean
+    theorems:
+    - "cochain_complex.single\u2080_obj_X_d_to"
+  - path: src/data/polynomial/field_division.lean
+    theorems:
+    - polynomial.is_unit_map
+  - path: src/model_theory/direct_limit.lean
+    theorems:
+    - first_order.language.directed_system.coe_nat_le_rec
+  - path: src/category_theory/monoidal/braided.lean
+    theorems:
+    - category_theory.associator_monoidal_aux
+  - path: src/analysis/normed/group/hom.lean
+    theorems:
+    - normed_add_group_hom.coe_mk_normed_add_group_hom
+    - normed_add_group_hom.zsmul_apply
+    - normed_add_group_hom.norm_def
+  - path: src/algebra/add_torsor.lean
+    theorems:
+    - prod.fst_vsub
+  - path: src/ring_theory/perfection.lean
+    theorems:
+    - mod_p.v_p_lt_val
+  - path: src/data/setoid/basic.lean
+    theorems:
+    - setoid.comm'
+  - path: src/probability/martingale/convergence.lean
+    theorems:
+    - measure_theory.tendsto_ae_condexp
+  - path: src/logic/is_empty.lean
+    theorems:
+    - is_empty_pi
+  - path: src/topology/vector_bundle/basic.lean
+    theorems:
+    - trivialization.apply_eq_prod_continuous_linear_equiv_at
+    - vector_bundle_core.trivialization_at_continuous_linear_map_at
+  - path: src/order/filter/modeq.lean
+    theorems:
+    - nat.frequently_modeq
+  - path: src/algebra/continued_fractions/computation/approximation_corollaries.lean
+    theorems:
+    - generalized_continued_fraction.of_is_simple_continued_fraction
+  - path: src/category_theory/monoidal/of_chosen_finite_products.lean
+    theorems:
+    - category_theory.monoidal_of_chosen_finite_products.triangle
+  - path: src/model_theory/satisfiability.lean
+    theorems:
+    - first_order.language.Theory.exists_large_model_of_infinite_model
+    - first_order.language.bounded_formula.semantically_equivalent_all_lift_at
+  - path: src/analysis/fourier/fourier_transform.lean
+    theorems:
+    - real.vector_fourier_integral_eq_integral_exp_smul
+  - path: src/testing/slim_check/sampleable.lean
+    theorems:
+    - slim_check.list.sizeof_drop_lt_sizeof_of_lt_length
+  - path: src/tactic/norm_num.lean
+    theorems:
+    - norm_num.nat_div
+    - norm_num.adc_bit0_one
+  - path: src/data/real/cau_seq.lean
+    theorems:
+    - cau_seq.coe_sup
+  - path: src/algebraic_geometry/morphisms/quasi_compact.lean
+    theorems:
+    - algebraic_geometry.quasi_compact_respects_iso
+  - path: src/algebra/star/star_alg_hom.lean
+    theorems:
+    - non_unital_star_alg_hom.coe_id
+  - path: src/data/multiset/sort.lean
+    theorems:
+    - multiset.sort_eq
+  - path: src/algebra/quaternion.lean
+    theorems:
+    - quaternion.nat_cast_re
+    - quaternion.star_re
+  - path: src/number_theory/cyclotomic/rat.lean
+    theorems:
+    - is_cyclotomic_extension.rat.is_integral_closure_adjoin_singleton_of_prime_pow
+  - path: src/linear_algebra/lagrange.lean
+    theorems:
+    - lagrange.sum_nodal_weight_mul_inv_sub_ne_zero
+    - polynomial.eq_of_degrees_lt_of_eval_finset_eq
+  - path: src/measure_theory/function/ae_measurable_sequence.lean
+    theorems:
+    - ae_seq.ae_seq_set_measurable_set
+  - path: src/analysis/box_integral/box/basic.lean
+    theorems:
+    - box_integral.box.disjoint_coe
+  - path: src/category_theory/structured_arrow.lean
+    theorems:
+    - category_theory.structured_arrow.map_comp
+  - path: src/combinatorics/simple_graph/basic.lean
+    theorems:
+    - simple_graph.bot_degree
+  - path: src/model_theory/basic.lean
+    theorems:
+    - first_order.language.fun_map_sum_inl
+  - path: src/measure_theory/function/simple_func_dense_lp.lean
+    theorems:
+    - measure_theory.Lp.simple_func.strongly_measurable
+  - path: src/linear_algebra/matrix/adjugate.lean
+    theorems:
+    - matrix.sum_cramer
+  - path: src/category_theory/limits/shapes/terminal.lean
+    theorems:
+    - category_theory.limits.has_terminal_of_unique
+  - path: src/field_theory/minpoly/basic.lean
+    theorems:
+    - minpoly.degree_pos
+  - path: src/data/finite/basic.lean
+    theorems:
+    - finite.prod_left
+  - path: src/algebra/big_operators/fin.lean
+    theorems:
+    - fin.prod_congr'
+  - path: src/topology/sets/order.lean
+    theorems:
+    - clopen_upper_set.coe_bot
+  - path: src/algebra/homology/additive.lean
+    theorems:
+    - "cochain_complex.single\u2080_map_homological_complex_hom_app_succ"
+  - path: src/topology/fiber_bundle/trivialization.lean
+    theorems:
+    - trivialization.continuous_on
+    - pretrivialization.proj_symm_apply'
+  - path: src/algebra/order/sub/canonical.lean
+    theorems:
+    - tsub_min
+  - path: src/analysis/complex/unit_disc/basic.lean
+    theorems:
+    - complex.unit_disc.conj_neg
+  - path: src/data/nat/prime_norm_num.lean
+    theorems:
+    - tactic.norm_num.min_fac_helper_0
+    - tactic.norm_num.min_fac_bit0
+  - path: src/data/real/pi/bounds.lean
+    theorems:
+    - real.pi_lt_315
+  - path: src/order/partial_sups.lean
+    theorems:
+    - le_partial_sups
+  - path: src/control/bitraversable/lemmas.lean
+    theorems:
+    - bitraversable.pure_eq_id_mk_comp_id
+  - path: src/group_theory/submonoid/basic.lean
+    theorems:
+    - submonoid.ext
+  - path: src/algebraic_geometry/ringed_space.lean
+    theorems:
+    - algebraic_geometry.RingedSpace.is_unit_res_basic_open
+  - path: src/analysis/calculus/formal_multilinear_series.lean
+    theorems:
+    - const_formal_multilinear_series_apply
+  - path: src/category_theory/groupoid.lean
+    theorems:
+    - category_theory.groupoid.inv_eq_inv
+  - path: src/linear_algebra/matrix/basis.lean
+    theorems:
+    - linear_map_to_matrix_mul_basis_to_matrix
+  - path: src/data/polynomial/taylor.lean
+    theorems:
+    - polynomial.eq_zero_of_hasse_deriv_eq_zero
+  - path: src/order/directed.lean
+    theorems:
+    - is_top_iff_is_max
+    - directed_of_sup
+  - path: src/algebra/quandle.lean
+    theorems:
+    - rack.envel_action_prop
+  - path: src/topology/algebra/order/field.lean
+    theorems:
+    - eventually_nhds_within_pos_mul_left
+  - path: src/data/multiset/dedup.lean
+    theorems:
+    - multiset.dedup_idempotent
+  - path: src/order/closure.lean
+    theorems:
+    - closure_operator.monotone
+  - path: src/category_theory/preadditive/additive_functor.lean
+    theorems:
+    - category_theory.functor.map_sub
+  - path: src/algebra/char_zero/lemmas.lean
+    theorems:
+    - bit1_injective
+  - path: src/analysis/complex/phragmen_lindelof.lean
+    theorems:
+    - phragmen_lindelof.quadrant_IV
+  - path: src/analysis/normed/field/basic.lean
+    theorems:
+    - mul_right_bound
+  - path: src/category_theory/monad/algebra.lean
+    theorems:
+    - category_theory.comonad.coalgebra.id_f
+  - path: src/category_theory/monoidal/rigid/basic.lean
+    theorems:
+    - category_theory.tensor_left_hom_equiv_tensor_id_comp_evaluation
+    - category_theory.comp_right_adjoint_mate
+  - path: src/topology/algebra/infinite_sum/module.lean
+    theorems:
+    - continuous_linear_map.summable
+  - path: src/combinatorics/simple_graph/density.lean
+    theorems:
+    - rel.mk_mem_interedges_iff
+  - path: src/analysis/convex/extreme.lean
+    theorems:
+    - extreme_points_prod
+  - path: src/number_theory/padics/padic_val.lean
+    theorems:
+    - padic_val_int.zero
+  - path: src/analysis/normed/group/add_circle.lean
+    theorems:
+    - add_circle.coe_real_preimage_closed_ball_period_zero
+  - path: src/topology/algebra/order/floor.lean
+    theorems:
+    - tendsto_ceil_left'
+  - path: src/computability/partrec.lean
+    theorems:
+    - partrec.rfind
+    - "primrec\u2082.to_comp"
+    - nat.rfind_spec
+  - path: src/linear_algebra/matrix/is_diag.lean
+    theorems:
+    - matrix.is_diag.is_symm
+  - path: src/data/nat/modeq.lean
+    theorems:
+    - nat.modeq.add_left
+  - path: src/set_theory/surreal/basic.lean
+    theorems:
+    - pgame.numeric.move_left_lt
+  - path: src/algebra/algebra/hom.lean
+    theorems:
+    - alg_hom.map_pow
+  - path: src/data/set/intervals/instances.lean
+    theorems:
+    - set.Ioc.le_one
+  - path: src/algebra/char_p/mixed_char_zero.lean
+    theorems:
+    - split_by_characteristic_local_ring
+  - path: src/measure_theory/measure/haar.lean
+    theorems:
+    - measure_theory.measure.haar.chaar_self
+  - path: src/analysis/locally_convex/with_seminorms.lean
+    theorems:
+    - with_seminorms.first_countable
+  - path: src/order/succ_pred/linear_locally_finite.lean
+    theorems:
+    - iterate_succ_to_Z
+  - path: src/group_theory/specific_groups/cyclic.lean
+    theorems:
+    - is_cyclic_of_card_pow_eq_one_le
+  - path: src/topology/continuous_function/algebra.lean
+    theorems:
+    - continuous_map.inv_apply
+  - path: src/linear_algebra/trace.lean
+    theorems:
+    - linear_map.trace_eq_contract_of_basis
+  - path: src/topology/constructions.lean
+    theorems:
+    - is_closed_map_to_add
+  - path: src/data/polynomial/coeff.lean
+    theorems:
+    - polynomial.coeff_one_add_X_pow
+  - path: src/data/vector/basic.lean
+    theorems:
+    - vector.remove_nth_insert_nth'
+  - path: src/order/max.lean
+    theorems:
+    - not_is_max_iff
+  - path: src/ring_theory/ideal/quotient_operations.lean
+    theorems:
+    - ideal.quotient_ker_alg_equiv_of_right_inverse_symm.apply
+  - path: src/algebra/group/units.lean
+    theorems:
+    - divp_mul_cancel
+  - path: src/linear_algebra/linear_pmap.lean
+    theorems:
+    - linear_pmap.vadd_apply
+  - path: src/probability/martingale/centering.lean
+    theorems:
+    - measure_theory.predictable_part_zero
+  - path: src/data/nat/with_bot.lean
+    theorems:
+    - nat.with_bot.add_one_le_of_lt
+  - path: src/algebra/continued_fractions/translations.lean
+    theorems:
+    - generalized_continued_fraction.exists_s_b_of_part_denom
+  - path: src/data/list/permutation.lean
+    theorems:
+    - list.permutations_aux2_comp_append
+  - path: src/ring_theory/nullstellensatz.lean
+    theorems:
+    - mv_polynomial.vanishing_ideal_empty
+  - path: src/algebra/hom/centroid.lean
+    theorems:
+    - centroid_hom.sub_apply
+  - path: src/algebra/ring/equiv.lean
+    theorems:
+    - ring_equiv.coe_monoid_hom_refl
+    - ring_equiv.no_zero_divisors
+    - ring_equiv.map_ne_zero_iff
+  - path: src/meta/coinductive_predicates.lean
+    theorems:
+    - monotonicity.pi
+  - path: src/algebraic_geometry/Scheme.lean
+    theorems:
+    - algebraic_geometry.Scheme.basic_open_le
+  - path: src/measure_theory/function/uniform_integrable.lean
+    theorems:
+    - measure_theory.uniform_integrable.spec
+  - path: src/dynamics/periodic_pts.lean
+    theorems:
+    - function.self_mem_periodic_orbit
+  - path: src/category_theory/sums/associator.lean
+    theorems:
+    - category_theory.sum.inverse_associator_map_inl
+  - path: src/deprecated/subgroup.lean
+    theorems:
+    - group.closure_subset
+  - path: src/data/mv_polynomial/cardinal.lean
+    theorems:
+    - mv_polynomial.cardinal_mk_le_max
+  - path: src/analysis/calculus/local_extr.lean
+    theorems:
+    - exists_has_deriv_at_eq_zero'
+  - path: src/algebra/hom/aut.lean
+    theorems:
+    - add_aut.conj_symm_apply
+    - mul_aut.conj_inv_apply
+  - path: src/algebraic_geometry/presheafed_space/gluing.lean
+    theorems:
+    - "algebraic_geometry.LocallyRingedSpace.glue_data.\u03B9_jointly_surjective"
+  - path: src/linear_algebra/projective_space/subspace.lean
+    theorems:
+    - projectivization.subspace.span_sup
+  - path: src/linear_algebra/tensor_product.lean
+    theorems:
+    - linear_map.coe_ltensor_hom
+    - tensor_product.smul_zero
+  - path: src/ring_theory/power_basis.lean
+    theorems:
+    - power_basis.dim_le_degree_of_root
+  - path: src/ring_theory/subsemiring/pointwise.lean
+    theorems:
+    - subsemiring.smul_mem_pointwise_smul
+  - path: src/data/int/conditionally_complete_order.lean
+    theorems:
+    - int.cInf_of_not_bdd_below
+  - path: src/algebra/covariant_and_contravariant.lean
+    theorems:
+    - group.covariant_iff_contravariant
+  - path: src/data/mv_polynomial/derivation.lean
+    theorems:
+    - mv_polynomial.derivation_eq_zero_of_forall_mem_vars
+  - path: src/data/list/sublists.lean
+    theorems:
+    - list.sublists'_aux_eq_sublists'
+  - path: src/ring_theory/polynomial/hermite.lean
+    theorems:
+    - polynomial.hermite_succ
+  - path: src/category_theory/monoidal/opposite.lean
+    theorems:
+    - category_theory.monoidal_opposite.unop_inj_iff
+  - path: src/topology/continuous_function/compact.lean
+    theorems:
+    - bounded_continuous_function.dist_to_continuous_map
+  - path: src/category_theory/essentially_small.lean
+    theorems:
+    - category_theory.essentially_small.mk'
+  - path: src/measure_theory/group/prod.lean
+    theorems:
+    - measure_theory.measure_preserving_mul_prod
+  - path: src/topology/metric_space/partition_of_unity.lean
+    theorems:
+    - emetric.eventually_nhds_zero_forall_closed_ball_subset
+  - path: src/computability/regular_expressions.lean
+    theorems:
+    - regular_expression.comp_def
+  - path: src/analysis/complex/basic.lean
+    theorems:
+    - complex.norm_int
+  - path: src/data/polynomial/derivative.lean
+    theorems:
+    - polynomial.iterate_derivative_eq_zero
+  - path: src/topology/metric_space/thickened_indicator.lean
+    theorems:
+    - thickened_indicator_aux_one
+  - path: src/algebra/order/interval.lean
+    theorems:
+    - nonempty_interval.pure_div_pure
+  - path: src/analysis/calculus/inverse.lean
+    theorems:
+    - has_strict_fderiv_at.to_local_inverse
+  - path: src/probability/probability_mass_function/basic.lean
+    theorems:
+    - pmf.apply_pos_iff
+  - path: src/algebra/module/submodule/bilinear.lean
+    theorems:
+    - "submodule.map\u2082_span_span"
+  - path: src/set_theory/surreal/dyadic.lean
+    theorems:
+    - pgame.birthday_half
+  - path: src/category_theory/preadditive/generator.lean
+    theorems:
+    - category_theory.preadditive.is_coseparating_iff
+  - path: src/deprecated/submonoid.lean
+    theorems:
+    - submonoid.is_submonoid
+  - path: src/algebra/category/Ring/adjunctions.lean
+    theorems:
+    - CommRing.free_map_coe
+  - path: src/group_theory/group_action/prod.lean
+    theorems:
+    - prod.pow_fst
+  - path: src/order/semiconj_Sup.lean
+    theorems:
+    - is_order_right_adjoint.unique
+  - path: src/algebraic_geometry/open_immersion.lean
+    theorems:
+    - algebraic_geometry.PresheafedSpace.is_open_immersion.to_Scheme_hom_val
+  - path: src/category_theory/limits/full_subcategory.lean
+    theorems:
+    - category_theory.limits.has_limits_of_shape_of_closed_under_limits
+  - path: src/ring_theory/ring_hom_properties.lean
+    theorems:
+    - ring_hom.stable_under_base_change.pushout_inl
+  project: data/benchmarks/mathlib
+- files:
+  - path: library/init/data/nat/basic.lean
+    theorems:
+    - nat.zero_lt_succ
+  - path: library/init/data/nat/lemmas.lean
+    theorems:
+    - nat.le_add_left
+    - nat.eq_zero_or_eq_succ_pred
+  - path: library/init/data/int/comp_lemmas.lean
+    theorems:
+    - int.zero_le_of_nat
+    - int.nat_abs_bit0_step
+  - path: library/init/data/subtype/basic.lean
+    theorems:
+    - subtype.eta
+  - path: library/init/data/quot.lean
+    theorems:
+    - quotient.sound
+  - path: library/init/data/array/basic.lean
+    theorems:
+    - array.read_write
+  - path: library/init/logic.lean
+    theorems:
+    - or.imp_right
+    - cast_eq
+    - false_iff_true
+    - not_of_eq_false
+  - path: library/init/data/int/basic.lean
+    theorems:
+    - int.coe_nat_eq_coe_nat_iff
+    - int.mul_assoc
+  - path: library/init/data/int/order.lean
+    theorems:
+    - int.coe_nat_le_coe_nat_of_le
+  - path: library/init/wf.lean
+    theorems:
+    - well_founded.fix_F_eq
+  - path: library/init/data/string/basic.lean
+    theorems:
+    - string.str_ne_str_left
+  - path: library/init/meta/name.lean
+    theorems:
+    - auto_param_eq
+  - path: library/init/control/lawful.lean
+    theorems:
+    - except_t.run_monad_map
+  - path: library/init/function.lean
+    theorems:
+    - function.right_inverse.surjective
+  - path: library/init/data/bool/lemmas.lean
+    theorems:
+    - tt_eq_ff_eq_false
+  - path: library/data/vector.lean
+    theorems:
+    - vector.eq_nil
+  project: data/benchmarks/lean
