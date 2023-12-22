@@ -7,6 +7,7 @@ if root_dir not in sys.path:
     sys.path.append(root_dir)
 import typing
 import json
+import uuid
 import yaml
 from itp_interface.lean_server.lean_utils import Lean3Utils, ProofContext
 from itp_interface.tools.training_data import TrainingData
@@ -114,6 +115,38 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
         pass
 
     def __call__(self, training_data: TrainingData, project_id : str, executor, print_executor_callback, theorems: typing.List[str] = None) -> TrainingData:
+        assert isinstance(training_data, TrainingData)
+        assert isinstance(project_id, str)
+        json_path = project_id
+        assert json_path.endswith('.json'), f"Invalid json path {json_path}"
+        assert os.path.exists(json_path), f"Invalid json path {json_path}"
+        self.logger.info(f"Generating training data for {project_id}")
+        with open(json_path, 'r') as f:
+            json_data = json.load(f)
+        # Go over all the theorems in the json file and generate training data for them
+        for dojo_entry in json_data:
+            project_path = f"data/benchmarks/{dojo_entry['url'].strip('/').split('/')[-1]}"
+            file_path = dojo_entry['file_path']
+            theorem_name = dojo_entry['full_name']
+            theorem_id = str(uuid.uuid4())
+            for tactic in dojo_entry['traced_tactics']:
+                state_after = tactic['state_after']
+                state_before = tactic['state_before']
+                tactic = tactic['tactic']
+                start_goals: ProofContext = Lean3Utils.parse_proof_context_human_readable(state_before)
+                end_goals: ProofContext = Lean3Utils.parse_proof_context_human_readable(state_after)
+                if len(start_goals.all_goals) > 0:
+                    # Create a training data object
+                    training_data_format = TrainingDataFormat(
+                        proof_id=theorem_id,
+                        start_goals=[Goal(goal.hypotheses, goal.goal) for goal in start_goals.all_goals],
+                        end_goals=[Goal(goal.hypotheses, goal.goal) for goal in end_goals.all_goals],
+                        proof_steps=[tactic],
+                        file_path=file_path,
+                        project_id=project_path,
+                        theorem_name=theorem_name
+                    )
+                    training_data.merge(training_data_format)
         pass
 
 
@@ -121,23 +154,38 @@ if __name__ == "__main__":
     import os
     import logging
     import time
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input_json", type=str, default=f".log/benchmarks/leandojo_benchmark/random/test.json")
+    args = parser.parse_args()
     os.chdir(root_dir)
     project_dir = "data/test/lean_proj"
     file_name = "data/test/lean_proj/src/simple_solved.lean"
     project_id = project_dir.replace('/', '.')
     time_str = time.strftime("%Y%m%d-%H%M%S")
-    output_path = f".log/local_data_generation_transform/data/{time_str}"
-    log_path = f".log/local_data_generation_transform/log/{time_str}"
-    log_file = f"{log_path}/local_data_generation_transform-{time_str}.log"
-    # os.makedirs(output_path, exist_ok=True)
+    output_path = f".log/run_data_generation_transforms/data/{time_str}"
+    log_path = f".log/run_data_generation_transforms/log/{time_str}"
+    log_file = f"{log_path}/run_data_generation_transforms-{time_str}.log"
+    os.makedirs(output_path, exist_ok=True)
     os.makedirs(log_path, exist_ok=True)
     logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger(__name__)
     # Dump the files and theorems from the Lean Dojo benchmark
+    from itp_interface.tools.run_data_generation_transforms import RunDataGenerationTransforms
     transform = LocalDataGenerationTransform(0, buffer_size=1000, logger=logger)
-    transform.dump_theorems_from_file(".log/benchmarks/leandojo_benchmark/random/test.json", "itp_interface/main/config/benchmark", "leandojo_random_test.yaml")
-    transform.dump_theorems_from_file(".log/benchmarks/leandojo_benchmark/random/train.json", "itp_interface/main/config/benchmark", "leandojo_random_train.yaml")
-    transform.dump_theorems_from_file(".log/benchmarks/leandojo_benchmark/random/val.json", "itp_interface/main/config/benchmark", "leandojo_random_val.yaml")
-    transform.dump_theorems_from_file(".log/benchmarks/leandojo_benchmark/novel_premises/test.json", "itp_interface/main/config/benchmark", "leandojo_novel_premises_test.yaml")
-    transform.dump_theorems_from_file(".log/benchmarks/leandojo_benchmark/novel_premises/train.json", "itp_interface/main/config/benchmark", "leandojo_novel_premises_train.yaml")
-    transform.dump_theorems_from_file(".log/benchmarks/leandojo_benchmark/novel_premises/val.json", "itp_interface/main/config/benchmark", "leandojo_novel_premises_val.yaml")
+    final_training_meta = transform.get_meta_object()
+    final_training_meta.training_data_buffer_size = transform.buffer_size
+    final_training_meta.data_filename_prefix = RunDataGenerationTransforms.get_data_filename_prefix(transform)
+    final_training_meta.data_filename_suffix = RunDataGenerationTransforms.get_data_filename_suffix(transform)
+    final_training_meta.lemma_ref_filename_prefix = RunDataGenerationTransforms.get_lemma_ref_filename_prefix(transform)
+    final_training_meta.lemma_ref_filename_suffix = RunDataGenerationTransforms.get_lemma_ref_filename_suffix(transform)
+    training_data = TrainingData(output_path, "local.meta.json", final_training_meta, logger=logger)
+    transform(training_data, args.input_json, None, None, None)
+    save_info = training_data.save()
+    logger.info(f"Saved training data to {save_info}")
+    # transform.dump_theorems_from_file(".log/benchmarks/leandojo_benchmark/random/test.json", "itp_interface/main/config/benchmark", "leandojo_random_test.yaml")
+    # transform.dump_theorems_from_file(".log/benchmarks/leandojo_benchmark/random/train.json", "itp_interface/main/config/benchmark", "leandojo_random_train.yaml")
+    # transform.dump_theorems_from_file(".log/benchmarks/leandojo_benchmark/random/val.json", "itp_interface/main/config/benchmark", "leandojo_random_val.yaml")
+    # transform.dump_theorems_from_file(".log/benchmarks/leandojo_benchmark/novel_premises/test.json", "itp_interface/main/config/benchmark", "leandojo_novel_premises_test.yaml")
+    # transform.dump_theorems_from_file(".log/benchmarks/leandojo_benchmark/novel_premises/train.json", "itp_interface/main/config/benchmark", "leandojo_novel_premises_train.yaml")
+    # transform.dump_theorems_from_file(".log/benchmarks/leandojo_benchmark/novel_premises/val.json", "itp_interface/main/config/benchmark", "leandojo_novel_premises_val.yaml")

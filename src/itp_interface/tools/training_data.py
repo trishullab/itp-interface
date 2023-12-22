@@ -342,7 +342,10 @@ class TrainingData(MergableCollection):
                 end_goals=tdp.end_goals,
                 proof_steps=tdp.proof_steps,
                 simplified_goals=tdp.simplified_goals,
-                addition_state_info=tdp.addition_state_info)
+                addition_state_info=tdp.addition_state_info,
+                file_path=tdp.file_path,
+                project_id=tdp.project_id,
+                theorem_name=tdp.theorem_name)
             # Reset the lemma references
             for goal in new_tdp.start_goals:
                 goal.relevant_defns = [LemmaRefWithScore(new_lemma_ref_idx[lemma_ref.lemma_idx], lemma_ref.score) for lemma_ref in goal.relevant_defns]
