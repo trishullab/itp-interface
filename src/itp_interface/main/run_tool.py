@@ -182,5 +182,6 @@ def main(cfg):
     pass
 
 if __name__ == "__main__":
-    # RayUtils.init_ray(num_of_cpus=20, object_store_memory_in_gb=50, memory_in_gb=1)
+    # from itp_interface.tools.ray_utils import RayUtils
+    # RayUtils.init_ray(num_of_cpus=20, object_store_memory_in_gb=50, memory_in_gb=1, runtime_env={"working_dir": root_dir, "excludes": [".log", "data"]})
     main()

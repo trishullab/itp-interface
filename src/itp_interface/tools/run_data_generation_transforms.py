@@ -29,6 +29,8 @@ class RunDataGenerationTransforms(object):
         assert all(isinstance(transform, GenericTrainingDataGenerationTransform) for transform in transforms), "transforms should be a list of GenericTrainingDataGenerationTransform"
         assert logging_dir is not None, "logging_dir should not be None"
         assert os.path.isdir(logging_dir), "logging_dir should be a directory"
+        # get abosulte logging dir
+        logging_dir = os.path.abspath(logging_dir) # This ensures that the logging dir is same regardless of the relative path which ray uses for the package
         self.logging_dir = logging_dir
         self.transforms = transforms
         self.save_intermidiate_transforms = save_intermidiat_transforms
@@ -109,7 +111,7 @@ class RunDataGenerationTransforms(object):
             elif isinstance(transform, LeanLocalDataGenerationTransform):
                 exec = Lean3Executor(project_path, None, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
             with exec:
-                project_id = project_path.replace('/', '.')
+                project_id = project_path # project_path.replace('/', '.')
                 metadata = transform.get_meta_object()
                 metadata.training_data_buffer_size = transform.buffer_size
                 metadata.data_filename_prefix = RunDataGenerationTransforms.get_data_filename_prefix(transform)
@@ -194,9 +196,12 @@ class RunDataGenerationTransforms(object):
         assert len(projects) > 0, "projects should not be empty"
         temp_output_dir = os.path.join(new_output_dir, f"temp_{transform.name}")
         os.makedirs(temp_output_dir, exist_ok=True)
+        # Change the directories to absolute paths, so that ray can access them
+        new_output_dir = os.path.abspath(new_output_dir)
+        temp_output_dir = os.path.abspath(temp_output_dir)
         temporary_files_found: typing.List[str] = []
         object_store_memory_in_gb = 100
-        memory_in_gb = 0.25
+        memory_in_gb = 5
         ray_dashboard = RayUtils.init_ray(num_of_cpus=pool_size, object_store_memory_in_gb=object_store_memory_in_gb)
         self.logger.info(f"==============================>[{transform.name}] Ray initialized with {transform.max_parallelism} CPUs, Memory=({memory_in_gb} GiB, Object Memory = {object_store_memory_in_gb} GiB)<==============================")
         self.logger.info(f"Ray Context:\n {ray_dashboard}")

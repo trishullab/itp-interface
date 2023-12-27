@@ -14,11 +14,11 @@ import gc
 class RayUtils(object):
 
     @staticmethod
-    def init_ray(num_of_cpus: int = 10, object_store_memory_in_gb: float = 25, memory_in_gb: float = 0.5):
+    def init_ray(num_of_cpus: int = 10, object_store_memory_in_gb: float = 25, memory_in_gb: float = 0.5, runtime_env: typing.Dict[str, str] = None):
         gb = 2**30
         object_store_memory = int(object_store_memory_in_gb * gb)
         memory = int(memory_in_gb * gb)
-        return ray.init(num_cpus=num_of_cpus, object_store_memory=object_store_memory, _memory=memory, ignore_reinit_error=True)
+        return ray.init(num_cpus=num_of_cpus, object_store_memory=object_store_memory, _memory=memory, ignore_reinit_error=True, runtime_env=runtime_env)
 
     @staticmethod
     def ray_run_within_parallel_limits(

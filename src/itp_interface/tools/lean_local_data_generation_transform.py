@@ -51,7 +51,7 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
         if lemma_name is None:
             lemma_name = "__NONE__"
         theorem_id = str(uuid.uuid4())
-        proof_id = self.get_proof_id(theorem_id, file_namespace, line_number, lemma_name)
+        proof_id = theorem_id # self.get_proof_id(theorem_id, file_namespace, line_number, lemma_name)
         local_lemma_refs_cnt = 0
         external_lemma_refs_cnt = 0
         theorems = set(theorems) if theorems is not None else None
@@ -68,7 +68,10 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
                         end_goals=next_goal,
                         proof_steps=[cmd_exec],
                         simplified_goals=[], 
-                        addition_state_info={})
+                        addition_state_info={},
+                        file_path=lean_executor.main_file,
+                        theorem_name=lemma_name,
+                        project_id=project_id)
                     assert len(training_data_format.proof_steps) > 0, f"Proof steps cannot be empty for {proof_id}"
                     for goal in training_data_format.start_goals:
                         lemma_cnt = len(training_data_format.all_useful_defns_theorems)
@@ -92,7 +95,7 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
             lemma_name = lean_executor.get_lemma_name_if_running()
             if lemma_name is None:
                 lemma_name = "__NONE__"
-            proof_id = self.get_proof_id(theorem_id, file_namespace, line_number, lemma_name)
+            proof_id = theorem_id # self.get_proof_id(theorem_id, file_namespace, line_number, lemma_name)
             
         self.logger.info(f"===============Finished processing {file_namespace}=====================")
         try:
