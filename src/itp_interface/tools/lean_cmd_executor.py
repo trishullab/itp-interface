@@ -124,7 +124,7 @@ class Lean3Executor(object):
     proof_context_generation_tactic_curlies = "\n}"
     proof_state_running_message = "tactic failed, there are unsolved goals\nstate:"
     search_tools: typing.Dict[str, typing.Any] = {}
-    def __init__(self, project_root: str = None, prefix: str = None, main_file: str = None, use_hammer: bool = False, timeout_in_sec: int = 60, use_human_readable_proof_context: bool = False, proof_step_iter: typing.Iterator[str] = None, suppress_error_log: bool = False, mathlib_root: typing.Optional[str] = None, enable_search: bool = False, namespaces: typing.List[str] = None):
+    def __init__(self, project_root: str = None, prefix: str = None, main_file: str = None, use_hammer: bool = False, timeout_in_sec: int = 60, use_human_readable_proof_context: bool = False, proof_step_iter: typing.Iterator[str] = None, suppress_error_log: bool = False, mathlib_root: typing.Optional[str] = None, enable_search: bool = False, namespaces: typing.List[str] = None, keep_local_context: bool = False):
         assert proof_step_iter is None or isinstance(proof_step_iter, typing.Iterator), \
             "proof_step_iter must be an iterator"
         assert main_file is not None or proof_step_iter is not None, \
@@ -172,6 +172,7 @@ class Lean3Executor(object):
         self._mathlib_src_root = os.path.join(self._mathlib_root, "src")
         self._enable_search = enable_search
         self._comments_removed = False
+        self._keep_local_context = keep_local_context
         self._namespaces = namespaces if namespaces is not None else Constants.lean_useful_imports + Constants.mathlib_useful_imports
         if self._enable_search:
             self._search_tool = Lean3Executor._init_search(self._mathlib_root, self._namespaces)
@@ -690,9 +691,10 @@ class Lean3Executor(object):
                 # Capture the proof context
                 assert self._import_end_idx is not None
                 # Remove all the theorems before the current theorem
-                self._lines_executed = self._lines_executed[:self._import_end_idx + 1]
-                full_thm_stmts = full_thm_stmt.split("\n")
-                self._lines_executed.extend(full_thm_stmts)
+                if not self._keep_local_context:
+                    self._lines_executed = self._lines_executed[:self._import_end_idx + 1]
+                    full_thm_stmts = full_thm_stmt.split("\n")
+                    self._lines_executed.extend(full_thm_stmts)
                 # Reset the file content to completely ignore the previous theorems
                 self._file_content = '\n'.join(self._lines_executed)
                 # Now change the idx

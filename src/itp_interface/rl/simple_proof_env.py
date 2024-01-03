@@ -541,12 +541,13 @@ if __name__ == "__main__":
         always_retrieve_thms = False
     elif inp == 'lean':
         proof_exec_callback = ProofExecutorCallback(
-            project_folder="data/benchmarks/miniF2F",
-            file_path="data/benchmarks/miniF2F/lean/src/test.lean",
+            project_folder="data/test/lean_proj",
+            file_path="data/test/lean_proj/src/simple_solved.lean",
             language=ProofAction.Language.LEAN,
-            always_use_retrieval=True
+            always_use_retrieval=True,
+            keep_local_context=True
         )
-        theorem_name = "mathd_algebra_478"
+        theorem_name = "a_plus_b_a_minus_a"
         language = ProofAction.Language.LEAN
         always_retrieve_thms = True
         pass
