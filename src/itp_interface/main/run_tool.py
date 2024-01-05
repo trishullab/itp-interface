@@ -10,8 +10,8 @@ import os
 import time
 import shutil
 from itp_interface.rl.proof_action import ProofAction
+from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
 from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
-from itp_interface.tools.coq_build_tool import CoqRepoBuilder
 from itp_interface.tools.coq_local_data_generation_transform import LocalDataGenerationTransform as CoqLocalDataGenerationTransform
 from itp_interface.tools.lean_local_data_generation_transform import LocalDataGenerationTransform as LeanLocalDataGenerationTransform
 from itp_interface.tools.run_data_generation_transforms import RunDataGenerationTransforms
@@ -58,11 +58,14 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
                     logger=logger)
                 os.makedirs(clone_dir, exist_ok=True)
             elif experiment.benchmark.language == ProofAction.Language.COQ:
+                only_proof_state = experiment.env_settings.retrieval_strategy == ProofEnvReRankStrategy.NO_RE_RANK
                 transform = CoqLocalDataGenerationTransform(
                     experiment.run_settings.dep_depth, 
                     max_search_results=experiment.run_settings.max_search_results, 
                     buffer_size=experiment.run_settings.buffer_size, 
-                    logger=logger)
+                    logger=logger,
+                    no_dfns=only_proof_state,
+                    no_thms=only_proof_state)
                 clone_dir = None
             else:
                 raise ValueError(f"Unexpected language: {experiment.benchmark.language}")

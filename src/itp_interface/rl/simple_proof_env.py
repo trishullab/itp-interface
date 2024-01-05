@@ -52,6 +52,7 @@ class ProofEnvReRankStrategy(Enum):
     BM25_WITH_PRINT_ONLY_LOCAL_NO_DFNS = "BM25_WITH_PRINT_ONLY_LOCAL_NO_DFNS"
     BM25_ONLY_LOCAL_NO_DFNS = "BM25_ONLY_LOCAL_NO_DFNS"
     BM25_NO_DFNS = "BM25_NO_DFNS"
+    NO_RE_RANK = "NO_RE_RANK"
 
     def __str__(self):
         return self.value
@@ -94,7 +95,8 @@ class ProofEnv(Env):
             self.retrieve_strategy == ProofEnvReRankStrategy.BM25_WITH_PRINT_NO_DFNS or \
             self.retrieve_strategy == ProofEnvReRankStrategy.BM25_WITH_PRINT_ONLY_LOCAL_NO_DFNS or \
             self.retrieve_strategy == ProofEnvReRankStrategy.BM25_ONLY_LOCAL_NO_DFNS or \
-            self.retrieve_strategy == ProofEnvReRankStrategy.BM25_NO_DFNS:
+            self.retrieve_strategy == ProofEnvReRankStrategy.BM25_NO_DFNS or \
+            self.retrieve_strategy == ProofEnvReRankStrategy.NO_RE_RANK:
             if ProofEnv._re_ranker is None or str(self.language) != ProofEnv._re_ranker.language:
                 if self.language == ProofAction.Language.COQ:
                     ProofEnv._re_ranker = CoqBm25ReRanker(language=str(self.language))
@@ -365,7 +367,9 @@ class ProofEnv(Env):
         only_local = self.retrieve_strategy == ProofEnvReRankStrategy.BM25_WITH_PRINT_ONLY_LOCAL or \
         self.retrieve_strategy == ProofEnvReRankStrategy.BM25_WITH_PRINT_ONLY_LOCAL_NO_DFNS or \
         self.retrieve_strategy == ProofEnvReRankStrategy.BM25_ONLY_LOCAL_NO_DFNS
-        relevant_defns_thms = self._dynamic_proof_executor.get_all_relevant_defns_and_thms(should_print_symbol, only_local)
+        only_proof_state = self.retrieve_strategy == ProofEnvReRankStrategy.NO_RE_RANK
+        relevant_defns_thms = self._dynamic_proof_executor.get_all_relevant_defns_and_thms(should_print_symbol, only_local, only_proof_state)
+        should_have_relevant_dfns = not only_proof_state and should_have_relevant_dfns
         if should_have_relevant_dfns:
             for idx, goal in enumerate(relevant_defns_thms.start_goals):
                 query = relevant_defns_thms.get_human_readable_serialized_goal(idx, skip_special_tokens=True)
@@ -385,40 +389,42 @@ class ProofEnv(Env):
             for goal in relevant_defns_thms.start_goals:
                 goal.relevant_defns = []
 
-        for idx, goal in enumerate(relevant_defns_thms.start_goals):
-            query = relevant_defns_thms.get_human_readable_serialized_goal(idx, skip_special_tokens=True)
-            local_responses = [str(relevant_defns_thms.all_useful_defns_theorems[lemma_ref.lemma_idx]) for lemma_ref in goal.possible_useful_theorems_local]
-            if self.retrieve_strategy == ProofEnvReRankStrategy.BM25_WITH_PRINT_ONLY_LOCAL:
-                global_responses = []
-            else:
-                global_responses = [str(relevant_defns_thms.all_useful_defns_theorems[lemma_ref.lemma_idx]) for lemma_ref in goal.possible_useful_theorems_external]
-            if len(self._re_ranker.responses) > 0 and len(local_responses) == len(self._re_ranker.responses):
-                local_scores = self._re_ranker.get_scores(query)
-            else:
-                local_scores = self._re_ranker.rerank(query, local_responses)
-            if len(self._re_ranker.responses) > 0 and len(global_responses) == len(self._re_ranker.responses):
-                global_scores = self._re_ranker.rerank(query, global_responses)
-            else:
-                global_scores = self._re_ranker.rerank(query, global_responses)
-            local_idx = [(idx, score) for idx, score in enumerate(local_scores)]
-            global_idx = [(idx, score) for idx, score in enumerate(global_scores)]
-            local_idx.sort(key=lambda x: x[1], reverse=True)
-            global_idx.sort(key=lambda x: x[1], reverse=True)
-            local_responses = [goal.possible_useful_theorems_local[idx] for idx, _ in local_idx]
-            global_responses = [goal.possible_useful_theorems_external[idx] for idx, _ in global_idx]
-            # Remove any local responses which are already in the relevant defns
-            relevant_dfns_names = set([relevant_defns_thms.all_useful_defns_theorems[lemma_ref.lemma_idx].lemma_name for lemma_ref in goal.relevant_defns])
-            local_responses = [response for response in local_responses if relevant_defns_thms.all_useful_defns_theorems[response.lemma_idx].lemma_name not in relevant_dfns_names]
-            # Remove any global responses which are already in the relevant defns
-            global_responses = [response for response in global_responses if relevant_defns_thms.all_useful_defns_theorems[response.lemma_idx].lemma_name not in relevant_dfns_names]
-            sum_local_scores = sum([score for _, score in local_idx]) + 1e-6
-            sum_global_scores = sum([score for _, score in global_idx]) + 1e-6
-            for i in range(len(local_responses)):
-                local_responses[i].score = local_idx[i][1]/sum_local_scores
-            for i in range(len(global_responses)):
-                global_responses[i].score = global_idx[i][1]/sum_global_scores
-            goal.possible_useful_theorems_local = local_responses
-            goal.possible_useful_theorems_external = global_responses
+        should_have_relevant_lemmas = not only_proof_state
+        if should_have_relevant_lemmas:
+            for idx, goal in enumerate(relevant_defns_thms.start_goals):
+                query = relevant_defns_thms.get_human_readable_serialized_goal(idx, skip_special_tokens=True)
+                local_responses = [str(relevant_defns_thms.all_useful_defns_theorems[lemma_ref.lemma_idx]) for lemma_ref in goal.possible_useful_theorems_local]
+                if self.retrieve_strategy == ProofEnvReRankStrategy.BM25_WITH_PRINT_ONLY_LOCAL:
+                    global_responses = []
+                else:
+                    global_responses = [str(relevant_defns_thms.all_useful_defns_theorems[lemma_ref.lemma_idx]) for lemma_ref in goal.possible_useful_theorems_external]
+                if len(self._re_ranker.responses) > 0 and len(local_responses) == len(self._re_ranker.responses):
+                    local_scores = self._re_ranker.get_scores(query)
+                else:
+                    local_scores = self._re_ranker.rerank(query, local_responses)
+                if len(self._re_ranker.responses) > 0 and len(global_responses) == len(self._re_ranker.responses):
+                    global_scores = self._re_ranker.rerank(query, global_responses)
+                else:
+                    global_scores = self._re_ranker.rerank(query, global_responses)
+                local_idx = [(idx, score) for idx, score in enumerate(local_scores)]
+                global_idx = [(idx, score) for idx, score in enumerate(global_scores)]
+                local_idx.sort(key=lambda x: x[1], reverse=True)
+                global_idx.sort(key=lambda x: x[1], reverse=True)
+                local_responses = [goal.possible_useful_theorems_local[idx] for idx, _ in local_idx]
+                global_responses = [goal.possible_useful_theorems_external[idx] for idx, _ in global_idx]
+                # Remove any local responses which are already in the relevant defns
+                relevant_dfns_names = set([relevant_defns_thms.all_useful_defns_theorems[lemma_ref.lemma_idx].lemma_name for lemma_ref in goal.relevant_defns])
+                local_responses = [response for response in local_responses if relevant_defns_thms.all_useful_defns_theorems[response.lemma_idx].lemma_name not in relevant_dfns_names]
+                # Remove any global responses which are already in the relevant defns
+                global_responses = [response for response in global_responses if relevant_defns_thms.all_useful_defns_theorems[response.lemma_idx].lemma_name not in relevant_dfns_names]
+                sum_local_scores = sum([score for _, score in local_idx]) + 1e-6
+                sum_global_scores = sum([score for _, score in global_idx]) + 1e-6
+                for i in range(len(local_responses)):
+                    local_responses[i].score = local_idx[i][1]/sum_local_scores
+                for i in range(len(global_responses)):
+                    global_responses[i].score = global_idx[i][1]/sum_global_scores
+                goal.possible_useful_theorems_local = local_responses
+                goal.possible_useful_theorems_external = global_responses
         lemma_stmt = self._dynamic_proof_executor.get_lemma_stmt_if_running()
         current_proof_state = ProofState(relevant_defns_thms, language=self.language, theorem_statement_with_name=lemma_stmt)
         current_proof_state.proof_tree = copy.deepcopy(self._p_tree)

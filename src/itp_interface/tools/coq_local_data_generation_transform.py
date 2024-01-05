@@ -18,11 +18,15 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
                 max_search_results = None,
                 buffer_size : int = 10000,
                 logger = None,
-                max_parallelism : int = 4):
+                max_parallelism : int = 4,
+                no_dfns : bool = False,
+                no_thms : bool = False):
         super().__init__(TrainingDataGenerationType.LOCAL, buffer_size, logger)
         self.depth = depth
         self.max_search_results = max_search_results
         self.max_parallelism = max_parallelism
+        self.no_dfns = no_dfns
+        self.no_thms = no_thms
 
     def get_meta_object(self) -> MergableCollection:
         return TrainingDataMetadataFormat(training_data_buffer_size=self.buffer_size)
@@ -51,7 +55,7 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
         if lemma_name is None:
             lemma_name = "__NONE__"
         theorem_id = str(uuid.uuid4())
-        proof_id = self.get_proof_id(theorem_id, file_namespace, line_number, lemma_name)
+        proof_id = theorem_id # self.get_proof_id(theorem_id, file_namespace, line_number, lemma_name)
         local_lemma_refs_cnt = 0
         external_lemma_refs_cnt = 0
         while cmd_ran:
@@ -67,10 +71,15 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
                         end_goals=next_goal,
                         proof_steps=[cmd_exec],
                         simplified_goals=[], 
-                        addition_state_info={})
+                        addition_state_info={},
+                        file_path=coq_executor.main_file,
+                        theorem_name=lemma_name,
+                        project_id=project_id)
                     try:
-                        coq_context_helper.set_relevant_defns_in_training_data_point(training_data_format, print_coq_executor, self.logger)
-                        coq_context_helper.set_local_thms_dfns(training_data_format, coq_executor, self.logger)
+                        if not self.no_dfns:
+                            coq_context_helper.set_relevant_defns_in_training_data_point(training_data_format, print_coq_executor, self.logger)
+                        if not self.no_thms:
+                            coq_context_helper.set_local_thms_dfns(training_data_format, coq_executor, self.logger)
                     except Exception:
                         self.logger.warning(f"Ignoring error in getting useful defns for cmd: \"{cmd_exec}\"")
                         self.logger.warning(f"Killing print coq executor")
@@ -106,7 +115,7 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
             lemma_name = coq_executor.get_lemma_name_if_running()
             if lemma_name is None:
                 lemma_name = "__NONE__"
-            proof_id = self.get_proof_id(theorem_id, file_namespace, line_number, lemma_name)
+            proof_id = theorem_id # self.get_proof_id(theorem_id, file_namespace, line_number, lemma_name)
             
         self.logger.info(f"===============Finished processing {file_namespace}=====================")
         try:
