@@ -9,8 +9,6 @@ requires = [
     "pampy==0.3.0",
     "ray==2.4.0",
     "pydantic==1.10.13",
-    "ray==2.4.0",
-    "pydantic==1.10.12",
     "faiss-cpu>=1.6.1",
     "filelock==3.12.4",
     "regex==2023.10.3",
