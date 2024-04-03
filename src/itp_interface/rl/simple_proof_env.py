@@ -10,6 +10,7 @@ import typing
 import logging
 import time
 import os
+import ray
 from itp_interface.rl.proof_tree import ProofSearchResult, ProofTree
 from itp_interface.rl.proof_state import ProofState
 from itp_interface.rl.proof_action import ProofAction
@@ -162,6 +163,15 @@ class ProofEnv(Env):
     def history(self) -> typing.List[typing.Tuple[ProofState, ProofAction, ProofState, float, bool, ProofEnvInfo]]:
         assert self._loaded, "Env not loaded, call reset() first"
         return self._history
+
+    def get_state(self):
+        return self.state
+    
+    def get_done(self):
+        return self.done
+    
+    def get_history(self):
+        return self.history
 
     def reset(self):
         self.current_proof_depth = 0
@@ -512,7 +522,18 @@ class ProofEnv(Env):
             self._run_tactics(tactic.proof_steps, self.state, action, ProofEnvInfo(progress=ProgressState.STARTING))
             # No need to capture in history as the history is already captured
         self._history = history
+    
+    def cleanup(self):
+        self.__exit__(None, None, None)
+        pass
 
+
+@ray.remote
+class ProofEnvActor(ProofEnv):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        super().__enter__()
+        pass
 
 if __name__ == "__main__":
     import os
@@ -560,12 +581,24 @@ if __name__ == "__main__":
     else:
         raise Exception(f"Invalid input {inp} for choosing coq/lean")
     logger = logging.getLogger(__name__)
-    with ProofEnv("test", proof_exec_callback, theorem_name, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms, logger=logger) as env:
-        done = env.done
-        action = scan_action(language)
-        while action.action_type != ProofAction.ActionType.EXIT and not done:
-            state, _, _, reward, done, info = env.step(action)
-            env.render()
-            if not done:
-                action = scan_action(language)
-        pass
+    ray.init()
+    env_actor = ProofEnvActor.remote("test", proof_exec_callback, theorem_name, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms, logger=logger)
+    # with env:
+    done_id = env_actor.get_done.remote()
+    done = ray.get(done_id)
+    action = scan_action(language)
+    while action.action_type != ProofAction.ActionType.EXIT and not done:
+        step_id = env_actor.step.remote(action)
+        state, _, _, reward, done, info = ray.get(step_id)
+        ray.get(env_actor.render.remote())
+        if not done:
+            action = scan_action(language)
+    # Assuming proof_env_actor is your actor reference
+    cleanup_future = env_actor.cleanup.remote()
+
+    # Optionally wait for the cleanup to complete before proceeding
+    ray.get(cleanup_future)
+
+    # If you wish to explicitly kill the actor, do so after the cleanup
+    ray.kill(env_actor)
+    pass
