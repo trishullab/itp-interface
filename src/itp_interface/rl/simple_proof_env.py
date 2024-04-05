@@ -172,6 +172,9 @@ class ProofEnv(Env):
     
     def get_history(self):
         return self.history
+    
+    def getattr(self, attr_name: str):
+        return self.__getattribute__(attr_name)
 
     def reset(self):
         self.current_proof_depth = 0
