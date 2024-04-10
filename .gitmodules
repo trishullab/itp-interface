@@ -6,3 +6,10 @@
 	path = src/data/benchmarks/miniF2F
 	url = https://github.com/facebookresearch/miniF2F.git
 	ignore = dirty
+[submodule "imports/repl"]
+	path = imports/repl
+	url = https://github.com/leanprover-community/repl
+	ignore = dirty
+[submodule "imports/mathlib4"]
+	path = imports/mathlib4
+	url = https://github.com/leanprover-community/mathlib4.git
