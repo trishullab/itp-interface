@@ -184,3 +184,8 @@ outputs/
 
 # Ignore the api_log.json file
 api_log.json
+
+# Ignore the lake file
+.lake/
+*.olean
+*.olean.*

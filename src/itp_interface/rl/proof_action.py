@@ -19,6 +19,7 @@ class ProofAction(Action):
     class Language(Enum):
         COQ = 'COQ'
         LEAN = 'LEAN'
+        LEAN4 = 'LEAN4'
 
         def __str__(self):
             return self.name
