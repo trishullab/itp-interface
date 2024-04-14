@@ -69,7 +69,7 @@ class ProcessInterface:
         self.process.terminate()
         self.process.wait()
 
-# Example usage:
+# Process interface test
 if __name__ == "__main__":
     interface = ProcessInterface("lake exe repl", "./imports/repl", log_level=logging.DEBUG)
     try:
