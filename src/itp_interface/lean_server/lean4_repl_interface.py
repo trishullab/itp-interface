@@ -6,9 +6,6 @@ import select
 import time
 import logging
 
-class TimeoutError(Exception):
-    pass
-
 class ProcessInterface:
     buffer_size = 1024
     def __init__(self, command, cwd, logger: logging.Logger = None, log_level=logging.INFO):

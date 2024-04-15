@@ -1,6 +1,7 @@
 def hello := "world"
 
-theorem test (p q : Prop) (hp : p) (hq : q) : p ∧ q ∧ p := by
+theorem test (p q : Prop) (hp : p) (hq : q)
+: p ∧ q ∧ p := by
     apply And.intro
     exact hp
     apply And.intro
@@ -8,3 +9,5 @@ theorem test (p q : Prop) (hp : p) (hq : q) : p ∧ q ∧ p := by
     exact hp
 
 theorem test2 : p -> q -> p ∧ q ∧ p := fun hp hq => ⟨hp, ⟨hq, hp⟩⟩
+
+example : p -> q -> p ∧ q ∧ p := fun hp hq => ⟨hp, ⟨hq, hp⟩⟩

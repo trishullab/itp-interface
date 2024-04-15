@@ -559,7 +559,7 @@ if __name__ == "__main__":
         else:
             raise Exception(f"Invalid action type {action_type}")
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    inp = input("Want to run coq or lean env? (Enter 'coq'/'lean') ")
+    inp = input("Want to run coq or lean env? (Enter 'coq'/'lean'/'lean4') ")
     language = ProofAction.Language.COQ
     if inp == 'coq':
         proof_exec_callback = ProofExecutorCallback(
@@ -581,6 +581,17 @@ if __name__ == "__main__":
         language = ProofAction.Language.LEAN
         always_retrieve_thms = True
         pass
+    elif inp == 'lean4':
+        proof_exec_callback = ProofExecutorCallback(
+            project_folder="data/test/lean4_proj",
+            file_path="data/test/lean4_proj/Lean4Proj/Basic.lean",
+            language=ProofAction.Language.LEAN4,
+            always_use_retrieval=True,
+            keep_local_context=True
+        )
+        theorem_name = "test"
+        language = ProofAction.Language.LEAN4
+        always_retrieve_thms = True
     else:
         raise Exception(f"Invalid input {inp} for choosing coq/lean")
     logger = logging.getLogger(__name__)

@@ -1,32 +1,50 @@
 #!/usr/bin/env python3
 
 import sys
-
-from itp_interface.lean_server.lean_utils import ProofContext
 root_dir = f"{__file__.split('itp_interface')[0]}"
 if root_dir not in sys.path:
     sys.path.append(root_dir)
 import os
 import random
+import logging
+import re
+from itp_interface.lean_server.lean_utils import Lean3Utils, Obligation, ProofContext
 from itp_interface.tools.lean_parse_utils import LeanLineByLineReader
 from itp_interface.lean_server.lean4_repl_interface import ProcessInterface
 from typing import Iterator, List, Optional, Tuple, OrderedDict
 
 
 class Lean4SyncExecutor:
+    theorem_start_regex = r"[\s]*(theorem|lemma|example)[\s]+"
+    theorem_end_regex = r"[\s|\S]*:=[\s]*by[\s]+?"
+    theorem_regex = r"((((theorem|lemma) ([\w+|\d+]*))|example)([\S|\s]*?):=[\s]*?by)[\s]+"
+    remove_proof_regex = r"([\s|\S]*:=[\s]*by)[\s|\S]*?"
+    proof_context_separator = "⊢"
+    proof_context_regex = r"((\d+) goals)*([\s|\S]*?)\n\n"
+    goal_regex = rf"([\s|\S]*?){proof_context_separator}([\s|\S]*)"
+    theorem_match = re.compile(theorem_regex, re.MULTILINE)
+    proof_context_match = re.compile(proof_context_regex, re.MULTILINE)
+    goal_match = re.compile(goal_regex, re.MULTILINE)
+    theorem_start_match = re.compile(theorem_start_regex, re.MULTILINE)
+    theorem_end_match = re.compile(theorem_end_regex, re.MULTILINE)
+    remove_proof_match = re.compile(remove_proof_regex, re.MULTILINE)
+    proof_context_generation_tactic = "\nend"
+    proof_context_generation_tactic_curlies = "\n}"
+    proof_state_running_message = "tactic failed, there are unsolved goals\nstate:"
     def __init__(self, 
         project_root: Optional[str] = None, 
         prefix: Optional[str] = None, 
         main_file: Optional[str] = None, 
         use_hammer: bool = False, 
         timeout_in_sec: int = 60, 
-        use_human_readable_proof_context: bool = False, 
+        use_human_readable_proof_context: bool = True, 
         proof_step_iter: Optional[Iterator[str]] = None, 
         suppress_error_log: bool = False, 
         mathlib_root: Optional[str] = None, 
         enable_search: bool = False, 
         namespaces: Optional[List[str]] = None, 
-        keep_local_context: bool = False):
+        keep_local_context: bool = False,
+        logger: Optional[logging.Logger] = None):
         assert proof_step_iter is None or isinstance(proof_step_iter, Iterator), \
             "proof_step_iter must be an iterator"
         assert main_file is not None or proof_step_iter is not None, \
@@ -54,31 +72,68 @@ class Lean4SyncExecutor:
         self.proof_context : ProofContext = None
         self.curr_lemma_name : Optional[str] = None
         self.curr_lemma : Optional[str] = None
-        self.lean_error_messages : List[Message] = []
+        # self.lean_error_messages : List[Message] = []
         self._proof_running = False
         self._file_content = ""
         self.local_file_lemmas: OrderedDict[str, str] = OrderedDict()
         self.local_theorem_lemma_description: OrderedDict[str, str] = OrderedDict()
         self._proof_start_idx: Optional[int] = None
         self._import_end_idx: Optional[int] = None
+        self.logger = logger if logger is not None else logging.getLogger(__name__)
         if mathlib_root is not None:
             self._mathlib_root = mathlib_root
         else:
             self._mathlib_root = os.path.join(self.project_root, "_target", "deps", "mathlib")
         self._mathlib_src_root = os.path.join(self._mathlib_root, "src")
         self._enable_search = enable_search
+        self._theorem_started = False
+        self._content_till_last_theorem_stmt = None
+        self._last_theorem = None
+        self._last_env_idx = None
+        self._last_proof_state_idx = None
+        self._line_to_env_idx_map = {}
+        self._line_to_proof_state_idx_map = {}
         if self._enable_search:
             pass
         pass
 
     def __enter__(self):
-        pass
+        import_dir_parent = os.path.dirname(os.path.dirname(root_dir))
+        path_to_lean4_repl = os.path.join(import_dir_parent, "imports", "repl")
+        self.process_interace = ProcessInterface(
+            command="lake exe repl",
+            cwd=path_to_lean4_repl,
+            logger=self.logger,
+            log_level=logging.DEBUG,
+        )
+        if self.main_file_iter is None:
+            self.main_file_iter = LeanLineByLineReader(self.main_file, remove_comments=True).instruction_step_generator()
+        return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        assert self.process_interace is not None, "ProcessInterface is not initialized"
+        self.process_interace.close()
         pass
 
     def run_next(self) -> bool:
-        pass
+        try:
+            stmt = next(self.main_file_iter)
+        except StopIteration:
+            self.execution_complete = True
+            return False
+        self.current_stmt = stmt
+        self.line_num += 1
+        try:
+            idx = len(self._lines_executed)
+            self._run_stmt_on_lean_server(idx, stmt)
+        except:
+            if not self.suppress_error_log:
+                self.logger.error(f"Got an exception while running '{stmt}' on lean. File name: {self.main_file}")
+                self.logger.exception(f"Exception Log")
+            raise
+        self._lines_executed.append(stmt)
+        return True
+
 
     def run_next_without_exec(self) -> bool:
         raise NotImplementedError
@@ -139,3 +194,160 @@ class Lean4SyncExecutor:
 
     def get_current_lemma_name(self) -> Optional[str]:
         raise NotImplementedError
+    
+    def _parse_theorem_stmt(self, stmt: str) -> str:
+        matches = Lean4SyncExecutor.theorem_match.findall(stmt)
+        if len(matches) == 0:
+            raise ValueError(f"Could not find the theorem in the statement: {stmt}")
+        # We are only interested in the last theorem
+        groups = matches[-1]
+        full_stmt = groups[0]
+        theorem_name = groups[4]
+        theorem_stmt = groups[5]
+        return theorem_name, theorem_stmt, full_stmt
+
+    def _stmt_has_lemma(self, stmt: str) -> bool:
+        # Match the theorem regex
+        full_stmt = (stmt if self._content_till_last_theorem_stmt is None else self._content_till_last_theorem_stmt + '\n' + stmt) + '\n'
+        theorem_started = Lean4SyncExecutor.theorem_start_match.findall(full_stmt)
+        theorem_ended = Lean4SyncExecutor.theorem_end_match.findall(full_stmt)
+        is_theorem_started = len(theorem_started) > 0
+        is_theorem_ended = len(theorem_ended) > 0
+        # Case one where the theorem has started and ended in the same line
+        self._content_till_last_theorem_stmt = full_stmt[:-1]
+        if is_theorem_started and is_theorem_ended:
+            self._last_theorem = self._parse_theorem_stmt(full_stmt)
+            self._theorem_started = False
+        elif is_theorem_started:
+            self._theorem_started = True
+        elif is_theorem_ended and self._theorem_started:
+            self._theorem_started = False
+            self._last_theorem = self._parse_theorem_stmt(full_stmt)
+        return is_theorem_started or self._theorem_started or is_theorem_ended
+    
+    def _get_last_theorem_name_and_stmt(self) -> Tuple[str, str]:
+        assert self._content_till_last_theorem_stmt is not None, "No theorem is running"
+        # TODO write a regex to extract the theorem name from the theorem statement
+        pass
+    
+    def _get_env(self, idx) -> Optional[int]:
+        env_idx = None
+        if idx in self._line_to_env_idx_map:
+            env_idx = self._line_to_env_idx_map[idx]
+        else:
+            self._line_to_env_idx_map[idx] = self._last_env_idx
+            env_idx = self._last_env_idx
+        return env_idx
+    
+    def _update_env(self, idx: int):
+        self._last_env_idx = idx
+    
+    def _update_proof_state_idx(self, idx: int):
+        self._last_proof_state_idx = idx
+    
+    def _should_start_proof(self, stmt: str) -> bool:
+        return not self._theorem_started
+    
+    def _remove_proof_add_sorry(self) -> str:
+        # Find the last ':= by' and replace it with 'sorry' and remove the rest of the proof
+        matches = Lean4SyncExecutor.remove_proof_match.findall(self._content_till_last_theorem_stmt)
+        if len(matches) == 0:
+            raise ValueError(f"Could not find the proof in the statement: {self._content_till_last_theorem_stmt}")
+        groups = matches[-1]
+        assert isinstance(groups, str), "Groups should be a string"
+        new_stmt = groups
+        new_stmt += " sorry"
+        self._content_till_last_theorem_stmt = new_stmt
+
+    def _run_stmt_on_lean_server(self, idx : int, stmt: str):
+        proof_should_run = False
+        if not self._proof_running and self._stmt_has_lemma(stmt):
+            proof_should_run = self._should_start_proof(stmt)
+            if proof_should_run:
+                theorem_name, theorem_stmt, full_stmt = self._last_theorem
+                self.curr_lemma_name = theorem_name
+                self.curr_lemma = theorem_stmt
+                self.local_file_lemmas[theorem_name] = theorem_stmt
+                self.local_theorem_lemma_description[theorem_name] = full_stmt
+        if not self._proof_running and not proof_should_run:
+            return
+        if proof_should_run:
+            # We need to augment the statement with a sorry
+            self._remove_proof_add_sorry()
+        env_idx = self._get_env(idx)
+        if not self._proof_running:
+            # Run the statement in cmd mode
+            cmd = {"cmd": self._content_till_last_theorem_stmt}
+            self._content_till_last_theorem_stmt = None
+        else:
+            # Run the statement in tactic mode
+            last_proof_state_idx = self._last_proof_state_idx
+            assert last_proof_state_idx is not None, "Proof state index is not set"
+            cmd = {"tactic": stmt, "proofState": last_proof_state_idx}
+        if env_idx is not None:
+            cmd["env"] = env_idx
+        self.process_interace.send_command(cmd)
+        timed_out = False
+        try:
+            response = self.process_interace.read_response(self.timeout_in_sec)
+        except TimeoutError:
+            if not self.suppress_error_log:
+                self.logger.error(f"Timeout error while running '{stmt}' on lean. File name: {self.main_file}")
+            timed_out = True
+        if timed_out:
+            # TODO handle timeout
+            pass
+        else:
+            if 'env' in response:
+                env_idx = response['env']
+            else:
+                env_idx = None
+            self._update_env(env_idx)
+            self._proof_running = 'sorries' in response or 'proofState' in response
+            if self._proof_running:
+                proof_state_idx = None
+                goals = None
+                proof_goals = []
+                if 'sorries' in response:
+                    proof_state = response['sorries'][0]
+                    proof_state_idx = proof_state['proofState']
+                    proof_goals = [proof_state['goal']]
+                elif 'proofState' in response:
+                    proof_state = response
+                    proof_state_idx = response['proofState']
+                    proof_goals = response['goals']
+                self._update_proof_state_idx(proof_state_idx)
+                self._proof_context = self._parse_proof_context(proof_goals)
+                if self._proof_context == ProofContext.empty():
+                    self._proof_running = False
+                    self._proof_context = None
+            else:
+                self._proof_context = None
+        pass
+            
+
+    def _skip_to_theorem(self, theorem: str):
+        pass
+
+    def _parse_proof_context(self, proof_goals: list) -> ProofContext:
+        goals = []
+        for proof_goal in proof_goals:
+            if self.use_human_readable_proof_context:
+                goals.append(Lean3Utils.parse_goal(proof_goal))
+            else:
+                raise NotImplementedError("Parsing of non-human readable proof context is not implemented")
+        if len(goals) == 0:
+            return ProofContext.empty()
+        else:
+            return ProofContext(goals, [], [], [])
+    
+if __name__ == "__main__":
+    project_root = 'data/test/lean4_proj/'
+    file_path = 'data/test/lean4_proj/Lean4Proj/Basic.lean'
+    os.chdir(root_dir)
+    assert os.path.exists(project_root), "Project root does not exist"
+    assert os.path.exists(file_path), "File path does not exist"
+    with Lean4SyncExecutor(main_file=file_path, project_root=project_root) as executor:
+        while not executor.execution_complete:
+            executor.run_next()
+    pass
