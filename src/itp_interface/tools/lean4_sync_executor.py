@@ -8,10 +8,10 @@ import os
 import random
 import logging
 import re
-from itp_interface.lean_server.lean_utils import Lean3Utils, Obligation, ProofContext
+from itp_interface.lean_server.lean_utils import Lean3Utils, ProofContext
 from itp_interface.tools.lean_parse_utils import LeanLineByLineReader
 from itp_interface.lean_server.lean4_repl_interface import ProcessInterface
-from typing import Iterator, List, Optional, Tuple, OrderedDict
+from typing import Iterator, List, Optional, Tuple, OrderedDict, Generator
 
 
 class Lean4SyncExecutor:
@@ -72,7 +72,7 @@ class Lean4SyncExecutor:
         self.proof_context : ProofContext = None
         self.curr_lemma_name : Optional[str] = None
         self.curr_lemma : Optional[str] = None
-        # self.lean_error_messages : List[Message] = []
+        self.lean_error_messages : List[str] = []
         self._proof_running = False
         self._file_content = ""
         self.local_file_lemmas: OrderedDict[str, str] = OrderedDict()
@@ -163,42 +163,154 @@ class Lean4SyncExecutor:
         raise NotImplementedError
 
     def run_without_executing(self, stmt: str):
-        raise NotImplementedError
+        while True:
+            try:
+                stmt = next(self.main_file_iter)
+            except StopIteration:
+                return
+            idx = len(self._lines_executed)
+            self._set_content_to_run(stmt)
+            if stmt.startswith("theorem") and self._import_end_idx is None:
+                self._import_end_idx = idx
+            self.current_stmt = stmt
+            self.line_num += 1
+            self._set_content_to_run(stmt)
+            self._lines_executed.append(stmt)
 
-    def run_lemma_without_executing(self) -> bool:
-        raise NotImplementedError
+    def run_lemma_without_executing(self):
+        while True:
+            try:
+                stmt = next(self.main_file_iter)
+                self.current_stmt = stmt
+                self.line_num += 1
+                if "Qed." in stmt or "Defined." in stmt or "Admitted." in stmt:
+                    return True
+            except StopIteration:
+                return False
 
     def run_till_next_lemma(self) -> Tuple[bool, Optional[str]]:
-        raise NotImplementedError
+        # Run the coq file until the next lemma is found
+        next_stmt = None
+        in_proof_mode = self.is_in_proof_mode()
+        if in_proof_mode or self.execution_complete:
+            # If we are already in proof mode, then we have already found a lemma
+            return False, next_stmt
+        prev_stmt = self.current_stmt
+        ran_last_cmd = self.run_next()
+        next_stmt = self.current_stmt
+        if not ran_last_cmd:
+            return False, None
+        assigned = False
+        while ran_last_cmd and not in_proof_mode:
+            if not assigned:
+                prev_stmt = next_stmt
+            ran_last_cmd = self.run_next()
+            in_proof_mode = self.is_in_proof_mode()
+            if not assigned:
+                next_stmt = self.current_stmt
+                if in_proof_mode:
+                    assigned = True
+        lemma_name = next_stmt if next_stmt.startswith("Theorem") or next_stmt.startswith("Lemma") else prev_stmt
+        return in_proof_mode, lemma_name
 
-    def run_till_next_lemma_return_exec_stmt(self) -> Iterator[str]:
-        raise NotImplementedError
+    def run_till_next_lemma_return_exec_stmt(self) -> Generator[str, None, None]:
+        # Run the coq file until the next lemma is found
+        next_stmt = None
+        in_proof_mode = self.is_in_proof_mode()
+        if in_proof_mode or self.execution_complete:
+            # If we are already in proof mode, then we have already found a lemma
+            yield from []
+        else:
+            ran_last_cmd = self.run_next()
+            next_stmt = self.current_stmt
+            if not ran_last_cmd:
+                yield from []
+            else:
+                yield next_stmt
+            while ran_last_cmd and not in_proof_mode:
+                ran_last_cmd = self.run_next()
+                next_stmt = self.current_stmt
+                if ran_last_cmd:
+                    yield next_stmt
+                in_proof_mode = self.is_in_proof_mode()
 
-    def run_to_finish_lemma_return_exec(self) -> Iterator[str]:
-        raise NotImplementedError
+    def run_to_finish_lemma_return_exec(self) -> Generator[str, None, None]:
+        # Run the coq file until the next lemma is found
+        next_stmt = None
+        in_proof_mode = self.is_in_proof_mode()
+        if not in_proof_mode or self.execution_complete:
+            # If we are already in proof mode, then we have already found a lemma
+            yield from []
+        else:
+            ran_last_cmd = self.run_next()
+            next_stmt = self.current_stmt
+            if not ran_last_cmd:
+                yield from []
+            else:
+                yield next_stmt
+            while ran_last_cmd and in_proof_mode:
+                ran_last_cmd = self.run_next()
+                next_stmt = self.current_stmt
+                if ran_last_cmd:
+                    yield next_stmt
+                in_proof_mode = self.is_in_proof_mode()
 
     def run_to_finish_lemma(self) -> bool:
-        raise NotImplementedError
+        # Run the coq file and finish the current lemma
+        in_proof_mode = self.is_in_proof_mode()
+        if not in_proof_mode or self.execution_complete:
+            # If we are not in proof mode, then we are not finishing a lemma
+            return False
+        ran_last_cmd = self.run_next()
+        if not ran_last_cmd:
+            return False
+        while ran_last_cmd and in_proof_mode:
+            ran_last_cmd = self.run_next()
+            in_proof_mode = self.is_in_proof_mode()
+        return not in_proof_mode
 
     def run_till_line_num(self, line_num: int):
-        raise NotImplementedError
-
+        assert line_num >= self.line_num
+        ran_last_cmd = True
+        while ran_last_cmd and self.line_num < line_num:
+            ran_last_cmd = self.run_next()
+        return self.line_num
+    
     def run_to_finish(self):
-        raise NotImplementedError
-
+        ran_last_cmd = True
+        while ran_last_cmd:
+            ran_last_cmd = self.run_next()
+        
     def get_lemma_name_if_running(self) -> Optional[str]:
-        raise NotImplementedError
-
+        if not self.is_in_proof_mode():
+            return None
+        else:
+            try:
+                return self.curr_lemma_name
+            except:
+                return None
+    
     def get_lemma_stmt_if_running(self) -> Optional[str]:
-        raise NotImplementedError
-
+        if not self.is_in_proof_mode():
+            return None
+        else:
+            try:
+                return self.local_theorem_lemma_description[self.curr_lemma_name]
+            except:
+                return None
+        
     def get_current_lemma_name(self) -> Optional[str]:
-        raise NotImplementedError
+        if self.curr_lemma_name is None:
+            return None
+        else:
+            return self.curr_lemma_name
     
     def _parse_theorem_stmt(self, stmt: str) -> str:
         matches = Lean4SyncExecutor.theorem_match.findall(stmt)
         if len(matches) == 0:
-            raise ValueError(f"Could not find the theorem in the statement: {stmt}")
+            return None, None, None
+        # if len(matches) == 0:
+        #     raise ValueError(f"Could not find the theorem in the statement: {stmt}")
         # We are only interested in the last theorem
         groups = matches[-1]
         full_stmt = groups[0]
@@ -295,39 +407,77 @@ class Lean4SyncExecutor:
                 self.logger.error(f"Timeout error while running '{stmt}' on lean. File name: {self.main_file}")
             timed_out = True
         if timed_out:
-            # TODO handle timeout
-            pass
+            self.lean_error_messages = ["The tactic timed out, probably because of repeated application of a tactic which created a very big goal."]
         else:
             if 'env' in response:
                 env_idx = response['env']
             else:
                 env_idx = None
             self._update_env(env_idx)
-            self._proof_running = 'sorries' in response or 'proofState' in response
-            if self._proof_running:
-                proof_state_idx = None
-                goals = None
-                proof_goals = []
-                if 'sorries' in response:
-                    proof_state = response['sorries'][0]
-                    proof_state_idx = proof_state['proofState']
-                    proof_goals = [proof_state['goal']]
-                elif 'proofState' in response:
-                    proof_state = response
-                    proof_state_idx = response['proofState']
-                    proof_goals = response['goals']
-                self._update_proof_state_idx(proof_state_idx)
-                self._proof_context = self._parse_proof_context(proof_goals)
-                if self._proof_context == ProofContext.empty():
-                    self._proof_running = False
-                    self._proof_context = None
+            proof_running = 'sorries' in response or 'proofState' in response
+            error_messages = response.get('message', None)
+            if error_messages is None and 'proofState' in response:
+                error_messages = response.get('messages', None)
+            elif error_messages is not None:
+                error_messages = [error_messages]
+            if error_messages is not None:
+                self.lean_error_messages = error_messages
             else:
-                self._proof_context = None
+                self.lean_error_messages = []
+            if error_messages is None:
+                assert proof_running, "Proof is not running but no error message is present"
+                self._proof_running = proof_running
+                if self._proof_running:
+                    proof_state_idx = None
+                    proof_goals = []
+                    if 'sorries' in response:
+                        proof_state = response['sorries'][0]
+                        proof_state_idx = proof_state['proofState']
+                        proof_goals = [proof_state['goal']]
+                    elif 'proofState' in response:
+                        proof_state = response
+                        proof_state_idx = response['proofState']
+                        proof_goals = response['goals']
+                    self._update_proof_state_idx(proof_state_idx)
+                    self.proof_context = self._parse_proof_context(proof_goals)
+                    if self.proof_context == ProofContext.empty():
+                        self._proof_running = False
+                        self.proof_context = None
+                        self.curr_lemma = None
+                        self.curr_lemma_name = None
+                else:
+                    self.proof_context = None
         pass
-            
 
     def _skip_to_theorem(self, theorem: str):
-        pass
+        # Skip to the given theorem
+        found_theorem = False
+        while not found_theorem and not self.execution_complete:
+            try:
+                stmt = next(self.main_file_iter)
+            except StopIteration:
+                self.execution_complete = True
+                break
+            self.current_stmt = stmt
+            self.line_num += 1
+            if self._stmt_has_lemma(stmt):
+                proof_should_run = self._should_start_proof(stmt)
+                if proof_should_run:
+                    # There is a bug in theorem name and statement parsing which can lead to mixing of two theorems in
+                    # one
+                    thm_name, thm_stmt, full_thm_stmt = self._last_theorem
+                    if thm_name is not None and thm_name == theorem:
+                        found_theorem = True
+                        self._theorem_started = True
+                        self._content_till_last_theorem_stmt = '\n'.join(self._lines_executed)
+                        self._run_stmt_on_lean_server(len(self._lines_executed), stmt)
+                    elif thm_name is not None:
+                        self.local_file_lemmas[thm_name] = thm_stmt
+                        self.local_theorem_lemma_description[thm_name] = full_thm_stmt
+                    self._content_till_last_theorem_stmt = None
+            self._lines_executed.append(stmt)
+        if not found_theorem:
+            raise ValueError(f"The theorem '{theorem}' was not found in the file")
 
     def _parse_proof_context(self, proof_goals: list) -> ProofContext:
         goals = []
@@ -348,6 +498,17 @@ if __name__ == "__main__":
     assert os.path.exists(project_root), "Project root does not exist"
     assert os.path.exists(file_path), "File path does not exist"
     with Lean4SyncExecutor(main_file=file_path, project_root=project_root) as executor:
+        executor._skip_to_theorem("test3")
         while not executor.execution_complete:
             executor.run_next()
+            print("Current statement:", executor.current_stmt)
+            if executor.proof_context is not None:
+                for goal in executor.proof_context.all_goals:
+                    for hyp in goal.hypotheses:
+                        print(hyp)
+                    print('-'*10)
+                    print(goal.goal)
+                print('-'*20)
+            if executor.lean_error_messages:
+                print("Error messages:\n", executor.lean_error_messages)
     pass
