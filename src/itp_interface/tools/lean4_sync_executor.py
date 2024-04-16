@@ -16,9 +16,9 @@ from typing import Iterator, List, Optional, Tuple, OrderedDict, Generator
 
 class Lean4SyncExecutor:
     theorem_start_regex = r"[\s]*(theorem|lemma|example)[\s]+"
-    theorem_end_regex = r"[\s|\S]*:=[\s]*by[\s]+?"
-    theorem_regex = r"((((theorem|lemma) ([\w+|\d+]*))|example)([\S|\s]*?):=[\s]*?by)[\s]+"
-    remove_proof_regex = r"([\s|\S]*:=[\s]*by)[\s|\S]*?"
+    theorem_end_regex = r"(theorem|lemma|example) [\S|\s]*?:=[\s]*?"
+    theorem_regex = r"((((theorem|lemma) ([\w+|\d+]*))|example)([\S|\s]*?):=[\s]*?)[\s]+"
+    remove_proof_regex = r"([\s|\S]*:=)[\s|\S]*?"
     proof_context_separator = "⊢"
     proof_context_regex = r"((\d+) goals)*([\s|\S]*?)\n\n"
     goal_regex = rf"([\s|\S]*?){proof_context_separator}([\s|\S]*)"
@@ -93,6 +93,7 @@ class Lean4SyncExecutor:
         self._last_proof_state_idx = None
         self._line_to_env_idx_map = {}
         self._line_to_proof_state_idx_map = {}
+        self._anon_theorem_count = 0
         if self._enable_search:
             pass
         pass
@@ -114,6 +115,9 @@ class Lean4SyncExecutor:
         assert self.process_interace is not None, "ProcessInterface is not initialized"
         self.process_interace.close()
         pass
+
+    def is_in_proof_mode(self):
+        return True if self.proof_context else False
 
     def run_next(self) -> bool:
         try:
@@ -337,11 +341,6 @@ class Lean4SyncExecutor:
             self._last_theorem = self._parse_theorem_stmt(full_stmt)
         return is_theorem_started or self._theorem_started or is_theorem_ended
     
-    def _get_last_theorem_name_and_stmt(self) -> Tuple[str, str]:
-        assert self._content_till_last_theorem_stmt is not None, "No theorem is running"
-        # TODO write a regex to extract the theorem name from the theorem statement
-        pass
-    
     def _get_env(self, idx) -> Optional[int]:
         env_idx = None
         if idx in self._line_to_env_idx_map:
@@ -368,7 +367,7 @@ class Lean4SyncExecutor:
         groups = matches[-1]
         assert isinstance(groups, str), "Groups should be a string"
         new_stmt = groups
-        new_stmt += " sorry"
+        new_stmt += " by sorry"
         self._content_till_last_theorem_stmt = new_stmt
 
     def _run_stmt_on_lean_server(self, idx : int, stmt: str):
@@ -379,6 +378,9 @@ class Lean4SyncExecutor:
                 theorem_name, theorem_stmt, full_stmt = self._last_theorem
                 self.curr_lemma_name = theorem_name
                 self.curr_lemma = theorem_stmt
+                if len(theorem_name) == 0:
+                    self._anon_theorem_count += 1
+                    theorem_name = f"anon_theorem____{self._anon_theorem_count}"
                 self.local_file_lemmas[theorem_name] = theorem_stmt
                 self.local_theorem_lemma_description[theorem_name] = full_stmt
         if not self._proof_running and not proof_should_run:
@@ -472,6 +474,9 @@ class Lean4SyncExecutor:
                         self._content_till_last_theorem_stmt = '\n'.join(self._lines_executed)
                         self._run_stmt_on_lean_server(len(self._lines_executed), stmt)
                     elif thm_name is not None:
+                        if len(thm_name) == 0:
+                            self._anon_theorem_count += 1
+                            thm_name = f"anon_theorem____{self._anon_theorem_count}"
                         self.local_file_lemmas[thm_name] = thm_stmt
                         self.local_theorem_lemma_description[thm_name] = full_thm_stmt
                     self._content_till_last_theorem_stmt = None
