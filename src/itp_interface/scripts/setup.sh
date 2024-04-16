@@ -6,7 +6,7 @@ fi
 # Default Lean version
 lean3_version="3.42.1"
 lean4_version="4.4.0" # "nightly" # "4.7.0" # "stable"
-lean_type="lean" # For Lean 3
+lean_type="lean4" # For Lean 3
 lean_repo="leanprover-community/lean" # For Lean 3
 # Check if lean_version is passed as an argument
 if [[ $# -eq 1 ]]; then
@@ -124,5 +124,36 @@ if [[ $lean_type == "lean" ]]; then
         ./src/data/benchmarks/lean-dojo/download.sh
         echo "Downloaded ReProver benchmarks successfully!"
     ) || exit 1
+fi
+if [[ $lean_type == "lean4" ]]; then
+    echo "Building Lean 4's projects ..."
+    (
+        # Build Lean 4's projects
+        echo "Building Lean 4's Simple Benchmark..."
+        pushd ./src/data/test/lean4_proj
+        lake build lean4_proj
+        popd
+        echo "Building Lean 4's Simple Benchmark done!"
+    ) || exit 1
+    echo "Building Lean 4's interface REPL..."
+    (
+        # Build Lean 4's interface REPL
+        pushd ./imports/repl
+        lake build repl
+        popd
+        echo "Lean 4's interface REPL built successfully!"
+    ) || exit 1
+    echo "Building Lean 4's Mathlib..."
+    (
+        # Build Lean 4's Mathlib
+        echo "Building Lean 4's Mathlib..."
+        echo "This may take a while... (don't underestimate the time taken to build Lean 4's Mathlib, meanwhile you can take a coffee break!)"
+        pushd ./imports/mathlib4
+        lake exe cache get > /dev/null
+        lake build Mathlib
+        popd
+        echo "Lean 4's Mathlib built successfully!"
+    ) || exit 1
+    echo "Building Lean 4's projects done!"
 fi
 echo "Copra Setup complete!"

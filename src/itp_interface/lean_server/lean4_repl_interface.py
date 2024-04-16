@@ -68,9 +68,13 @@ class ProcessInterface:
 
 # Process interface test
 if __name__ == "__main__":
-    interface = ProcessInterface("lake exe repl", "./imports/repl", log_level=logging.DEBUG)
+    #.lake/bin/repl
+    repl_path = "./imports/repl/.lake/build/bin/repl"
+    lean4_proj_path = "./src/data/test/lean4_proj"
+    abs_repl_path = os.path.abspath(repl_path)
+    interface = ProcessInterface(f"lake env {abs_repl_path}", lean4_proj_path, log_level=logging.DEBUG)
     try:
-        interface.send_command({"path": "../../src/data/test/lean4_proj/Lean4Proj/Basic.lean", "allTactics": True})
+        interface.send_command({"path": "Lean4Proj/Basic.lean", "allTactics": True})
         response = interface.read_response(1)
         print(response)
     finally:

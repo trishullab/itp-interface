@@ -101,9 +101,12 @@ class Lean4SyncExecutor:
     def __enter__(self):
         import_dir_parent = os.path.dirname(os.path.dirname(root_dir))
         path_to_lean4_repl = os.path.join(import_dir_parent, "imports", "repl")
+        abs_path = os.path.abspath(path_to_lean4_repl)
+        path_to_repl_exec = os.path.join(abs_path, ".lake", "build", "bin", "repl")
+        assert os.path.exists(path_to_repl_exec), f"Lean4 repl executable does not exist at {path_to_repl_exec}, you may need to build it"
         self.process_interace = ProcessInterface(
-            command="lake exe repl",
-            cwd=path_to_lean4_repl,
+            command=f"lake env {path_to_repl_exec}",
+            cwd=self.project_root,
             logger=self.logger,
             log_level=logging.DEBUG,
         )
@@ -465,8 +468,6 @@ class Lean4SyncExecutor:
             if self._stmt_has_lemma(stmt):
                 proof_should_run = self._should_start_proof(stmt)
                 if proof_should_run:
-                    # There is a bug in theorem name and statement parsing which can lead to mixing of two theorems in
-                    # one
                     thm_name, thm_stmt, full_thm_stmt = self._last_theorem
                     if thm_name is not None and thm_name == theorem:
                         found_theorem = True
