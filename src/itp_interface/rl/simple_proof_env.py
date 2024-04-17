@@ -601,7 +601,7 @@ if __name__ == "__main__":
         retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
     else:
         raise Exception(f"Invalid input {inp} for choosing coq/lean/lean4 env")
-    test_ray = False
+    test_ray = True
     if test_ray:
         logger = logging.getLogger(__name__)
         ray.init()
@@ -613,6 +613,9 @@ if __name__ == "__main__":
         while action.action_type != ProofAction.ActionType.EXIT and not done:
             step_id = env_actor.step.remote(action)
             state, _, _, reward, done, info = ray.get(step_id)
+            print(f"Reward: {reward}")
+            print(f"Done: {done}")
+            print(f"Info: {info.to_json()}")
             ray.get(env_actor.render.remote())
             if not done:
                 action = scan_action(language)
