@@ -18,6 +18,7 @@ from itp_interface.rl.abstraction import State, Action, Env
 from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
 from itp_interface.tools.training_data_format import TrainingDataFormat
 from itp_interface.tools.dynamic_lean_proof_exec import DynamicProofExecutor as DynamicLeanProofExecutor
+from itp_interface.tools.dynamic_lean4_proof_exec import DynamicProofExecutor as DynamicLean4ProofExecutor
 from itp_interface.tools.dynamic_coq_proof_exec import DynamicProofExecutor as DynamicCoqProofExecutor
 from itp_interface.retrieval.coq_bm25_reranker import CoqBm25ReRanker
 from itp_interface.retrieval.lean3_bm25_reranker import Lean3Bm25ReRanker
@@ -102,6 +103,8 @@ class ProofEnv(Env):
                 if self.language == ProofAction.Language.COQ:
                     ProofEnv._re_ranker = CoqBm25ReRanker(language=str(self.language))
                 elif self.language == ProofAction.Language.LEAN:
+                    ProofEnv._re_ranker = Lean3Bm25ReRanker(language=str(self.language))
+                elif self.language == ProofAction.Language.LEAN4:
                     ProofEnv._re_ranker = Lean3Bm25ReRanker(language=str(self.language))
                 else:
                     raise NotImplementedError(f"Language {self.language} not implemented")
@@ -504,7 +507,8 @@ class ProofEnv(Env):
                     _ = list(self._dynamic_proof_executor.run_to_finish_lemma_return_exec())
                     if self._dynamic_proof_executor.execution_complete:
                         break
-        elif isinstance(self._dynamic_proof_executor, DynamicLeanProofExecutor):
+        elif isinstance(self._dynamic_proof_executor, DynamicLeanProofExecutor) or \
+            isinstance(self._dynamic_proof_executor, DynamicLean4ProofExecutor):
             self._dynamic_proof_executor.skip_to_theorem(self.lemma_name)
             lemma_found = True
         else:
@@ -569,6 +573,7 @@ if __name__ == "__main__":
         theorem_name = "algb_add_comm"
         language = ProofAction.Language.COQ
         always_retrieve_thms = False
+        retrieval_strategy = ProofEnvReRankStrategy.BM25
     elif inp == 'lean':
         proof_exec_callback = ProofExecutorCallback(
             project_folder="data/test/lean_proj",
@@ -580,39 +585,52 @@ if __name__ == "__main__":
         theorem_name = "a_plus_b_a_minus_a"
         language = ProofAction.Language.LEAN
         always_retrieve_thms = True
+        retrieval_strategy = ProofEnvReRankStrategy.BM25
         pass
     elif inp == 'lean4':
         proof_exec_callback = ProofExecutorCallback(
             project_folder="data/test/lean4_proj",
             file_path="data/test/lean4_proj/Lean4Proj/Basic.lean",
             language=ProofAction.Language.LEAN4,
-            always_use_retrieval=True,
+            always_use_retrieval=False,
             keep_local_context=True
         )
-        theorem_name = "test"
+        theorem_name = "test3"
         language = ProofAction.Language.LEAN4
-        always_retrieve_thms = True
+        always_retrieve_thms = False
+        retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
     else:
-        raise Exception(f"Invalid input {inp} for choosing coq/lean")
-    logger = logging.getLogger(__name__)
-    ray.init()
-    env_actor = ProofEnvActor.remote("test", proof_exec_callback, theorem_name, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms, logger=logger)
-    # with env:
-    done_id = env_actor.get_done.remote()
-    done = ray.get(done_id)
-    action = scan_action(language)
-    while action.action_type != ProofAction.ActionType.EXIT and not done:
-        step_id = env_actor.step.remote(action)
-        state, _, _, reward, done, info = ray.get(step_id)
-        ray.get(env_actor.render.remote())
-        if not done:
+        raise Exception(f"Invalid input {inp} for choosing coq/lean/lean4 env")
+    test_ray = False
+    if test_ray:
+        logger = logging.getLogger(__name__)
+        ray.init()
+        env_actor = ProofEnvActor.remote("test", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms, logger=logger)
+        # with env:
+        done_id = env_actor.get_done.remote()
+        done = ray.get(done_id)
+        action = scan_action(language)
+        while action.action_type != ProofAction.ActionType.EXIT and not done:
+            step_id = env_actor.step.remote(action)
+            state, _, _, reward, done, info = ray.get(step_id)
+            ray.get(env_actor.render.remote())
+            if not done:
+                action = scan_action(language)
+        # Assuming proof_env_actor is your actor reference
+        cleanup_future = env_actor.cleanup.remote()
+
+        # Optionally wait for the cleanup to complete before proceeding
+        ray.get(cleanup_future)
+
+        # If you wish to explicitly kill the actor, do so after the cleanup
+        ray.kill(env_actor)
+    else:
+        with ProofEnv("test", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms) as env:
+            done = env.done
             action = scan_action(language)
-    # Assuming proof_env_actor is your actor reference
-    cleanup_future = env_actor.cleanup.remote()
-
-    # Optionally wait for the cleanup to complete before proceeding
-    ray.get(cleanup_future)
-
-    # If you wish to explicitly kill the actor, do so after the cleanup
-    ray.kill(env_actor)
+            while action.action_type != ProofAction.ActionType.EXIT and not done:
+                state, _, _, reward, done, info = env.step(action)
+                env.render()
+                if not done:
+                    action = scan_action(language)
     pass

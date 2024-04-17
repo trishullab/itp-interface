@@ -157,6 +157,11 @@ class Lean4SyncExecutor:
         self._lines_executed.append(stmt)
         return True
 
+    def needs_qed(self):
+        return self.proof_context is not None and len(self.proof_context.all_goals) == 0
+    
+    def needs_cut_close(self):
+        return self.proof_context is not None and len(self.proof_context.fg_goals) == 0 and len(self.proof_context.all_goals) > 0
 
     def run_next_without_exec(self) -> bool:
         raise NotImplementedError
@@ -444,8 +449,10 @@ class Lean4SyncExecutor:
                         cmd_was_executed = True
                 elif 'message' in response and 'proofState' not in response and 'sorries' not in response:
                     self.lean_error_messages = [response['message']]
-                    raise Exception("Lean server got killed, probably due to an error in the line executed.\n" + 
-                    f"Check the error message: {self.lean_error_messages}")
+                    cmd_was_executed = True # There is an irrecoverable error
+                    if not self.process_interace.process_is_running():
+                        raise Exception("Lean server got killed, probably due to an error in the line executed.\n" + 
+                        f"Check the error message: {self.lean_error_messages}")
                 else:
                     cmd_was_executed = True
             except TimeoutError:
@@ -478,7 +485,13 @@ class Lean4SyncExecutor:
             elif error_messages is not None:
                 error_messages = [error_messages]
             if error_messages is not None:
-                self.lean_error_messages = error_messages
+                self.lean_error_messages = []
+                for error_message in error_messages:
+                    if isinstance(error_message, dict):
+                        error_message = error_message['severity'] + ": " + error_message['data']
+                    else:
+                        error_message = str(error_message)
+                    self.lean_error_messages.append(error_message)
             else:
                 self.lean_error_messages = []
             if error_messages is None:

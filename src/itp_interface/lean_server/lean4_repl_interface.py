@@ -30,14 +30,17 @@ class ProcessInterface:
 
     def send_command(self, command_dict):
         # Check if the process is still running
-        if self.process.poll() is not None:
-            raise Exception("Lean REPL process has terminated.")
+        if not self.process_is_running():
+            raise Exception("Process is not running.")
         json_command = json.dumps(command_dict, ensure_ascii=True) + '\n\n'
         normalized_command = json_command.replace('\r\n', '\n')  # Normalize newlines
         os.write(self.master, normalized_command.encode('utf-8'))  # Send command to process
         self.logger.debug(f"Sent: {normalized_command}")
         self.sent_commands += normalized_command  # Keep track of normalized sent commands
         time.sleep(0.3) # Wait for the process to process the command
+    
+    def process_is_running(self):
+        return self.process.poll() is None
 
     def read_response(self, timeout=10):
         try:
