@@ -189,3 +189,5 @@ api_log.json
 .lake/
 *.olean
 *.olean.*
+
+temptodel*

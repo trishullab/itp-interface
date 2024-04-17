@@ -8,6 +8,7 @@ import os
 import random
 import logging
 import re
+import time
 from itp_interface.lean_server.lean_utils import Lean3Utils, ProofContext
 from itp_interface.tools.lean_parse_utils import LeanLineByLineReader
 from itp_interface.lean_server.lean4_repl_interface import ProcessInterface
@@ -58,7 +59,14 @@ class Lean4SyncExecutor:
         assert not use_hammer, "Hammer is not supported for Lean4"
         self.use_human_readable_proof_context = use_human_readable_proof_context
         self.project_root = project_root if project_root is not None else "."
-        self.main_file = main_file if main_file is not None else f"temp{random.randint(0, 100000000)}.lean"
+        self.main_file = main_file
+        self.ticks = str(time.time()).replace(".", "") # This ensures that the temp file name is unique and doesn't clash with other temp files
+        # This helps in running parallel instances of prover
+        self.random_num = str(random.randint(0, 100000000))
+        self.temp_filename_suffix = f"temptodel{self.ticks}{self.random_num}.lean"
+        self.temp_file = os.path.join(prefix, self.temp_filename_suffix) if prefix is not None else self.temp_filename_suffix
+        self.temp_file_full_path = os.path.join(self.project_root, self.temp_file)
+        self.temp_file_full_path = os.path.abspath(self.temp_file_full_path)
         self.use_hammer = use_hammer
         self.timeout_in_sec = min(timeout_in_sec, 120) # Maximum 120s timeout
         self.current_stmt = None
@@ -80,6 +88,7 @@ class Lean4SyncExecutor:
         self._proof_start_idx: Optional[int] = None
         self._import_end_idx: Optional[int] = None
         self.logger = logger if logger is not None else logging.getLogger(__name__)
+        self.use_file = False
         if mathlib_root is not None:
             self._mathlib_root = mathlib_root
         else:
@@ -103,21 +112,28 @@ class Lean4SyncExecutor:
         path_to_lean4_repl = os.path.join(import_dir_parent, "imports", "repl")
         abs_path = os.path.abspath(path_to_lean4_repl)
         path_to_repl_exec = os.path.join(abs_path, ".lake", "build", "bin", "repl")
+        if 'Mathlib' in self.project_root:
+            self.use_file = True
         assert os.path.exists(path_to_repl_exec), f"Lean4 repl executable does not exist at {path_to_repl_exec}, you may need to build it"
         self.process_interace = ProcessInterface(
             command=f"lake env {path_to_repl_exec}",
             cwd=self.project_root,
             logger=self.logger,
-            log_level=logging.DEBUG,
-        )
+            log_level=logging.INFO)
         if self.main_file_iter is None:
-            self.main_file_iter = LeanLineByLineReader(self.main_file, remove_comments=True).instruction_step_generator()
+            self.main_file_iter = LeanLineByLineReader(self.main_file, remove_comments=True, no_strip=True).instruction_step_generator()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         assert self.process_interace is not None, "ProcessInterface is not initialized"
         self.process_interace.close()
-        pass
+        try:
+            self.main_file_iter.close() # Close the file handle
+        except:
+            pass
+        # delete if the main file is a temporary file
+        if os.path.exists(self.temp_file_full_path):
+            os.remove(self.temp_file_full_path)
 
     def is_in_proof_mode(self):
         return True if self.proof_context else False
@@ -392,28 +408,64 @@ class Lean4SyncExecutor:
             # We need to augment the statement with a sorry
             self._remove_proof_add_sorry()
         env_idx = self._get_env(idx)
-        if not self._proof_running:
-            # Run the statement in cmd mode
-            cmd = {"cmd": self._content_till_last_theorem_stmt}
-            self._content_till_last_theorem_stmt = None
-        else:
-            # Run the statement in tactic mode
-            last_proof_state_idx = self._last_proof_state_idx
-            assert last_proof_state_idx is not None, "Proof state index is not set"
-            cmd = {"tactic": stmt, "proofState": last_proof_state_idx}
-        if env_idx is not None:
-            cmd["env"] = env_idx
-        self.process_interace.send_command(cmd)
-        timed_out = False
-        try:
-            response = self.process_interace.read_response(self.timeout_in_sec)
-        except TimeoutError:
-            if not self.suppress_error_log:
-                self.logger.error(f"Timeout error while running '{stmt}' on lean. File name: {self.main_file}")
-            timed_out = True
+        cmd_was_executed = False
+        use_file = self.use_file
+        response = None
+        while not cmd_was_executed:
+            if not self._proof_running:
+                # Run the statement in cmd mode
+                if not use_file:
+                    cmd = {"cmd": self._content_till_last_theorem_stmt}
+                else:
+                    # This might be due to not being able to sync with text
+                    if not os.path.exists(self.temp_file_full_path):
+                        with open(self.temp_file_full_path, "w") as f:
+                            f.write(self._content_till_last_theorem_stmt)
+                    cmd = {"path": self.temp_file_full_path}
+                self._content_till_last_theorem_stmt = None
+            else:
+                # Run the statement in tactic mode
+                last_proof_state_idx = self._last_proof_state_idx
+                assert last_proof_state_idx is not None, "Proof state index is not set"
+                cmd = {"tactic": stmt, "proofState": last_proof_state_idx}
+            if env_idx is not None:
+                cmd["env"] = env_idx
+            self.process_interace.send_command(cmd)
+            timed_out = False
+            try:
+                response = self.process_interace.read_response(self.timeout_in_sec)
+                if 'messages' in response and 'proofState' not in response and 'sorries' not in response:
+                    messages = response['messages']
+                    sevierities = [msg['severity'] for msg in messages]
+                    if 'error' in sevierities:
+                        cmd_was_executed = use_file
+                        use_file = True
+                    else:
+                        cmd_was_executed = True
+                elif 'message' in response and 'proofState' not in response and 'sorries' not in response:
+                    self.lean_error_messages = [response['message']]
+                    raise Exception("Lean server got killed, probably due to an error in the line executed.\n" + 
+                    f"Check the error message: {self.lean_error_messages}")
+                else:
+                    cmd_was_executed = True
+            except TimeoutError:
+                if not self.suppress_error_log:
+                    self.logger.error(f"Timeout error while running '{stmt}' on lean. File name: {self.main_file}")
+                timed_out = True
+                cmd_was_executed = True
+            except:
+                if not self.suppress_error_log:
+                    self.logger.error(f"Got an exception while running '{stmt}' on lean. File name: {self.main_file}")
+                    self.logger.exception(f"Exception Log")
+                cmd_was_executed = use_file # This will force it to run at most twice
+                use_file = True
+                if cmd_was_executed:
+                    raise
         if timed_out:
             self.lean_error_messages = ["The tactic timed out, probably because of repeated application of a tactic which created a very big goal."]
         else:
+            if response is None:
+                raise ValueError(f"Response is None for the statement: {stmt}")
             if 'env' in response:
                 env_idx = response['env']
             else:
@@ -517,4 +569,28 @@ if __name__ == "__main__":
                 print('-'*20)
             if executor.lean_error_messages:
                 print("Error messages:\n", executor.lean_error_messages)
-    pass
+    mathlib_test_file = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Data/Nat/Bits.lean'
+    project_root = 'data/test/Mathlib'
+    assert os.path.exists(mathlib_test_file), "Mathlib test file does not exist"
+    assert os.path.exists(project_root), "Project root does not exist"
+    with Lean4SyncExecutor(main_file=mathlib_test_file, project_root=project_root, timeout_in_sec=120) as executor:
+        executor._skip_to_theorem("one_bits")
+        assert executor.proof_context is not None, "Proof context should be present"
+        print("Starting the proof")
+        for goal in executor.proof_context.all_goals:
+            for hyp in goal.hypotheses:
+                print(hyp)
+            print('-'*10)
+            print(goal.goal)
+        while not executor.execution_complete and executor.proof_context is not None:
+            executor.run_next()
+            print("Current statement:", executor.current_stmt)
+            if executor.proof_context is not None:
+                for goal in executor.proof_context.all_goals:
+                    for hyp in goal.hypotheses:
+                        print(hyp)
+                    print('-'*10)
+                    print(goal.goal)
+                print('-'*20)
+            if executor.lean_error_messages:
+                print("Error messages:\n", executor.lean_error_messages)

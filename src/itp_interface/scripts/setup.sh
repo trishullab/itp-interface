@@ -148,7 +148,7 @@ if [[ $lean_type == "lean4" ]]; then
         # Build Lean 4's Mathlib
         echo "Building Lean 4's Mathlib..."
         echo "This may take a while... (don't underestimate the time taken to build Lean 4's Mathlib, meanwhile you can take a coffee break!)"
-        pushd ./imports/mathlib4
+        pushd src/data/test/Mathlib
         lake exe cache get > /dev/null
         lake build Mathlib
         popd
