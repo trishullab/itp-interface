@@ -28,7 +28,7 @@ requires = [
 build-backend = "hatchling.build"
 [project]
 name = "itp_interface"
-version = "0.0.5"
+version = "0.0.6"
 authors = [
   { name="Amitayush Thakur", email="amitayush@utexas.edu" },
 ]
