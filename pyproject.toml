@@ -28,7 +28,7 @@ requires = [
 build-backend = "hatchling.build"
 [project]
 name = "itp_interface"
-version = "0.0.2"
+version = "0.0.5"
 authors = [
   { name="Amitayush Thakur", email="amitayush@utexas.edu" },
 ]
@@ -44,3 +44,6 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/trishullab/itp-interface"
 Issues = "https://github.com/trishullab/itp-interface/issues"
+
+[project.scripts]
+install-itp-interface = "itp_interface.main.install:install_itp_interface"

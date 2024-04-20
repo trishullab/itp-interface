@@ -108,9 +108,9 @@ class Lean4SyncExecutor:
         pass
 
     def __enter__(self):
-        import_dir_parent = os.path.dirname(os.path.dirname(root_dir))
-        path_to_lean4_repl = os.path.join(import_dir_parent, "imports", "repl")
-        abs_path = os.path.abspath(path_to_lean4_repl)
+        tools_dir = os.path.dirname(__file__)
+        repl_path = os.path.join(tools_dir, "repl")
+        abs_path = os.path.abspath(repl_path)
         path_to_repl_exec = os.path.join(abs_path, ".lake", "build", "bin", "repl")
         if 'Mathlib' in self.project_root:
             self.use_file = True
