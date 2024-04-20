@@ -5,7 +5,7 @@ if [[ ! -d "src/itp_interface/scripts" ]]; then
 fi
 # Default Lean version
 lean3_version="3.42.1"
-lean4_version="4.4.0" # "nightly" # "4.7.0" # "stable"
+lean4_version="4.7.0-rc2" # "nightly" # "4.7.0" # "stable"
 lean_type="lean4" # For Lean 3
 lean_repo="leanprover-community/lean" # For Lean 3
 # Check if lean_version is passed as an argument
