@@ -9,6 +9,6 @@
 [submodule "imports/mathlib4"]
 	path = imports/mathlib4
 	url = https://github.com/leanprover-community/mathlib4.git
-[submodule "src/data/tools/repl"]
-	path = src/data/tools/repl
+[submodule "src/itp_interface/tools/repl"]
+	path = src/itp_interface/tools/repl
 	url = https://github.com/amit9oct/repl.git
