@@ -562,12 +562,49 @@ class Lean4SyncExecutor:
         else:
             return ProofContext(goals, [], [], [])
     
+
+
+def get_all_theorems_in_file(file_path: str) -> List[str]:
+    file_content = ""
+    with open(file_path, "r") as f:
+        file_content = f.read()
+    line_by_line_reader = LeanLineByLineReader(file_content=file_content, remove_comments=True, no_strip=True)
+    all_stmts = list(line_by_line_reader.instruction_step_generator())
+    full_content = '\n'.join(all_stmts)
+    all_matches = Lean4SyncExecutor.theorem_match.findall(full_content)
+    all_theorems = []
+    for match in all_matches:
+        all_theorems.append(match[4])
+    return all_theorems
+
+def get_theorem_name_resembling(file_path: str, theorem_name: str) -> Optional[str]:
+    all_theorems = get_all_theorems_in_file(file_path)
+    all_theorems_set = set(all_theorems)
+    all_parts = theorem_name.split('.')
+    thm_start_idx = len(all_parts) - 1
+    thm_found = False
+    while not thm_found and thm_start_idx >= 0:
+        full_name = '.'.join(all_parts[thm_start_idx:])
+        # look for any theorems matching with full_name
+        thm_found = full_name in all_theorems_set
+        thm_start_idx -= 1
+    if not thm_found:
+        full_name = '_root_.' + full_name
+        # look for any theorems matching with the full_name
+        thm_found = full_name in all_theorems_set
+        if not thm_found:
+            raise ValueError(f"The theorem '{theorem_name}' was not found in the file '{file_path}'")
+    return full_name
+
 if __name__ == "__main__":
     project_root = 'data/test/lean4_proj/'
     file_path = 'data/test/lean4_proj/Lean4Proj/Basic.lean'
     os.chdir(root_dir)
     assert os.path.exists(project_root), "Project root does not exist"
     assert os.path.exists(file_path), "File path does not exist"
+    print("Finding all theorems in the file")
+    all_theorems = get_all_theorems_in_file(file_path)
+    print(all_theorems)
     with Lean4SyncExecutor(main_file=file_path, project_root=project_root) as executor:
         executor._skip_to_theorem("test3")
         while not executor.execution_complete:
