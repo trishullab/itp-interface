@@ -563,8 +563,10 @@ class Lean4SyncExecutor:
             return ProofContext(goals, [], [], [])
     
 
-
-def get_all_theorems_in_file(file_path: str) -> List[str]:
+theorem_names_in_file_cache = {}
+def get_all_theorems_in_file(file_path: str, use_cache: bool=False) -> List[str]:
+    if use_cache and file_path in theorem_names_in_file_cache:
+        return theorem_names_in_file_cache[file_path]
     file_content = ""
     with open(file_path, "r") as f:
         file_content = f.read()
@@ -575,10 +577,12 @@ def get_all_theorems_in_file(file_path: str) -> List[str]:
     all_theorems = []
     for match in all_matches:
         all_theorems.append(match[4])
+    if use_cache:
+        theorem_names_in_file_cache[file_path] = all_theorems
     return all_theorems
 
-def get_theorem_name_resembling(file_path: str, theorem_name: str) -> Optional[str]:
-    all_theorems = get_all_theorems_in_file(file_path)
+def get_theorem_name_resembling(file_path: str, theorem_name: str, use_cache: bool=False) -> Optional[str]:
+    all_theorems = get_all_theorems_in_file(file_path, use_cache=use_cache)
     all_theorems_set = set(all_theorems)
     all_parts = theorem_name.split('.')
     thm_start_idx = len(all_parts) - 1
@@ -603,8 +607,10 @@ if __name__ == "__main__":
     assert os.path.exists(project_root), "Project root does not exist"
     assert os.path.exists(file_path), "File path does not exist"
     print("Finding all theorems in the file")
-    all_theorems = get_all_theorems_in_file(file_path)
+    all_theorems = get_all_theorems_in_file(file_path, use_cache=True)
     print(all_theorems)
+    theorems_similar_to_test3 = get_theorem_name_resembling(file_path, "Lean4Proj.Basic.test3", use_cache=True)
+    print("Theorem similar to ", "Lean4Proj.Basic.test3", " is ", theorems_similar_to_test3)
     with Lean4SyncExecutor(main_file=file_path, project_root=project_root) as executor:
         executor._skip_to_theorem("test3")
         while not executor.execution_complete:
