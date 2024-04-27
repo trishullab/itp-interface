@@ -18,7 +18,7 @@ from typing import Iterator, List, Optional, Tuple, OrderedDict, Generator
 class Lean4SyncExecutor:
     theorem_start_regex = r"[\s]*(theorem|lemma|example)[\s]+"
     theorem_end_regex = r"(theorem|lemma|example) [\S|\s]*?:=[\s]*?"
-    theorem_regex = r"((((theorem|lemma) ([\w+|\d+|\.|']*))|example)([\S|\s]*?):=[\s]*?)[\s]+"
+    theorem_regex = r"((((theorem|lemma) ([\S]*))|example)([\S|\s]*?):=[\s]*?)[\s]+"
     remove_proof_regex = r"([\s|\S]*:=)[\s|\S]*?"
     proof_context_separator = "⊢"
     proof_context_regex = r"((\d+) goals)*([\s|\S]*?)\n\n"
