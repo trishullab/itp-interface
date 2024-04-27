@@ -9,11 +9,12 @@ import random
 import logging
 import re
 import time
+import json
 from itp_interface.lean_server.lean_utils import Lean3Utils, ProofContext
 from itp_interface.tools.lean_parse_utils import LeanLineByLineReader
+from itp_interface.tools.theorem_details import TheoremDetails
 from itp_interface.lean_server.lean4_repl_interface import ProcessInterface
-from typing import Iterator, List, Optional, Tuple, OrderedDict, Generator
-
+from typing import Iterator, List, Optional, Tuple, OrderedDict, Generator, Dict
 
 class Lean4SyncExecutor:
     theorem_start_regex = r"[\s]*(theorem|lemma|example)[\s]+"
@@ -103,6 +104,7 @@ class Lean4SyncExecutor:
         self._line_to_env_idx_map = {}
         self._line_to_proof_state_idx_map = {}
         self._anon_theorem_count = 0
+        self._namespaces = []
         if self._enable_search:
             pass
         pass
@@ -355,6 +357,7 @@ class Lean4SyncExecutor:
         is_theorem_ended = len(theorem_ended) > 0
         # Case one where the theorem has started and ended in the same line
         self._content_till_last_theorem_stmt = full_stmt[:-1]
+        process_namespaces(full_stmt, self._namespaces)
         if is_theorem_started and is_theorem_ended:
             self._last_theorem = self._parse_theorem_stmt(full_stmt)
             self._theorem_started = False
@@ -522,6 +525,7 @@ class Lean4SyncExecutor:
     def _skip_to_theorem(self, theorem: str):
         # Skip to the given theorem
         found_theorem = False
+        thm_namespace, given_theorem_name = parse_thm_name(theorem)
         while not found_theorem and not self.execution_complete:
             try:
                 stmt = next(self.main_file_iter)
@@ -534,7 +538,8 @@ class Lean4SyncExecutor:
                 proof_should_run = self._should_start_proof(stmt)
                 if proof_should_run:
                     thm_name, thm_stmt, full_thm_stmt = self._last_theorem
-                    if thm_name is not None and thm_name == theorem:
+                    last_namespace = self._namespaces[-1] if len(self._namespaces) > 0 else ""
+                    if thm_name is not None and thm_name == given_theorem_name and (len(thm_namespace) == 0 or thm_namespace == last_namespace):
                         found_theorem = True
                         self._theorem_started = True
                         self._content_till_last_theorem_stmt = '\n'.join(self._lines_executed)
@@ -563,42 +568,99 @@ class Lean4SyncExecutor:
             return ProofContext(goals, [], [], [])
     
 
-theorem_names_in_file_cache = {}
-def get_all_theorems_in_file(file_path: str, use_cache: bool=False) -> List[str]:
+theorem_names_in_file_cache: Dict[str, List[TheoremDetails]] = {}
+namespace_regex = r"namespace[\s]+([\S]+)[\s]*"
+namespace_match = re.compile(namespace_regex, re.MULTILINE)
+namespace_end_regex = r"end[\s]+([\S]+)[\s]*"
+namespace_end_match = re.compile(namespace_end_regex, re.MULTILINE)
+
+def parse_thm_name(theorem_name: str) -> Tuple[str, str]:
+    if theorem_name.startswith("{") and theorem_name.endswith("}"):
+        thm_dict = json.loads(theorem_name)
+        return thm_dict["namespace"], thm_dict["name"]
+    else:
+        return "", theorem_name
+
+def process_namespaces(file_cotent: str, open_namespaces: List[str]):
+    # Match the namespace regex
+    namespace_matches = namespace_match.findall(file_cotent)
+    namespace_end_matches = namespace_end_match.findall(file_cotent)
+    if len(namespace_matches) == 0 and len(namespace_end_matches) == 0:
+        return
+    namespace_start_set = set(namespace_matches)
+    namespace_end_set = set(namespace_end_matches)
+    diff = namespace_start_set.difference(namespace_end_set)
+    if len(diff) > 0:
+        # There are some namespaces which are not closed collect them in order
+        for ns in namespace_matches:
+            if ns in diff and ns not in open_namespaces:
+                open_namespaces.append(ns)
+    # Remove the namespaces which are closed
+    for ns in namespace_end_matches:
+        if ns in open_namespaces:
+            open_namespaces.remove(ns)
+    pass
+
+def get_all_theorems_in_file(file_path: str, use_cache: bool=False) -> List[TheoremDetails]:
     if use_cache and file_path in theorem_names_in_file_cache:
         return theorem_names_in_file_cache[file_path]
     file_content = ""
+    open_namespaces = []
     with open(file_path, "r") as f:
         file_content = f.read()
     line_by_line_reader = LeanLineByLineReader(file_content=file_content, remove_comments=True, no_strip=True)
     all_stmts = list(line_by_line_reader.instruction_step_generator())
     full_content = '\n'.join(all_stmts)
-    all_matches = Lean4SyncExecutor.theorem_match.findall(full_content)
+    # all_matches = Lean4SyncExecutor.theorem_match.findall(full_content)
+    all_matches = list(Lean4SyncExecutor.theorem_match.finditer(full_content))
     all_theorems = []
+    last_namespace_processed_idx = 0
     for match in all_matches:
-        all_theorems.append(match[4])
+        span_start, span_end = match.span()
+        process_namespaces(full_content[last_namespace_processed_idx:span_start], open_namespaces)
+        theorem_name = match.group(5)
+        theorem_name = theorem_name if theorem_name is not None else f"\"{match.group(6).strip(': ')}\""
+        theorem_namespace = '.'.join(open_namespaces) if len(open_namespaces) > 0 else ''
+        theorem_details = TheoremDetails(theorem_name=theorem_name, theorem_namespace=theorem_namespace, theorem_file_path=file_path)
+        all_theorems.append(theorem_details)
+        last_namespace_processed_idx = span_end
     if use_cache:
         theorem_names_in_file_cache[file_path] = all_theorems
     return all_theorems
 
 def get_theorem_name_resembling(file_path: str, theorem_name: str, use_cache: bool=False) -> Optional[str]:
     all_theorems = get_all_theorems_in_file(file_path, use_cache=use_cache)
-    all_theorems_set = set(all_theorems)
+    all_theorems_name_unique_map : Dict[str, List[TheoremDetails]] = {}
+    for thm in all_theorems:
+        if thm.theorem_name in all_theorems_name_unique_map:
+            all_theorems_name_unique_map[thm.theorem_name].append(thm)
+        else:
+            all_theorems_name_unique_map[thm.theorem_name] = [thm]
     all_parts = theorem_name.split('.')
     thm_start_idx = len(all_parts) - 1
     thm_found = False
     while not thm_found and thm_start_idx >= 0:
         full_name = '.'.join(all_parts[thm_start_idx:])
         # look for any theorems matching with full_name
-        thm_found = full_name in all_theorems_set
+        thm_found = full_name in all_theorems_name_unique_map
         thm_start_idx -= 1
     if not thm_found:
         full_name = '_root_.' + full_name
         # look for any theorems matching with the full_name
-        thm_found = full_name in all_theorems_set
+        thm_found = full_name in all_theorems_name_unique_map
         if not thm_found:
             raise ValueError(f"The theorem '{theorem_name}' was not found in the file '{file_path}'")
-    return full_name
+    assert thm_found, "The theorem was not found some code bug in finding the theorem names"
+    theorem_name_matches = all_theorems_name_unique_map[full_name]
+    if len(theorem_name_matches) == 1:
+        return full_name
+    else:
+        # We need to find the namespace which matches with the theorem_name
+        for thm in theorem_name_matches:
+            if theorem_name.endswith(thm.theorem_namespace + '.' + thm.theorem_name):
+                dict_thm = {"namespace": thm.theorem_namespace, "name": thm.theorem_name}
+                return json.dumps(dict_thm)
+        raise ValueError(f"The theorem '{theorem_name}' was not found in the file '{file_path}'")
 
 if __name__ == "__main__":
     project_root = 'data/test/lean4_proj/'
@@ -609,10 +671,10 @@ if __name__ == "__main__":
     print("Finding all theorems in the file")
     all_theorems = get_all_theorems_in_file(file_path, use_cache=True)
     print(all_theorems)
-    theorems_similar_to_test3 = get_theorem_name_resembling(file_path, "Lean4Proj.Basic.test3", use_cache=True)
-    print("Theorem similar to ", "Lean4Proj.Basic.test3", " is ", theorems_similar_to_test3)
+    theorems_similar_to_test = get_theorem_name_resembling(file_path, "Lean4Proj2.test", use_cache=True)
+    print("Theorem similar to ", "Lean4Proj2.test", " is ", theorems_similar_to_test)
     with Lean4SyncExecutor(main_file=file_path, project_root=project_root) as executor:
-        executor._skip_to_theorem("test3")
+        executor._skip_to_theorem(theorems_similar_to_test)
         while not executor.execution_complete:
             executor.run_next()
             print("Current statement:", executor.current_stmt)
