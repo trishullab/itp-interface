@@ -52,11 +52,18 @@ class ProofEnvPool(object):
             self.pool_size = len(proof_env_actors)
             self._actual_pool_size = len(proof_env_actors)
             self._frozeen_env = None
-            self._proof_env_pool = proof_env_actors            
+            self._proof_env_pool : typing.List[ProofEnvActor] = proof_env_actors            
         self._is_initialized = False
     
     def __enter__(self):
         self._is_initialized = True
+        # load all environments which are not loaded
+        should_load_envs = ray.get([proof_env_actor.should_load_env.remote() for proof_env_actor in self._proof_env_pool])
+        init_remotes = []
+        for should_load_env, proof_env_actor in zip(self._proof_env_pool, should_load_envs):
+            if should_load_env:
+                init_remotes.append(proof_env_actor.reset.remote())
+        ray.get(init_remotes)
         return self
     
     def __exit__(self, exc_type, exc_value, traceback):

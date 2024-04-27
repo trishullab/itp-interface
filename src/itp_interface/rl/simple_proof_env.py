@@ -539,8 +539,13 @@ class ProofEnv(Env):
 class ProofEnvActor(ProofEnv):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        super().__enter__()
+        self._should_load_env = kwargs.get("should_load_env", True)
+        if self._should_load_env:
+            super().__enter__()
         pass
+
+    def should_load_env(self):
+        return self._should_load_env
 
 if __name__ == "__main__":
     import os
