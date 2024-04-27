@@ -538,8 +538,9 @@ class ProofEnv(Env):
 @ray.remote
 class ProofEnvActor(ProofEnv):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         self._should_load_env = kwargs.get("should_load_env", True)
+        kwargs.pop("should_load_env", None)
+        super().__init__(*args, **kwargs)
         if self._should_load_env:
             super().__enter__()
         pass

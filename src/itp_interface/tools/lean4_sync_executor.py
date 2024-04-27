@@ -18,9 +18,9 @@ from typing import Iterator, List, Optional, Tuple, OrderedDict, Generator, Dict
 
 class Lean4SyncExecutor:
     theorem_start_regex = r"[\s]*(theorem|lemma|example)[\s]+"
-    theorem_end_regex = r"(theorem|lemma|example) [\S|\s]*?[:=|\|][\s]*?"
-    theorem_regex = r"((((theorem|lemma) ([\S]*))|example)([\S|\s]*?)[:=|\|][\s]*?)[\s]+"
-    remove_proof_regex = r"([\s|\S]*[:=|\|])[\s|\S]*?"
+    theorem_end_regex = r"(theorem|lemma|example) [\S|\s]*?(:=|\|)[\s]*?"
+    theorem_regex = r"((((theorem|lemma) ([\S]*))|example)([\S|\s]*?)(:=|\|)[\s]*?)[\s]+"
+    remove_proof_regex = r"([\s|\S]*(:=|\|))[\s|\S]*?"
     proof_context_separator = "⊢"
     proof_context_regex = r"((\d+) goals)*([\s|\S]*?)\n\n"
     goal_regex = rf"([\s|\S]*?){proof_context_separator}([\s|\S]*)"
@@ -391,9 +391,14 @@ class Lean4SyncExecutor:
         matches = Lean4SyncExecutor.remove_proof_match.findall(self._content_till_last_theorem_stmt)
         if len(matches) == 0:
             raise ValueError(f"Could not find the proof in the statement: {self._content_till_last_theorem_stmt}")
-        groups = matches[-1]
+        assert len(matches[-1]) == 2, f"Matches should be 2 {matches[-1]}"
+        groups = matches[-1][0]
+        thm_ending_stmt = matches[-1][1]
         assert isinstance(groups, str), "Groups should be a string"
         new_stmt = groups
+        if thm_ending_stmt == "|":
+            new_stmt = new_stmt.strip('| ')
+            new_stmt += ' :='
         new_stmt += " by sorry"
         self._content_till_last_theorem_stmt = new_stmt
 
