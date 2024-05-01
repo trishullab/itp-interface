@@ -1,0 +1,7 @@
+defaults:
+  # - benchmark: simple_benchmark_lean_training_data
+  # - run_settings: default_lean_data_generation_transforms
+  - benchmark: compcert_benchmark_train
+  - run_settings: default_coq_data_generation_transforms
+  - env_settings: no_retrieval
+  - override hydra/job_logging: 'disabled'
