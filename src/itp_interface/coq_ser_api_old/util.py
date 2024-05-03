@@ -60,10 +60,11 @@ def split_by_char_outside_matching(openpat: str, closepat: str,
 
 
 def eprint(*args, **kwargs):
-    if "guard" not in kwargs or kwargs["guard"]:
-        print(*args, file=sys.stderr,
-              **{i: kwargs[i] for i in kwargs if i != 'guard'})
-        sys.stderr.flush()
+    pass
+    # if "guard" not in kwargs or kwargs["guard"]:
+    #     print(*args, file=sys.stderr,
+    #           **{i: kwargs[i] for i in kwargs if i != 'guard'})
+    #     sys.stderr.flush()
 
 
 mybarfmt = '{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}]'

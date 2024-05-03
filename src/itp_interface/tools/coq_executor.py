@@ -10,7 +10,7 @@ import typing
 import functools
 import random
 import re
-from itp_interface.coq_ser_api import SerapiInstance
+from itp_interface.coq_ser_api import SerapiInstance, ProofContext, GetCoqAgent, CoqAgent
 from itp_interface.tools.coq_parse_utils import CoqLineByLineReader, CoqStepByStepStdInReader
 logger = logging.getLogger()
 
@@ -53,12 +53,9 @@ class CoqExecutor:
     
     def __enter__(self):
         self._all_dep_handles = []
-        self.coq = SerapiInstance(["sertop", "--implicit"], None, self.project_root,
-                             use_hammer=self.use_hammer,
-                             log_outgoing_messages=None,
-                             timeout=self.timeout_in_sec,
-                             use_human_readable_str=self.use_human_readable_proof_context)
-        self.coq.quiet = self.suppress_error_log
+        self.coq : CoqAgent = GetCoqAgent(prelude=self.project_root, use_human_readable_str=self.use_human_readable_proof_context)
+        if hasattr(self.coq, "quiet"):
+            self.coq.quiet = self.suppress_error_log
         if self.main_file_iter is None:
             self.main_file_iter = CoqLineByLineReader(self.main_file).instruction_step_generator()
         return self
@@ -408,6 +405,21 @@ class CoqCustomFileExec:
     def __exit__(self, exc_type, exc_value, traceback):
         self.coq_exec.__exit__(exc_type, exc_value, traceback)
     
+    def print_goals(self):
+        proof_context: ProofContext = self.coq_exec.coq.proof_context
+        if proof_context is None:
+            print("No goals to print")
+        else:
+            for idx, goal in enumerate(proof_context.all_goals):
+                print(f"Goal {idx + 1}:")
+                print(goal.goal)
+                if len(goal.hypotheses) > 0:
+                    print(f"Hypotheses: {idx + 1}")
+                    for hyp in goal.hypotheses:
+                        print(hyp)
+                print("-" * 20)
+        print('=' * 20)
+    
     def run_in_loop(self):
         print("In> Press 'Enter' for running next line and 'c' + 'Enter' to cancel the last command and 're-run'.", end="")
         last_stmt = None
@@ -417,13 +429,13 @@ class CoqCustomFileExec:
                 if opt == "c" and last_stmt is not None:
                     if self.coq_exec.is_in_proof_mode():
                         print(f"Goals before cancelling")
-                        print(self.coq_exec.coq.proof_context.all_goals)
+                        self.print_goals()
                     else:
                         print("No goals before cancelling")
                     self.coq_exec.coq.cancel_last()
                     if self.coq_exec.is_in_proof_mode():
                         print(f"Goals after cancelling")
-                        print(self.coq_exec.coq.proof_context.all_goals)
+                        self.print_goals()
                     else:
                         print("No goals after cancelling")
                     print(f"Canceled last statement: {last_stmt}")
@@ -435,13 +447,14 @@ class CoqCustomFileExec:
                 last_stmt = self.coq_exec.current_stmt
                 if self.coq_exec.is_in_proof_mode():
                     print(f"Goals after running {last_stmt}")
-                    print(self.coq_exec.coq.proof_context.all_goals)
+                    self.print_goals()
                 if not cmd_ran:
                     break
                 print(f"Coq> {self.coq_exec.current_stmt}")
-                print(f"{self.coq_exec.coq.proof_context}")
+                self.print_goals()
                 print("In> ", end="")
-            except:
+            except Exception as e:
+                print(f"Got an exception: {e}")
                 pass
             pass    
 
