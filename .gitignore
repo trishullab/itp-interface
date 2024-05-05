@@ -191,3 +191,5 @@ api_log.json
 *.olean.*
 
 temptodel*
+
+.repo/
