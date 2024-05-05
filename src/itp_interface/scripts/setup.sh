@@ -1,3 +1,5 @@
+#!/bin/bash
+
 if [[ ! -d "src/itp_interface/scripts" ]]; then
     # Raise an error if the scripts directory is not present
     echo "Please run this script from the root of the repository, cannot find src/scripts"
