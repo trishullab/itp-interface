@@ -1,65 +1,65 @@
 repos:
-  # - UniMath:
-  #     url: https://github.com/UniMath/UniMath
-  #     commit: 7432feea2113a460eb5a69fbbba5fda02e2bf234
-  #     branch: master
-  #     build_cmds: # Verified on 2024-05-04
-  #       - opam switch create UniMath 4.09.0
-  #       - eval $(opam env --switch=UniMath --set-switch)
-  #       - opam pin add -y coq 8.16.1
-  #       - make -j `nproc`
-  #     setup_cmds:
-  #       - eval $(opam env --switch=UniMath --set-switch)
-  # - math-comp:
-  #     url: https://github.com/math-comp/math-comp
-  #     commit: 936a3fd89c621caec7bae631147234f2e4d389f7
-  #     branch: master
-  #     build_cmds: # Verified on 2024-05-04
-  #       - cd mathcomp
-  #       - opam switch create MathComp 4.14.1
-  #       - opam repo add coq-released https://coq.inria.fr/opam/released
-  #       - eval $(opam env --switch=MathComp --set-switch)
-  #       - opam pin add -y coq 8.18.0
-  #       - opam pin add -n -y -k path coq-mathcomp-ssreflect .
-  #       - opam install -y coq-mathcomp-ssreflect --deps-only
-  #       - make -j `nproc`
-  #     setup_cmds:
-  #       - eval $(opam env --switch=MathComp --set-switch)
-  # - GeoCoq:
-  #     url: https://github.com/GeoCoq/GeoCoq
-  #     commit: 2f038905da84b8e63f07e2bf5b1b1bf348e1e0a1
-  #     branch: master
-  #     build_cmds: # Verified on 2024-05-04
-  #       - opam switch create GeoCoq 4.09.0
-  #       - eval $(opam env --switch=GeoCoq --set-switch)
-  #       - opam repo add coq-released https://coq.inria.fr/opam/released
-  #       - opam pin add -y coq 8.16.1
-  #       - opam pin -n . --yes
-  #       - opam install ./coq-geocoq-coinc.opam --deps-only --yes
-  #       - opam install ./coq-geocoq-axioms.opam --deps-only --yes
-  #       - opam install ./coq-geocoq-elements.opam --deps-only --yes
-  #       - opam install ./coq-geocoq-main.opam --deps-only --yes
-  #       - opam install ./coq-geocoq-algebraic.opam --deps-only --yes
-  #       - opam install ./coq-geocoq.opam --deps-only --yes
-  #       - ./configure.sh
-  #       - make -j `nproc`
-  #     setup_cmds:
-  #       - eval $(opam env --switch=GeoCoq --set-switch)
-  # - category-theory:
-  #     url: https://github.com/jwiegley/category-theory
-  #     commit: f8295f0d77ab0dd9f989e8e45d43670a69f424df
-  #     branch: master
-  #     build_cmds: # Verified on 2024-05-05
-  #       - pushd ..
-  #       - opam switch create category-theory 4.14.1
-  #       - eval $(opam env --switch=category-theory --set-switch)
-  #       - opam pin add -y coq 8.18.0
-  #       - opam repo add coq-released https://coq.inria.fr/opam/released
-  #       - opam install ./category-theory/coq-category-theory.opam --deps-only --yes
-  #       - make -C category-theory -j `nproc`
-  #       - popd
-  #     setup_cmds:
-  #       - eval $(opam env --switch=category-theory --set-switch)
+  - UniMath:
+      url: https://github.com/UniMath/UniMath
+      commit: 7432feea2113a460eb5a69fbbba5fda02e2bf234
+      branch: master
+      build_cmds: # Verified on 2024-05-04
+        - opam switch create UniMath 4.09.0
+        - eval $(opam env --switch=UniMath --set-switch)
+        - opam pin add -y coq 8.16.1
+        - make -j `nproc`
+      setup_cmds:
+        - eval $(opam env --switch=UniMath --set-switch)
+  - math-comp:
+      url: https://github.com/math-comp/math-comp
+      commit: 936a3fd89c621caec7bae631147234f2e4d389f7
+      branch: master
+      build_cmds: # Verified on 2024-05-04
+        - cd mathcomp
+        - opam switch create MathComp 4.14.1
+        - opam repo add coq-released https://coq.inria.fr/opam/released
+        - eval $(opam env --switch=MathComp --set-switch)
+        - opam pin add -y coq 8.18.0
+        - opam pin add -n -y -k path coq-mathcomp-ssreflect .
+        - opam install -y coq-mathcomp-ssreflect --deps-only
+        - make -j `nproc`
+      setup_cmds:
+        - eval $(opam env --switch=MathComp --set-switch)
+  - GeoCoq:
+      url: https://github.com/GeoCoq/GeoCoq
+      commit: 2f038905da84b8e63f07e2bf5b1b1bf348e1e0a1
+      branch: master
+      build_cmds: # Verified on 2024-05-04
+        - opam switch create GeoCoq 4.09.0
+        - eval $(opam env --switch=GeoCoq --set-switch)
+        - opam repo add coq-released https://coq.inria.fr/opam/released
+        - opam pin add -y coq 8.16.1
+        - opam pin -n . --yes
+        - opam install ./coq-geocoq-coinc.opam --deps-only --yes
+        - opam install ./coq-geocoq-axioms.opam --deps-only --yes
+        - opam install ./coq-geocoq-elements.opam --deps-only --yes
+        - opam install ./coq-geocoq-main.opam --deps-only --yes
+        - opam install ./coq-geocoq-algebraic.opam --deps-only --yes
+        - opam install ./coq-geocoq.opam --deps-only --yes
+        - ./configure.sh
+        - make -j `nproc`
+      setup_cmds:
+        - eval $(opam env --switch=GeoCoq --set-switch)
+  - category-theory:
+      url: https://github.com/jwiegley/category-theory
+      commit: f8295f0d77ab0dd9f989e8e45d43670a69f424df
+      branch: master
+      build_cmds: # Verified on 2024-05-05
+        - pushd ..
+        - opam switch create category-theory 4.14.1
+        - eval $(opam env --switch=category-theory --set-switch)
+        - opam pin add -y coq 8.18.0
+        - opam repo add coq-released https://coq.inria.fr/opam/released
+        - opam install ./category-theory/coq-category-theory.opam --deps-only --yes
+        - make -C category-theory -j `nproc`
+        - popd
+      setup_cmds:
+        - eval $(opam env --switch=category-theory --set-switch)
   - CompCert:
       url: https://github.com/AbsInt/CompCert
       commit: 76a4ff8f5b37429a614a2a97f628d9d862c93f46

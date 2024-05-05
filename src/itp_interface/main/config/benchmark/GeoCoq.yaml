@@ -1,0 +1,928 @@
+name: GeoCoq
+num_files: 459
+language: COQ
+few_shot_data_path_for_retrieval: null
+few_shot_metadata_filename_for_retrieval: null
+dfs_data_path_for_retrieval: null
+dfs_metadata_filename_for_retrieval: local.meta.json
+datasets:
+- project: /mnt/amthakur/data/repos/GeoCoq
+  files:
+  - path: theories/Algebraic/tcp_ndc.v
+    theorems: '*'
+  - path: theories/Algebraic/POF_to_Tarski.v
+    theorems: '*'
+  - path: theories/Algebraic/coplanarity.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/counter_model_bet_identity.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/Planar/independent_version.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/Planar/independent_tarski_to_gupta_inspired.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/Planar/counter_model_bet_inner_transitivity.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/Planar/counter_model_euclid.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/Planar/counter_model_cong_inner_transitivity.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/Planar/counter_model_five_segment.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/Planar/counter_model_bet_symmetry.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/Planar/independence.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/Planar/counter_model_lower_dim.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/Planar/counter_model_upper_dim.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/Planar/gupta_inspired_to_independent_tarski.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/Planar/counter_model_cong_pseudo_reflexivity.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/Planar/counter_model_segment_construction.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/Planar/counter_model_cong_identity.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/nD/independent_version.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/nD/counter_model_bet_inner_transitivity.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/nD/counter_model_euclid.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/nD/counter_model_cong_inner_transitivity.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/nD/dimensional_axioms.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/nD/independent_version_to_beeson.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/nD/stability_properties.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/nD/counter_model_five_segment.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/nD/counter_model_bet_symmetry.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/nD/bet_identity.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/nD/independence.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/nD/counter_model_lower_dim.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/nD/counter_model_upper_dim.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/nD/counter_model_cong_pseudo_reflexivity.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/nD/stronger_pasch.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/nD/independent_version_to_tarski.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/nD/counter_model_segment_construction.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/nD/counter_model_cong_identity.v
+    theorems: '*'
+  - path: theories/Algebraic/Counter_models/nD/gupta_inspired_to_independent_version.v
+    theorems: '*'
+  - path: theories/Coinc/CongR.v
+    theorems: '*'
+  - path: theories/Coinc/tactics_axioms.v
+    theorems: '*'
+  - path: theories/Coinc/Permutations.v
+    theorems: '*'
+  - path: theories/Coinc/ColR.v
+    theorems: '*'
+  - path: theories/Coinc/CoincR.v
+    theorems: '*'
+  - path: theories/Coinc/Utils/sets.v
+    theorems: '*'
+  - path: theories/Coinc/Utils/general_tactics.v
+    theorems: '*'
+  - path: theories/Coinc/Utils/arity.v
+    theorems: '*'
+  - path: theories/Axioms/tarski_axioms.v
+    theorems: '*'
+  - path: theories/Axioms/beeson_s_axioms.v
+    theorems: '*'
+  - path: theories/Axioms/makarios_variant_axioms.v
+    theorems: '*'
+  - path: theories/Axioms/Definitions.v
+    theorems: '*'
+  - path: theories/Axioms/finish.v
+    theorems: '*'
+  - path: theories/Axioms/gupta_inspired_variant_axioms.v
+    theorems: '*'
+  - path: theories/Axioms/parallel_postulates.v
+    theorems: '*'
+  - path: theories/Axioms/hilbert_axioms.v
+    theorems: '*'
+  - path: theories/Axioms/continuity_axioms.v
+    theorems: '*'
+  - path: theories/Axioms/euclidean_axioms.v
+    theorems: '*'
+  - path: theories/Elements/euclid_to_tarski.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_16.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_tarskiparallelflip.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_tworays.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_ondiameter.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_collinear5.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_TGflip.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_12.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_28C.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_trapezoiddiagonals.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_twolines2.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_42.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_EFreflexive.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_congruencesymmetric.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_17.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_36A.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_paste5.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_altitudeofrighttriangle.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_06.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_interior5.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_NCdistinct.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_34.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_PGrotate.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_39A.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_ray5.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_samesidereflexive.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_doublereverse.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_differenceofparts.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_3_7b.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_47A.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_ray3.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_sameside2.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_PGflip.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_supplementofright.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_48A.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_30A.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_crossbar2.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_collinear1.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_3_7a.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_RTcongruence.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_subtractequals.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_28A.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_pointreflectionisometry.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_TTorder.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_equalanglesNC.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_lessthantransitive.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_equalanglessymmetric.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_layoffunique.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_33.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_43.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_08.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_44A.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_36.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_erectedperpendicularunique.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_lessthancongruence.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_squareflip.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/book1.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_ray2.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_trichotomy2.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_legsmallerhypotenuse.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_3_6b.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_24.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_47B.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_inequalitysymmetric.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_parallelcollinear1.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_ABCequalsCBA.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_rightangleNC.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_betweennesspreserved.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_46.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_29.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_05b.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_13.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_26helper.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_28D.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_20.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_betweennotequal.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_triangletoparallelogram.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_PGsymmetric.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_25.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_parallelbetween.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_Euclid4.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_27.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_8_2.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/euclidean_defs.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_TGsymmetric.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_30.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_Pasch_outer2.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_3_5b.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_together.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_equalitysymmetric.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_oppositesideflip.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_41.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_9_5.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_outerconnectivity.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_35A.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_31.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_9_5a.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_samesideflip.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_samesidetransitive.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_trichotomy1.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_localextension.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_twolines.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_paralleldef2B.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_samenotopposite.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_collinearright.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_crossimpliesopposite.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_paralleldef2A.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_47.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_collinearparallel.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_ray4.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_rightreverse.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_RTsymmetric.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_19.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_samesidesymmetric.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_collinear2.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_angleordertransitive.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_angledistinct.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_14.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_30B.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_21.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_rectanglereverse.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_42B.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_equalangleshelper.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_angletrichotomy2.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_35.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_10.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_midpointunique.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_29B.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_notperp.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_angleorderrespectscongruence.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_44.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_righttogether.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/general_tactics.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_ray.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_collinearorder.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_angletrichotomy.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_TCreflexive.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_NChelper.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/euclidean_tactics.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_lessthancongruence2.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_30helper.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_15.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_07.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_squaresequal.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_32.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_11.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_crisscross.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_33B.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_48.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_equalanglesreflexive.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_8_3.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_collinearitypreserved.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_05.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_supplements.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_equalanglesflip.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_linereflectionisometry.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_collinearbetween.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_39.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_TTflip.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_diagonalsbisect.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_oppositesidesymmetric.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_21helper.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_layoff.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_diagonalsmeet.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_parallelflip.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_droppedperpendicularunique.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_02.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_supplementsymmetric.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_TTflip2.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_parallelsymmetric.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_equalanglestransitive.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_samesidecollinear.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_26B.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_supplementinequality.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_35helper.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_TTtransitive.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_equaltorightisright.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_23C.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_09.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_40.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_Playfairhelper2.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_rectangleparallelogram.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_38.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_23.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_parallelNC.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_parallelcollinear2.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_ETreflexive.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_06a.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_ray1.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_squarerectangle.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_planeseparation.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_parallelcollinear.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_01.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_9_5b.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_collinearparallel2.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_3_6a.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_23B.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_04.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_extensionunique.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_crossbar.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_collinear4.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_rayimpliescollinear.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_fiveline.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_supplements2.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_extension.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_37.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_18.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_8_7.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_28B.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_Playfairhelper.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_congruencetransitive.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_10_12.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_27B.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_26A.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_rectanglerotate.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_raystrict.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_lessthannotequal.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_squareparallelogram.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_11B.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_lessthanbetween.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_43B.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_angleorderrespectscongruence2.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_together2.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_31short.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_22.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_congruenceflip.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_PGrectangle.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_partnotequalwhole.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_NCorder.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_03.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_twoperpsparallel.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_29C.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_altitudebisectsbase.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_squareunique.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_lessthanadditive.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_angleaddition.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_parallelPasch.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/lemma_Playfair.v
+    theorems: '*'
+  - path: theories/Elements/OriginalProofs/proposition_45.v
+    theorems: '*'
+  - path: theories/Main/main.v
+    theorems: '*'
+  - path: theories/Main/Elements_statements/Book_1.v
+    theorems: '*'
+  - path: theories/Main/Elements_statements/Book_3.v
+    theorems: '*'
+  - path: theories/Main/Tactics/CongR.v
+    theorems: '*'
+  - path: theories/Main/Tactics/CoincR_for_concy.v
+    theorems: '*'
+  - path: theories/Main/Tactics/ColR.v
+    theorems: '*'
+  - path: theories/Main/Tactics/CoincR_for_col.v
+    theorems: '*'
+  - path: theories/Main/Tactics/CoincR_for_cop.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/weak_inverse_projection_postulate_bachmann_s_lotschnittaxiom.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/par_perp_perp_playfair.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/weak_triangle_circumscription_principle_bachmann_s_lotschnittaxiom.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/bachmann_s_lotschnittaxiom_legendre_s_parallel_postulate.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/inverse_projection_postulate_proclus_bis.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/rah_triangle.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/alternate_interior_angles_proclus.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/thales_postulate_thales_converse_postulate.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/euclid_5_original_euclid.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/existential_triangle_rah.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/bachmann_s_lotschnittaxiom_weak_triangle_circumscription_principle.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/par_trans_playfair.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/universal_posidonius_postulate_par_perp_perp.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/par_trans_NID.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/par_perp_2_par_par_perp_perp.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/szmielew.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/triangle_existential_triangle.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/tarski_euclid.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/playfair_existential_playfair.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/alternate_interior_angles_consecutive_interior_angles.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/playfair_par_trans.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/posidonius_postulate_rah.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/rah_thales_postulate.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/tarski_playfair.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/alternate_interior_angles_triangle.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/weak_tarski_s_parallel_postulate_weak_inverse_projection_postulate.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/SPP_ID.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/legendre.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/rah_similar.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/rah_rectangle_principle.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/original_spp_inverse_projection_postulate.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/playfair_alternate_interior_angles.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/thales_existence_rah.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/alternate_interior_angles_playfair_bis.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/consecutive_interior_angles_alternate_interior_angles.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/original_euclid_original_spp.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/rectangle_existence_rah.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/par_perp_perp_par_perp_2_par.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/triangle_playfair_bis.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/rectangle_principle_rectangle_existence.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/playfair_bis_playfair.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/parallel_postulates.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/bachmann_s_lotschnittaxiom_variant.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/bachmann_s_lotschnittaxiom_weak_inverse_projection_postulate.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/existential_saccheri_rah.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/tarski_s_euclid_remove_degenerated_cases.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/proclus_SPP.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/weak_inverse_projection_postulate_weak_tarski_s_parallel_postulate.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/TCP_tarski.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/par_perp_perp_TCP.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/playfair_midpoint.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/midpoint_playfair.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/SPP_tarski.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/rah_posidonius_postulate.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/existential_playfair_rah.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/rah_existential_saccheri.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/thales_converse_postulate_weak_triangle_circumscription_principle.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/proclus_aristotle.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/proclus_bis_proclus.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/similar_rah.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/thales_converse_postulate_thales_existence.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Parallel_postulates/playfair_universal_posidonius_postulate.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Models/tarski_to_col_theory.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Models/tarski_to_coinc_theory_for_cop.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Models/tarski_to_beeson.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Models/tarski_to_euclid.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Models/tarski_to_makarios.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Models/tarski_continuous_to_trc.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Models/tarski_to_cong_theory.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Models/tarski_to_gupta_inspired.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Models/makarios_to_tarski.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Models/gupta_inspired_to_tarski.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Models/tarski_to_coinc_theory_for_concyclic.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Models/tarski_to_coinc_theory_for_col.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Models/hilbert_to_tarski.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Models/tarski_to_hilbert.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Models/beeson_to_tarski.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Dimension_axioms/upper_dim_3.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Dimension_axioms/upper_dim_2.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Continuity/archimedes_cantor_dedekind.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Continuity/dedekind_completeness.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Continuity/dedekind_cantor.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Continuity/first_order_dedekind_circle_circle.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Continuity/angle_archimedes.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Continuity/aristotle.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Continuity/elementary_continuity_props.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Continuity/grad.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Continuity/dedekind_variant.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Continuity/cantor_completeness.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Continuity/first_order.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Continuity/completeness.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Continuity/archimedes.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Continuity/cantor_variant.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Continuity/dedekind_archimedes.v
+    theorems: '*'
+  - path: theories/Main/Meta_theory/Decidability/equivalence_between_decidability_properties_of_basic_relations.v
+    theorems: '*'
+  - path: theories/Main/Utils/triples.v
+    theorems: '*'
+  - path: theories/Main/Utils/all_equiv.v
+    theorems: '*'
+  - path: theories/Main/Unit_Tests/unit_tests.v
+    theorems: '*'
+  - path: theories/Main/Unit_Tests/unit_tests_2.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch13_2_length.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch10_line_reflexivity_2.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch15_pyth_rel.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch04_cong_bet.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch14_prod.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch09_plane.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch05_bet_le.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch13_1.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch10_line_reflexivity.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch07_midpoint.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch13_4_cos.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch02_cong.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch12_parallel.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch06_out_lines.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch13_6_Desargues_Hessenberg.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch14_order.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch16_coordinates.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch13_3_angles.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch03_bet.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch16_coordinates_with_functions.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch12_parallel_inter_dec.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch13_5_Pappus_Pascal.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch08_orthogonality.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch15_lengths.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch04_col.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch11_angles.v
+    theorems: '*'
+  - path: theories/Main/Tarski_dev/Ch14_sum.v
+    theorems: '*'
+  - path: theories/Main/Annexes/midpoint_theorems.v
+    theorems: '*'
+  - path: theories/Main/Annexes/tangency.v
+    theorems: '*'
+  - path: theories/Main/Annexes/vectors.v
+    theorems: '*'
+  - path: theories/Main/Annexes/Tagged_predicates.v
+    theorems: '*'
+  - path: theories/Main/Annexes/quadrilaterals_inter_dec.v
+    theorems: '*'
+  - path: theories/Main/Annexes/suma.v
+    theorems: '*'
+  - path: theories/Main/Annexes/project.v
+    theorems: '*'
+  - path: theories/Main/Annexes/rhombus.v
+    theorems: '*'
+  - path: theories/Main/Annexes/circles.v
+    theorems: '*'
+  - path: theories/Main/Annexes/quadrilaterals.v
+    theorems: '*'
+  - path: theories/Main/Annexes/inscribed_angle.v
+    theorems: '*'
+  - path: theories/Main/Annexes/half_angles.v
+    theorems: '*'
+  - path: theories/Main/Annexes/coplanar.v
+    theorems: '*'
+  - path: theories/Main/Annexes/sums.v
+    theorems: '*'
+  - path: theories/Main/Annexes/perp_bisect.v
+    theorems: '*'
+  - path: theories/Main/Annexes/defect.v
+    theorems: '*'
+  - path: theories/Main/Annexes/saccheri.v
+    theorems: '*'
+  - path: theories/Main/Highschool/varignon.v
+    theorems: '*'
+  - path: theories/Main/Highschool/concyclic.v
+    theorems: '*'
+  - path: theories/Main/Highschool/Euler_line.v
+    theorems: '*'
+  - path: theories/Main/Highschool/orientation.v
+    theorems: '*'
+  - path: theories/Main/Highschool/sesamath_exercises.v
+    theorems: '*'
+  - path: theories/Main/Highschool/bisector.v
+    theorems: '*'
+  - path: theories/Main/Highschool/circumcenter.v
+    theorems: '*'
+  - path: theories/Main/Highschool/triangles.v
+    theorems: '*'
+  - path: theories/Main/Highschool/midpoint_thales.v
+    theorems: '*'
+  - path: theories/Main/Highschool/SegmTrisect.v
+    theorems: '*'
+  - path: theories/Main/Highschool/gravityCenter.v
+    theorems: '*'
+  - path: theories/Main/Highschool/incenter.v
+    theorems: '*'
+  - path: theories/Main/Highschool/orthocenter.v
+    theorems: '*'
+  - path: theories/Main/Highschool/exercises.v
+    theorems: '*'

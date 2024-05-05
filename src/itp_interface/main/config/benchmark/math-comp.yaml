@@ -1,0 +1,198 @@
+name: math-comp
+num_files: 94
+language: COQ
+few_shot_data_path_for_retrieval: null
+few_shot_metadata_filename_for_retrieval: null
+dfs_data_path_for_retrieval: null
+dfs_metadata_filename_for_retrieval: local.meta.json
+datasets:
+  - project: /mnt/amthakur/data/repos/math-comp/
+    files:
+    - path: mathcomp/solvable/primitive_action.v
+      theorems: '*'
+    - path: mathcomp/solvable/extremal.v
+      theorems: '*'
+    - path: mathcomp/solvable/all_solvable.v
+      theorems: '*'
+    - path: mathcomp/solvable/nilpotent.v
+      theorems: '*'
+    - path: mathcomp/solvable/alt.v
+      theorems: '*'
+    - path: mathcomp/solvable/frobenius.v
+      theorems: '*'
+    - path: mathcomp/solvable/jordanholder.v
+      theorems: '*'
+    - path: mathcomp/solvable/burnside_app.v
+      theorems: '*'
+    - path: mathcomp/solvable/finmodule.v
+      theorems: '*'
+    - path: mathcomp/solvable/cyclic.v
+      theorems: '*'
+    - path: mathcomp/solvable/commutator.v
+      theorems: '*'
+    - path: mathcomp/solvable/abelian.v
+      theorems: '*'
+    - path: mathcomp/solvable/extraspecial.v
+      theorems: '*'
+    - path: mathcomp/solvable/hall.v
+      theorems: '*'
+    - path: mathcomp/solvable/center.v
+      theorems: '*'
+    - path: mathcomp/solvable/sylow.v
+      theorems: '*'
+    - path: mathcomp/solvable/maximal.v
+      theorems: '*'
+    - path: mathcomp/solvable/gfunctor.v
+      theorems: '*'
+    - path: mathcomp/solvable/pgroup.v
+      theorems: '*'
+    - path: mathcomp/solvable/gseries.v
+      theorems: '*'
+    - path: mathcomp/algebra/poly.v
+      theorems: '*'
+    - path: mathcomp/algebra/archimedean.v
+      theorems: '*'
+    - path: mathcomp/algebra/fraction.v
+      theorems: '*'
+    - path: mathcomp/algebra/finalg.v
+      theorems: '*'
+    - path: mathcomp/algebra/mxpoly.v
+      theorems: '*'
+    - path: mathcomp/algebra/vector.v
+      theorems: '*'
+    - path: mathcomp/algebra/ring_quotient.v
+      theorems: '*'
+    - path: mathcomp/algebra/all_algebra.v
+      theorems: '*'
+    - path: mathcomp/algebra/mxalgebra.v
+      theorems: '*'
+    - path: mathcomp/algebra/ssralg.v
+      theorems: '*'
+    - path: mathcomp/algebra/ssrnum.v
+      theorems: '*'
+    - path: mathcomp/algebra/countalg.v
+      theorems: '*'
+    - path: mathcomp/algebra/rat.v
+      theorems: '*'
+    - path: mathcomp/algebra/matrix.v
+      theorems: '*'
+    - path: mathcomp/algebra/ssrint.v
+      theorems: '*'
+    - path: mathcomp/algebra/interval.v
+      theorems: '*'
+    - path: mathcomp/algebra/qpoly.v
+      theorems: '*'
+    - path: mathcomp/algebra/polyXY.v
+      theorems: '*'
+    - path: mathcomp/algebra/zmodp.v
+      theorems: '*'
+    - path: mathcomp/algebra/intdiv.v
+      theorems: '*'
+    - path: mathcomp/algebra/polydiv.v
+      theorems: '*'
+    - path: mathcomp/all/all.v
+      theorems: '*'
+    - path: mathcomp/character/character.v
+      theorems: '*'
+    - path: mathcomp/character/mxrepresentation.v
+      theorems: '*'
+    - path: mathcomp/character/vcharacter.v
+      theorems: '*'
+    - path: mathcomp/character/all_character.v
+      theorems: '*'
+    - path: mathcomp/character/integral_char.v
+      theorems: '*'
+    - path: mathcomp/character/inertia.v
+      theorems: '*'
+    - path: mathcomp/character/mxabelem.v
+      theorems: '*'
+    - path: mathcomp/character/classfun.v
+      theorems: '*'
+    - path: mathcomp/fingroup/action.v
+      theorems: '*'
+    - path: mathcomp/fingroup/automorphism.v
+      theorems: '*'
+    - path: mathcomp/fingroup/quotient.v
+      theorems: '*'
+    - path: mathcomp/fingroup/gproduct.v
+      theorems: '*'
+    - path: mathcomp/fingroup/presentation.v
+      theorems: '*'
+    - path: mathcomp/fingroup/all_fingroup.v
+      theorems: '*'
+    - path: mathcomp/fingroup/perm.v
+      theorems: '*'
+    - path: mathcomp/fingroup/fingroup.v
+      theorems: '*'
+    - path: mathcomp/fingroup/morphism.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/choice.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/ssrAC.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/bigop.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/ssrbool.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/order.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/generic_quotient.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/ssrnotations.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/ssrnat.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/ssreflect.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/finfun.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/ssrmatching.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/ssrfun.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/fingraph.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/eqtype.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/div.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/all_ssreflect.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/seq.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/prime.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/fintype.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/binomial.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/tuple.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/path.v
+      theorems: '*'
+    - path: mathcomp/ssreflect/finset.v
+      theorems: '*'
+    - path: mathcomp/field/algebraics_fundamentals.v
+      theorems: '*'
+    - path: mathcomp/field/cyclotomic.v
+      theorems: '*'
+    - path: mathcomp/field/finfield.v
+      theorems: '*'
+    - path: mathcomp/field/falgebra.v
+      theorems: '*'
+    - path: mathcomp/field/closed_field.v
+      theorems: '*'
+    - path: mathcomp/field/algC.v
+      theorems: '*'
+    - path: mathcomp/field/fieldext.v
+      theorems: '*'
+    - path: mathcomp/field/separable.v
+      theorems: '*'
+    - path: mathcomp/field/algnum.v
+      theorems: '*'
+    - path: mathcomp/field/galois.v
+      theorems: '*'
+    - path: mathcomp/field/qfpoly.v
+      theorems: '*'
+    - path: mathcomp/field/all_field.v
+      theorems: '*'

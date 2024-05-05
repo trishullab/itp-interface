@@ -1,0 +1,468 @@
+name: category-theory
+num_files: 229
+language: COQ
+few_shot_data_path_for_retrieval: null
+few_shot_metadata_filename_for_retrieval: null
+dfs_data_path_for_retrieval: null
+dfs_metadata_filename_for_retrieval: local.meta.json
+datasets:
+  - project: /mnt/amthakur/data/repos/category-theory/
+    files:
+    - path: Lib.v
+      theorems: '*'
+    - path: Theory.v
+      theorems: '*'
+    - path: Solver.v
+      theorems: '*'
+    - path: Construction/Groupoid.v
+      theorems: '*'
+    - path: Construction/Slice.v
+      theorems: '*'
+    - path: Construction/Enriched.v
+      theorems: '*'
+    - path: Construction/Free.v
+      theorems: '*'
+    - path: Construction/Subcategory.v
+      theorems: '*'
+    - path: Construction/Arrow.v
+      theorems: '*'
+    - path: Construction/Product.v
+      theorems: '*'
+    - path: Construction/Cayley.v
+      theorems: '*'
+    - path: Construction/Coproduct.v
+      theorems: '*'
+    - path: Construction/Opposite.v
+      theorems: '*'
+    - path: Construction/Comma.v
+      theorems: '*'
+    - path: Construction/Comma/Adjunction.v
+      theorems: '*'
+    - path: Construction/Comma/Isomorphism.v
+      theorems: '*'
+    - path: Construction/Comma/Natural/Transformation.v
+      theorems: '*'
+    - path: Construction/Slice/Pullback.v
+      theorems: '*'
+    - path: Construction/Free/Quiver.v
+      theorems: '*'
+    - path: Construction/Product/Comma.v
+      theorems: '*'
+    - path: Instance/AST.v
+      theorems: '*'
+    - path: Instance/Fact.v
+      theorems: '*'
+    - path: Instance/Props.v
+      theorems: '*'
+    - path: Instance/Parallel.v
+      theorems: '*'
+    - path: Instance/StrictCat.v
+      theorems: '*'
+    - path: Instance/Adjoints.v
+      theorems: '*'
+    - path: Instance/Comp.v
+      theorems: '*'
+    - path: Instance/Zero.v
+      theorems: '*'
+    - path: Instance/Cat.v
+      theorems: '*'
+    - path: Instance/Lambda.v
+      theorems: '*'
+    - path: Instance/Sets.v
+      theorems: '*'
+    - path: Instance/Poset.v
+      theorems: '*'
+    - path: Instance/Two.v
+      theorems: '*'
+    - path: Instance/Cones.v
+      theorems: '*'
+    - path: Instance/Rel.v
+      theorems: '*'
+    - path: Instance/Fun.v
+      theorems: '*'
+    - path: Instance/One.v
+      theorems: '*'
+    - path: Instance/Roof.v
+      theorems: '*'
+    - path: Instance/Coq.v
+      theorems: '*'
+    - path: Instance/Shapes.v
+      theorems: '*'
+    - path: Instance/Proset.v
+      theorems: '*'
+    - path: Instance/Ens.v
+      theorems: '*'
+    - path: Instance/Adj.v
+      theorems: '*'
+    - path: Instance/Fun/Cartesian.v
+      theorems: '*'
+    - path: Instance/Coq/ParE.v
+      theorems: '*'
+    - path: Instance/Coq/Applicative.v
+      theorems: '*'
+    - path: Instance/Coq/Monad.v
+      theorems: '*'
+    - path: Instance/Coq/Par.v
+      theorems: '*'
+    - path: Instance/Sets/Cartesian.v
+      theorems: '*'
+    - path: Instance/Sets/Par.v
+      theorems: '*'
+    - path: Instance/Sets/Cocartesian.v
+      theorems: '*'
+    - path: Instance/Sets/Cartesian/Closed.v
+      theorems: '*'
+    - path: Instance/Cones/Limit.v
+      theorems: '*'
+    - path: Instance/Cones/Comma.v
+      theorems: '*'
+    - path: Instance/Lambda/Sound.v
+      theorems: '*'
+    - path: Instance/Lambda/Eval.v
+      theorems: '*'
+    - path: Instance/Lambda/Sub.v
+      theorems: '*'
+    - path: Instance/Lambda/Full.v
+      theorems: '*'
+    - path: Instance/Lambda/Example.v
+      theorems: '*'
+    - path: Instance/Lambda/Ltac.v
+      theorems: '*'
+    - path: Instance/Lambda/Sem.v
+      theorems: '*'
+    - path: Instance/Lambda/Step.v
+      theorems: '*'
+    - path: Instance/Lambda/Multi.v
+      theorems: '*'
+    - path: Instance/Lambda/Log.v
+      theorems: '*'
+    - path: Instance/Lambda/Exp.v
+      theorems: '*'
+    - path: Instance/Lambda/Ty.v
+      theorems: '*'
+    - path: Instance/Lambda/Norm.v
+      theorems: '*'
+    - path: Instance/Lambda/Ren.v
+      theorems: '*'
+    - path: Instance/Lambda/Value.v
+      theorems: '*'
+    - path: Instance/Two/Discrete.v
+      theorems: '*'
+    - path: Instance/Cat/Cartesian.v
+      theorems: '*'
+    - path: Instance/Cat/Cocartesian.v
+      theorems: '*'
+    - path: Instance/Cat/Cartesian/Closed.v
+      theorems: '*'
+    - path: Instance/One/Diagonal.v
+      theorems: '*'
+    - path: Solver/Expr.v
+      theorems: '*'
+    - path: Solver/Denote.v
+      theorems: '*'
+    - path: Solver/Normal.v
+      theorems: '*'
+    - path: Solver/Reify.v
+      theorems: '*'
+    - path: Solver/Decide.v
+      theorems: '*'
+    - path: Theory/Naturality.v
+      theorems: '*'
+    - path: Theory/Sheaf.v
+      theorems: '*'
+    - path: Theory/Algebra.v
+      theorems: '*'
+    - path: Theory/Bicategory.v
+      theorems: '*'
+    - path: Theory/Dinatural.v
+      theorems: '*'
+    - path: Theory/Adjunction.v
+      theorems: '*'
+    - path: Theory/Metacategory.v
+      theorems: '*'
+    - path: Theory/Isomorphism.v
+      theorems: '*'
+    - path: Theory/Functor.v
+      theorems: '*'
+    - path: Theory/Monad.v
+      theorems: '*'
+    - path: Theory/Category.v
+      theorems: '*'
+    - path: Theory/Morphisms.v
+      theorems: '*'
+    - path: Theory/Coq.v
+      theorems: '*'
+    - path: Theory/Category/Raw.v
+      theorems: '*'
+    - path: Theory/Category/Semi.v
+      theorems: '*'
+    - path: Theory/Coq/Map.v
+      theorems: '*'
+    - path: Theory/Coq/Foldable.v
+      theorems: '*'
+    - path: Theory/Coq/List.v
+      theorems: '*'
+    - path: Theory/Coq/Either.v
+      theorems: '*'
+    - path: Theory/Coq/Traversable.v
+      theorems: '*'
+    - path: Theory/Coq/Maybe.v
+      theorems: '*'
+    - path: Theory/Coq/Applicative.v
+      theorems: '*'
+    - path: Theory/Coq/Monoid.v
+      theorems: '*'
+    - path: Theory/Coq/Functor.v
+      theorems: '*'
+    - path: Theory/Coq/Monad.v
+      theorems: '*'
+    - path: Theory/Coq/Tuple.v
+      theorems: '*'
+    - path: Theory/Coq/Semigroup.v
+      theorems: '*'
+    - path: Theory/Coq/Maybe/Proofs.v
+      theorems: '*'
+    - path: Theory/Coq/Applicative/Proofs.v
+      theorems: '*'
+    - path: Theory/Coq/Tuple/Proofs.v
+      theorems: '*'
+    - path: Theory/Coq/Either/Proofs.v
+      theorems: '*'
+    - path: Theory/Coq/List/Proofs.v
+      theorems: '*'
+    - path: Theory/Coq/Functor/Proofs.v
+      theorems: '*'
+    - path: Theory/Coq/Monad/Proofs.v
+      theorems: '*'
+    - path: Theory/Kan/Extension.v
+      theorems: '*'
+    - path: Theory/Natural/Transformation.v
+      theorems: '*'
+    - path: Theory/Metacategory/DecideExample.v
+      theorems: '*'
+    - path: Theory/Metacategory/ArrowsOnly.v
+      theorems: '*'
+    - path: Theory/Universal/Arrow.v
+      theorems: '*'
+    - path: Natural/Transformation/Strong.v
+      theorems: '*'
+    - path: Natural/Transformation/Applicative.v
+      theorems: '*'
+    - path: Natural/Transformation/Monoidal.v
+      theorems: '*'
+    - path: Natural/Transformation/Opposite.v
+      theorems: '*'
+    - path: Lib/IList.v
+      theorems: '*'
+    - path: Lib/NETList.v
+      theorems: '*'
+    - path: Lib/Foundation.v
+      theorems: '*'
+    - path: Lib/FMapExt.v
+      theorems: '*'
+    - path: Lib/TList.v
+      theorems: '*'
+    - path: Lib/Tactics2.v
+      theorems: '*'
+    - path: Lib/Datatypes.v
+      theorems: '*'
+    - path: Lib/MapDecide.v
+      theorems: '*'
+    - path: Lib/Tactics.v
+      theorems: '*'
+    - path: Lib/Setoid.v
+      theorems: '*'
+    - path: Adjunction/Hom.v
+      theorems: '*'
+    - path: Adjunction/Opposite.v
+      theorems: '*'
+    - path: Adjunction/Diagonal/Product.v
+      theorems: '*'
+    - path: Adjunction/Natural/Transformation.v
+      theorems: '*'
+    - path: Adjunction/Natural/Transformation/Universal.v
+      theorems: '*'
+    - path: Adjunction/Natural/Transformation/Opposite.v
+      theorems: '*'
+    - path: Functor/Hom.v
+      theorems: '*'
+    - path: Functor/Diagonal.v
+      theorems: '*'
+    - path: Functor/Strong.v
+      theorems: '*'
+    - path: Functor/Bifunctor.v
+      theorems: '*'
+    - path: Functor/Representable.v
+      theorems: '*'
+    - path: Functor/Traversable.v
+      theorems: '*'
+    - path: Functor/Applicative.v
+      theorems: '*'
+    - path: Functor/Product.v
+      theorems: '*'
+    - path: Functor/Coproduct.v
+      theorems: '*'
+    - path: Functor/Opposite.v
+      theorems: '*'
+    - path: Functor/Construction/Product.v
+      theorems: '*'
+    - path: Functor/Construction/Product/Strong.v
+      theorems: '*'
+    - path: Functor/Construction/Product/Monoidal.v
+      theorems: '*'
+    - path: Functor/Traversable/Product.v
+      theorems: '*'
+    - path: Functor/Hom/Internal.v
+      theorems: '*'
+    - path: Functor/Hom/Yoneda.v
+      theorems: '*'
+    - path: Functor/Strong/Product.v
+      theorems: '*'
+    - path: Functor/Product/Internal.v
+      theorems: '*'
+    - path: Functor/Structure/Cartesian.v
+      theorems: '*'
+    - path: Functor/Structure/Constant.v
+      theorems: '*'
+    - path: Functor/Structure/Terminal.v
+      theorems: '*'
+    - path: Functor/Structure/Monoidal.v
+      theorems: '*'
+    - path: Functor/Structure/Monoidal/Compose.v
+      theorems: '*'
+    - path: Functor/Structure/Monoidal/Id.v
+      theorems: '*'
+    - path: Functor/Structure/Monoidal/Pure.v
+      theorems: '*'
+    - path: Functor/Structure/Cartesian/Closed.v
+      theorems: '*'
+    - path: Monad/Algebra.v
+      theorems: '*'
+    - path: Monad/Compose.v
+      theorems: '*'
+    - path: Monad/Adjunction.v
+      theorems: '*'
+    - path: Monad/Distributive.v
+      theorems: '*'
+    - path: Monad/Kleisli.v
+      theorems: '*'
+    - path: Monad/Monoid.v
+      theorems: '*'
+    - path: Monad/Transformer.v
+      theorems: '*'
+    - path: Monad/Eilenberg/Moore.v
+      theorems: '*'
+    - path: Tools/Represented.v
+      theorems: '*'
+    - path: Tools/Abstraction.v
+      theorems: '*'
+    - path: Structure/Limit.v
+      theorems: '*'
+    - path: Structure/Cone.v
+      theorems: '*'
+    - path: Structure/Discrete.v
+      theorems: '*'
+    - path: Structure/End.v
+      theorems: '*'
+    - path: Structure/Pullback.v
+      theorems: '*'
+    - path: Structure/UniversalProperty.v
+      theorems: '*'
+    - path: Structure/Span.v
+      theorems: '*'
+    - path: Structure/Distributive.v
+      theorems: '*'
+    - path: Structure/Closed.v
+      theorems: '*'
+    - path: Structure/Complete.v
+      theorems: '*'
+    - path: Structure/Monoid.v
+      theorems: '*'
+    - path: Structure/Cartesian.v
+      theorems: '*'
+    - path: Structure/Binoidal.v
+      theorems: '*'
+    - path: Structure/Constant.v
+      theorems: '*'
+    - path: Structure/Terminal.v
+      theorems: '*'
+    - path: Structure/Initial.v
+      theorems: '*'
+    - path: Structure/Bicartesian.v
+      theorems: '*'
+    - path: Structure/Monoidal.v
+      theorems: '*'
+    - path: Structure/BiCCC.v
+      theorems: '*'
+    - path: Structure/Cocartesian.v
+      theorems: '*'
+    - path: Structure/Equalizer.v
+      theorems: '*'
+    - path: Structure/Wedge.v
+      theorems: '*'
+    - path: Structure/Group.v
+      theorems: '*'
+    - path: Structure/Monoidal/Naturality.v
+      theorems: '*'
+    - path: Structure/Monoidal/Symmetric.v
+      theorems: '*'
+    - path: Structure/Monoidal/Commutative.v
+      theorems: '*'
+    - path: Structure/Monoidal/Proofs.v
+      theorems: '*'
+    - path: Structure/Monoidal/Semicocartesian.v
+      theorems: '*'
+    - path: Structure/Monoidal/Compose.v
+      theorems: '*'
+    - path: Structure/Monoidal/Semicartesian.v
+      theorems: '*'
+    - path: Structure/Monoidal/Closed.v
+      theorems: '*'
+    - path: Structure/Monoidal/Relevance.v
+      theorems: '*'
+    - path: Structure/Monoidal/Cartesian.v
+      theorems: '*'
+    - path: Structure/Monoidal/Balanced.v
+      theorems: '*'
+    - path: Structure/Monoidal/Traced.v
+      theorems: '*'
+    - path: Structure/Monoidal/Product.v
+      theorems: '*'
+    - path: Structure/Monoidal/Braided.v
+      theorems: '*'
+    - path: Structure/Monoidal/Semicartesian/Proofs.v
+      theorems: '*'
+    - path: Structure/Monoidal/Semicartesian/Terminal.v
+      theorems: '*'
+    - path: Structure/Monoidal/Cartesian/Proofs.v
+      theorems: '*'
+    - path: Structure/Monoidal/Cartesian/Cartesian.v
+      theorems: '*'
+    - path: Structure/Monoidal/Internal/Product.v
+      theorems: '*'
+    - path: Structure/Limit/Cartesian.v
+      theorems: '*'
+    - path: Structure/Limit/Terminal.v
+      theorems: '*'
+    - path: Structure/Limit/Kan/Extension.v
+      theorems: '*'
+    - path: Structure/Group/Proofs.v
+      theorems: '*'
+    - path: Structure/Pullback/Limit.v
+      theorems: '*'
+    - path: Structure/UniversalProperty/Limit.v
+      theorems: '*'
+    - path: Structure/UniversalProperty/Cartesian.v
+      theorems: '*'
+    - path: Structure/UniversalProperty/Universal/Arrow.v
+      theorems: '*'
+    - path: Structure/Cartesian/Closed.v
+      theorems: '*'
+    - path: Structure/Cartesian/Product.v
+      theorems: '*'
+    - path: Structure/Cartesian/Closed/Product.v
+      theorems: '*'
+    - path: Structure/Cone/Const.v
+      theorems: '*'
+    - path: Structure/Cone/Natural/Transformation.v
+      theorems: '*'
