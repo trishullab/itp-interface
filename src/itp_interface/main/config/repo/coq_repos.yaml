@@ -7,9 +7,10 @@ repos:
         - opam switch create UniMath 4.09.0
         - eval $(opam env --switch=UniMath --set-switch)
         - opam pin add -y coq 8.16.1
+        - opam install coq-lsp --yes
         - make -j `nproc`
       setup_cmds:
-        - eval $(opam env --switch=UniMath --set-switch)
+        - opam env --switch=UniMath --set-switch
   - math-comp:
       url: https://github.com/math-comp/math-comp
       commit: 936a3fd89c621caec7bae631147234f2e4d389f7
@@ -20,11 +21,12 @@ repos:
         - opam repo add coq-released https://coq.inria.fr/opam/released
         - eval $(opam env --switch=MathComp --set-switch)
         - opam pin add -y coq 8.18.0
+        - opam install coq-lsp --yes
         - opam pin add -n -y -k path coq-mathcomp-ssreflect .
         - opam install -y coq-mathcomp-ssreflect --deps-only
         - make -j `nproc`
       setup_cmds:
-        - eval $(opam env --switch=MathComp --set-switch)
+        - opam env --switch=MathComp --set-switch
   - GeoCoq:
       url: https://github.com/GeoCoq/GeoCoq
       commit: 2f038905da84b8e63f07e2bf5b1b1bf348e1e0a1
@@ -34,6 +36,7 @@ repos:
         - eval $(opam env --switch=GeoCoq --set-switch)
         - opam repo add coq-released https://coq.inria.fr/opam/released
         - opam pin add -y coq 8.16.1
+        - opam install coq-lsp --yes
         - opam pin -n . --yes
         - opam install ./coq-geocoq-coinc.opam --deps-only --yes
         - opam install ./coq-geocoq-axioms.opam --deps-only --yes
@@ -44,7 +47,7 @@ repos:
         - ./configure.sh
         - make -j `nproc`
       setup_cmds:
-        - eval $(opam env --switch=GeoCoq --set-switch)
+        - opam env --switch=GeoCoq --set-switch
   - category-theory:
       url: https://github.com/jwiegley/category-theory
       commit: f8295f0d77ab0dd9f989e8e45d43670a69f424df
@@ -54,12 +57,13 @@ repos:
         - opam switch create category-theory 4.14.1
         - eval $(opam env --switch=category-theory --set-switch)
         - opam pin add -y coq 8.18.0
+        - opam install coq-lsp --yes
         - opam repo add coq-released https://coq.inria.fr/opam/released
         - opam install ./category-theory/coq-category-theory.opam --deps-only --yes
         - make -C category-theory -j `nproc`
         - popd
       setup_cmds:
-        - eval $(opam env --switch=category-theory --set-switch)
+        - opam env --switch=category-theory --set-switch
   - CompCert:
       url: https://github.com/AbsInt/CompCert
       commit: 76a4ff8f5b37429a614a2a97f628d9d862c93f46
@@ -78,7 +82,7 @@ repos:
         - make -C CompCert -j `nproc`
         - popd
     setup_cmds:
-      - eval $(opam env --switch=CompCert --set-switch)
+      - opam env --switch=CompCert --set-switch
 
 
 
@@ -93,7 +97,7 @@ repos:
   #       - opam pin add -y coq 8.10.2
   #       - make -j `nproc`
   #     setup_cmds:
-  #       - eval $(opam env --switch=Coq-HoTT --set-switch)
+  #       - opam env --switch=Coq-HoTT --set-switch
   # - verdi:
   #     url: https://github.com/uwplse/verdi
   #     commit: 8f7fe47ae25c9ba0faeb1e9f62417ba238ef15bf
@@ -104,7 +108,7 @@ repos:
   #       - opam pin add -y coq 8.10.2
   #       - make -j `nproc`
   #     setup_cmds:
-  #       - eval $(opam env --switch=verdi --set-switch)
+  #       - opam env --switch=verdi --set-switch
   # - fourcolor:
   #     url: https://github.com/coq-community/fourcolor
   #     commit: 91ff6b8b846c8ad683260a5e6ce400e186f43c6e
@@ -115,7 +119,7 @@ repos:
   #       - opam pin add -y coq 8.10.2
   #       - make -j `nproc`
   #     setup_cmds:
-  #       - eval $(opam env --switch=fourcolor --set-switch)
+  #       - opam env --switch=fourcolor --set-switch
   # - coq-tricks:
   #     url: https://github.com/tchajed/coq-tricks
   #     commit: 8636f839bebd101286aaa9f41350de40f1f911c1
@@ -126,7 +130,7 @@ repos:
   #       - opam pin add -y coq 8.10.2
   #       - make -j `nproc`
   #     setup_cmds:
-  #       - eval $(opam env --switch=coq-tricks --set-switch)
+  #       - opam env --switch=coq-tricks --set-switch
   # - VST:
   #     url: https://github.com/PrincetonUniversity/VST
   #     commit: 56e6886288918f1b78ad53dd3dcdb1a58a9916cb
@@ -137,7 +141,7 @@ repos:
   #       - opam pin add -y coq 8.10.2
   #       - make -j `nproc`
   #     setup_cmds:
-  #       - eval $(opam env --switch=VST --set-switch)
+  #       - opam env --switch=VST --set-switch
   # - Set-Theory:
   #     url: https://github.com/choukh/Set-Theory
   #     commit: 5677d0d9cc3814adfb9bc1286a826f9d620fcc2e
@@ -148,7 +152,7 @@ repos:
   #       - opam pin add -y coq 8.10.2
   #       - make -j `nproc`
   #     setup_cmds:
-  #       - eval $(opam env --switch=Set-Theory --set-switch)
+  #       - opam env --switch=Set-Theory --set-switch
   # - math-classes:
   #     url: https://github.com/coq-community/math-classes
   #     commit: 2a8e12360cceee510f39e3ef4d0a7472d70fa684
@@ -159,7 +163,7 @@ repos:
   #       - opam pin add -y coq 8.10.2
   #       - make -j `nproc`
   #     setup_cmds:
-  #       - eval $(opam env --switch=math-classes --set-switch)
+  #       - opam env --switch=math-classes --set-switch
   # - coq-100-theorems:
   #     url: https://github.com/coq-community/coq-100-theorems
   #     commit: 36ba6d3abae801fb92bd74a26cd27ebf5de0c234
@@ -170,7 +174,7 @@ repos:
   #       - opam pin add -y coq 8.10.2
   #       - make -j `nproc`
   #     setup_cmds:
-  #       - eval $(opam env --switch=coq-100-the --set-switch)
+  #       - opam env --switch=coq-100-the --set-switch
   # - coq:
   #     url: https://github.com/coq/coq
   #     commit: 6fdccaf0346754dda384c6847f1f2aded2b88c41
@@ -183,4 +187,4 @@ repos:
   #       - make dunestrap
   #       - dune build -p coq-core,coq-stdlib,coq,coqide-server
   #     setup_cmds:
-  #       - eval $(opam env --switch=coq --set-switch)
+  #       - opam env --switch=coq --set-switch

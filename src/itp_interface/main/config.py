@@ -6,7 +6,7 @@ root_dir = f"{__file__.split('itp_interface')[0]}"
 if root_dir not in sys.path:
     sys.path.append(root_dir)
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json
 from enum import Enum
 from itp_interface.rl.proof_tree import ProofSearchResult
@@ -87,6 +87,7 @@ class EvalBenchmark(object):
     few_shot_metadata_filename_for_retrieval: str = None
     dfs_data_path_for_retrieval: str = None
     dfs_metadata_filename_for_retrieval: str = None
+    setup_cmds: typing.List[str] = field(default_factory=list)
 
 @dataclass_json
 @dataclass
@@ -180,5 +181,6 @@ def parse_config(cfg):
         few_shot_data_path_for_retrieval=benchmark_cfg["few_shot_data_path_for_retrieval"],
         few_shot_metadata_filename_for_retrieval=benchmark_cfg["few_shot_metadata_filename_for_retrieval"],
         dfs_data_path_for_retrieval=benchmark_cfg["dfs_data_path_for_retrieval"],
-        dfs_metadata_filename_for_retrieval=benchmark_cfg["dfs_metadata_filename_for_retrieval"])
+        dfs_metadata_filename_for_retrieval=benchmark_cfg["dfs_metadata_filename_for_retrieval"],
+        setup_cmds=benchmark_cfg["setup_cmds"])
     return Experiments(env_settings=env_settings, run_settings=eval_settings, benchmark=benchmark)

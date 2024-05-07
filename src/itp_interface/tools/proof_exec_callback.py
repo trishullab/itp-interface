@@ -31,7 +31,8 @@ class ProofExecutorCallback(object):
                 search_depth: int = 0,
                 logger: logging.Logger = None,
                 always_use_retrieval: bool = False,
-                keep_local_context: bool = False):
+                keep_local_context: bool = False,
+                setup_cmds: typing.List[str] = []):
         self.project_folder = project_folder
         self.file_path = file_path
         self.language = language
@@ -44,13 +45,14 @@ class ProofExecutorCallback(object):
         self.prefix = prefix
         self.always_use_retrieval = always_use_retrieval
         self.keep_local_context = keep_local_context
+        self.setup_cmds = setup_cmds
         pass
 
-    def get_proof_executor(self) -> typing.Union[DynamicCoqProofExecutor, DynamicLeanProofExecutor]:
+    def get_proof_executor(self) -> typing.Union[DynamicCoqProofExecutor, DynamicLeanProofExecutor, DynamicLean4ProofExecutor]:
         if self.language == ProofAction.Language.COQ:
-            search_exec = CoqExecutor(self.project_folder, self.file_path, use_hammer=self.use_hammer, timeout_in_sec=self.timeout_in_secs, suppress_error_log=self.suppress_error_log, use_human_readable_proof_context=self.use_human_readable_proof_context)
+            search_exec = CoqExecutor(self.project_folder, self.file_path, use_hammer=self.use_hammer, timeout_in_sec=self.timeout_in_secs, suppress_error_log=self.suppress_error_log, use_human_readable_proof_context=self.use_human_readable_proof_context, setup_cmds=self.setup_cmds)
             coq_context_helper = CoqContextHelper(search_exec, self.search_depth, logger=self.logger)
-            return DynamicCoqProofExecutor(coq_context_helper, self.project_folder, self.file_path, context_type=DynamicCoqProofExecutor.ContextType.BestContext, use_hammer=self.use_hammer, timeout_in_seconds=self.timeout_in_secs, suppress_error_log=self.suppress_error_log, use_human_readable_proof_context=self.use_human_readable_proof_context)
+            return DynamicCoqProofExecutor(coq_context_helper, self.project_folder, self.file_path, context_type=DynamicCoqProofExecutor.ContextType.BestContext, use_hammer=self.use_hammer, timeout_in_seconds=self.timeout_in_secs, suppress_error_log=self.suppress_error_log, use_human_readable_proof_context=self.use_human_readable_proof_context, setup_cmds=self.setup_cmds)
         elif self.language == ProofAction.Language.LEAN:
             search_exec = Lean3Executor(self.project_folder, self.prefix, self.file_path, use_hammer=self.use_hammer, timeout_in_sec=self.timeout_in_secs, suppress_error_log=self.suppress_error_log, use_human_readable_proof_context=self.use_human_readable_proof_context, enable_search=self.always_use_retrieval, keep_local_context=self.keep_local_context)
             lean_context_helper = Lean3ContextHelper(search_exec, self.search_depth, logger=self.logger)

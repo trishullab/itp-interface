@@ -6,6 +6,7 @@ if root_dir not in sys.path:
     sys.path.append(root_dir)
 import typing
 import uuid
+import os
 from itp_interface.tools.coq_context_helper import CoqContextHelper
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
 from itp_interface.tools.training_data_format import Goal, MergableCollection, TrainingDataMetadataFormat, TrainingDataCollection, TrainingDataFormat

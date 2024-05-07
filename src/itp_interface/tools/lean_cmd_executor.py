@@ -226,7 +226,7 @@ class Lean3Executor(object):
         while next_cmd_ran:
             next_cmd_ran = self.run_next_without_exec()
     
-    def find_all_theorems_names(self) -> typing.List[typing.Tuple[str, str]]:
+    def find_all_theorems_names(self) -> typing.List[str]:
         theorem_names = []
         matches = Lean3Executor.theorem_match.findall(self._file_content)
         for _, _, _, thm_name, _, _ in matches:

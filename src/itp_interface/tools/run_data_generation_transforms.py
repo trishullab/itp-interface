@@ -112,19 +112,7 @@ class RunDataGenerationTransforms(object):
                 exec = Lean3Executor(project_path, None, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
             with exec:
                 project_id = project_path # project_path.replace('/', '.')
-                metadata = transform.get_meta_object()
-                metadata.training_data_buffer_size = transform.buffer_size
-                metadata.data_filename_prefix = RunDataGenerationTransforms.get_data_filename_prefix(transform)
-                metadata.data_filename_suffix = RunDataGenerationTransforms.get_data_filename_suffix(transform)
-                metadata.lemma_ref_filename_prefix = RunDataGenerationTransforms.get_lemma_ref_filename_prefix(transform)
-                metadata.lemma_ref_filename_suffix = RunDataGenerationTransforms.get_lemma_ref_filename_suffix(transform)
-                training_data = TrainingData(
-                    output_dir,
-                    RunDataGenerationTransforms.get_meta_file_name(transform),
-                    metadata,
-                    transform.max_parallelism,
-                    remove_from_store_after_loading=True,
-                    logger=logger)
+                training_data = RunDataGenerationTransforms.get_training_data_object(transform, output_dir, logger)
                 if isinstance(transform, CoqLocalDataGenerationTransform):
                     transform(training_data, project_id, exec, _print_coq_callback, theorems)
                 elif isinstance(transform, LeanLocalDataGenerationTransform):
@@ -142,6 +130,22 @@ class RunDataGenerationTransforms(object):
     #     save_res = training_data.save()
     #     ray.logger.info(f"Saved training data to {training_data.folder} in {time.time() - start_time} seconds")
     #     return save_res
+    @staticmethod
+    def get_training_data_object(transform, output_dir, logger: logging.Logger):
+        metadata = transform.get_meta_object()
+        metadata.training_data_buffer_size = transform.buffer_size
+        metadata.data_filename_prefix = RunDataGenerationTransforms.get_data_filename_prefix(transform)
+        metadata.data_filename_suffix = RunDataGenerationTransforms.get_data_filename_suffix(transform)
+        metadata.lemma_ref_filename_prefix = RunDataGenerationTransforms.get_lemma_ref_filename_prefix(transform)
+        metadata.lemma_ref_filename_suffix = RunDataGenerationTransforms.get_lemma_ref_filename_suffix(transform)
+        training_data = TrainingData(
+            output_dir,
+            RunDataGenerationTransforms.get_meta_file_name(transform),
+            metadata,
+            transform.max_parallelism,
+            remove_from_store_after_loading=True,
+            logger=logger)
+        return training_data
 
     @ray.remote(max_retries=-1)
     def run_local_transform_on_file(idx, log_file: str, output_dir: str, project_path: str, file_path: str, use_human_readable: bool, transform: GenericTrainingDataGenerationTransform, log_error: bool, save_transform: bool = True, theorems: typing.List[str] = None):
@@ -162,6 +166,8 @@ class RunDataGenerationTransforms(object):
                 logger.warning(f"XXXXXXXXXXXXXXXXXXXXXXX>[{transform.name}] Failed in running transform over file {file_path}<XXXXXXXXXXXXXXXXXXXXXXXXXX")
                 logger.error(f"Got an exception while running transform over {file_path}")
                 logger.exception(f"Exception Log")
+                # Get an empty training data object
+                training_data = RunDataGenerationTransforms.get_training_data_object(transform, output_dir, logger)
                 pass
             return idx, training_data
 
@@ -255,7 +261,7 @@ class RunDataGenerationTransforms(object):
         def _create_remotes(job_list):
             remotes = []
             for job in job_list:
-                self.logger.info(f"[{transform.name}] Starting transform for {job[5]}")
+                self.logger.info(f"[{transform.name}] Starting transform for {job[4]}")
                 remotes.append(RunDataGenerationTransforms.run_local_transform_on_file.remote(*job))
             return remotes
         

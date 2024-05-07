@@ -9,6 +9,8 @@ import logging
 import os
 import time
 import shutil
+import ray
+import typing
 from itp_interface.rl.proof_action import ProofAction
 from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
 from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
@@ -19,28 +21,53 @@ from itp_interface.tools.log_utils import setup_logger
 from itp_interface.main.config import Experiments, EvalRunCheckpointInfo, TransformType, parse_config
 from itp_interface.tools.dynamic_coq_proof_exec import DynamicProofExecutor as DynamicCoqProofExecutor
 from itp_interface.tools.dynamic_lean_proof_exec import DynamicProofExecutor as DynamicLeanProofExecutor
+from itp_interface.tools.dynamic_lean4_proof_exec import DynamicProofExecutor as DynamicLean4ProofExecutor
+from itp_interface.tools.coq_executor import get_all_lemmas_in_file as get_all_lemmas_coq
+from itp_interface.tools.lean4_sync_executor import get_all_theorems_in_file as get_all_lemmas_lean4, get_fully_qualified_theorem_name as get_fully_qualified_theorem_name_lean4
 
-def get_all_lemmas(coq_proof_exec_callback: ProofExecutorCallback, logger: logging.Logger):
+@ray.remote
+def get_all_lemmas(project_folder, 
+        file_path, 
+        language, 
+        use_hammer, 
+        timeout_in_secs,
+        use_human_readable_proof_context, 
+        suppress_error_log, 
+        always_use_retrieval,
+        setup_cmds: typing.List[str], 
+        log_file: str):
+    logger = setup_logger('get_all_lemmas', log_file, logging.INFO, '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    proof_exec_callback = ProofExecutorCallback(
+        project_folder=project_folder,
+        file_path=file_path,
+        language=language,
+        use_hammer=use_hammer,
+        timeout_in_secs=timeout_in_secs,
+        use_human_readable_proof_context=use_human_readable_proof_context,
+        suppress_error_log=suppress_error_log,
+        always_use_retrieval=always_use_retrieval,
+        logger=logger,
+        setup_cmds=setup_cmds
+    )
     lemmas_to_prove = []
-    with coq_proof_exec_callback.get_proof_executor() as main_executor:
-        if isinstance(main_executor, DynamicLeanProofExecutor):
-            main_executor.run_all_without_exec()
-            lemmas_to_prove = main_executor.find_all_theorems_names()
-        elif isinstance(main_executor, DynamicCoqProofExecutor):
-            while not main_executor.execution_complete:
-                assert not main_executor.is_in_proof_mode(), "main_executor must not be in proof mode"
-                _ = list(main_executor.run_till_next_lemma_return_exec_stmt())
-                if main_executor.execution_complete:
-                    break
-                lemma_name = main_executor.get_lemma_name_if_running()
-                if lemma_name is None:
-                    _ = list(main_executor.run_to_finish_lemma_return_exec())
-                    if main_executor.execution_complete:
-                        break
-                else:
-                    logger.info(f"Discovered lemma: {lemma_name}")
-                    lemmas_to_prove.append(lemma_name)
-                    main_executor.run_to_finish_lemma()
+    try:
+        with proof_exec_callback.get_proof_executor() as main_executor:
+            if language == ProofAction.Language.COQ:
+                assert isinstance(main_executor, DynamicCoqProofExecutor)
+                lemmas_to_prove = get_all_lemmas_coq(main_executor, logger)
+            elif language == ProofAction.Language.LEAN:
+                assert isinstance(main_executor, DynamicLeanProofExecutor)
+                main_executor.run_all_without_exec()
+                lemmas_to_prove = main_executor.find_all_theorems_names()
+            elif language == ProofAction.Language.LEAN4:
+                assert isinstance(main_executor, DynamicLean4ProofExecutor)
+                theorem_details = get_all_lemmas_lean4(file_path)
+                lemmas_to_prove = [get_fully_qualified_theorem_name_lean4(theorem) for theorem in theorem_details]
+            else:
+                raise ValueError(f"Unexpected language: {language}")
+    except Exception as e:
+        logger.error(f"Error occurred while getting lemmas from {file_path}")
+        logger.exception(e)
     logger.info(f"Discovered {len(lemmas_to_prove)} lemmas")
     return lemmas_to_prove
 
@@ -74,17 +101,19 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
             raise ValueError(f"Unexpected transform_type: {experiment.run_settings.transform_type}")
         # Find all the lemmas to prove
         project_to_theorems = {}
-        for dataset in experiment.benchmark.datasets:
+        for idx, dataset in enumerate(experiment.benchmark.datasets):
             if dataset.project not in project_to_theorems:
                 project_to_theorems[dataset.project] = {}
-            file_to_theorems = project_to_theorems[dataset.project] 
-            for file in dataset.files:
+            file_to_theorems = project_to_theorems[dataset.project]
+            lemma_discovery_remotes = [] 
+            for file_idx, file in enumerate(dataset.files):
                 if file.path not in file_to_theorems:
                     file_to_theorems[file.path] = []
                 if isinstance(file.theorems, list):
                     file_to_theorems[file.path].extend(file.theorems)
                 else:
-                    theorems = get_all_lemmas(ProofExecutorCallback(
+                    discover_log_file = os.path.join(log_dir, f"discover{idx}_{file_idx}.log")
+                    lemma_discovery_remotes.append(get_all_lemmas.remote(
                         project_folder=dataset.project,
                         file_path=os.path.join(dataset.project, file.path),
                         language=experiment.benchmark.language,
@@ -93,10 +122,13 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
                         use_human_readable_proof_context=experiment.run_settings.use_human_readable,
                         suppress_error_log=True,
                         always_use_retrieval=False,
-                        logger=logger
-                    ), logger)
-                    file_to_theorems[file.path].extend(theorems)
+                        setup_cmds=experiment.benchmark.setup_cmds,
+                        log_file=discover_log_file))
                 pass
+            if len(lemma_discovery_remotes) > 0:
+                lemmas = ray.get(lemma_discovery_remotes)
+                for file, theorems in zip(dataset.files, lemmas):
+                    file_to_theorems[file.path].extend(theorems)
             pass
         data_transform = RunDataGenerationTransforms(transforms, 
                 log_dir, 

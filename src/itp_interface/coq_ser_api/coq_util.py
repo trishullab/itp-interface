@@ -641,9 +641,10 @@ def set_switch(switch: str) -> None:
 
     _setup_opam_env_from_str(env_string)
 
-def setup_opam_env() -> None:
-    env_string = subprocess.run("opam env", shell=True, stdout=subprocess.PIPE,
-                                check=True, text=True).stdout
+def setup_opam_env(env_string: str = None) -> None:
+    if env_string is None:
+        env_string = subprocess.run("opam env", shell=True, stdout=subprocess.PIPE,
+                                    check=True, text=True).stdout
     _setup_opam_env_from_str(env_string)
 
 

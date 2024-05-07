@@ -633,6 +633,13 @@ def get_all_theorems_in_file(file_path: str, use_cache: bool=False) -> List[Theo
         theorem_names_in_file_cache[file_path] = all_theorems
     return all_theorems
 
+def get_fully_qualified_theorem_name(theorem_details: TheoremDetails) -> str:
+    if len(theorem_details.theorem_namespace) == 0:
+        return theorem_details.theorem_name
+    else:
+        dict_thm = {"namespace": theorem_details.theorem_namespace, "name": theorem_details.theorem_name}
+        return json.dumps(dict_thm)
+
 def get_theorem_name_resembling(file_path: str, theorem_name: str, use_cache: bool=False) -> Optional[str]:
     all_theorems = get_all_theorems_in_file(file_path, use_cache=use_cache)
     all_theorems_name_unique_map : Dict[str, List[TheoremDetails]] = {}

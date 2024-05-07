@@ -62,9 +62,9 @@ def set_parseSexpOneLevel_fn(newfn) -> None:
     global parseSexpOneLevel
     parseSexpOneLevel = newfn
 
-def GetCoqAgent(prelude: str = ".", verbosity: int = 0, set_env: bool = True, use_human_readable_str: bool = False) -> CoqAgent:
+def GetCoqAgent(prelude: str = ".", verbosity: int = 0, set_env: bool = True, use_human_readable_str: bool = False, env_string: str = None) -> CoqAgent:
     if set_env:
-        setup_opam_env()
+        setup_opam_env(env_string)
     version_string = subprocess.run(["coqc", "--version"], stdout=subprocess.PIPE,
                                     text=True, check=True).stdout
     version_match = re.fullmatch(r"(?:The Coq Proof Assistant, version)? \d+\.(\d+).*", version_string,
