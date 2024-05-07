@@ -182,5 +182,5 @@ def parse_config(cfg):
         few_shot_metadata_filename_for_retrieval=benchmark_cfg["few_shot_metadata_filename_for_retrieval"],
         dfs_data_path_for_retrieval=benchmark_cfg["dfs_data_path_for_retrieval"],
         dfs_metadata_filename_for_retrieval=benchmark_cfg["dfs_metadata_filename_for_retrieval"],
-        setup_cmds=benchmark_cfg["setup_cmds"])
+        setup_cmds=benchmark_cfg["setup_cmds"] if "setup_cmds" in benchmark_cfg else [])
     return Experiments(env_settings=env_settings, run_settings=eval_settings, benchmark=benchmark)
