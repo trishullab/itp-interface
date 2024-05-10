@@ -651,7 +651,7 @@ if __name__ == "__main__":
         raise Exception(f"Invalid input {inp} for choosing coq/lean/lean4/isabelle env")
 
     if language == ProofAction.Language.ISABELLE:
-        IsabelleExecutor.start_server(port=17000)
+        IsabelleExecutor.start_server(port=13000)
     
     try:
         test_ray = True
