@@ -62,7 +62,8 @@ class CoqLSPyInstance(CoqBackend):
         self.concise = concise
         if isinstance(lsp_command, str):
             lsp_command = [lsp_command]
-        full_command = lsp_command + (["-D", "0.001"] if self.concise else [])
+        server_delay = 0.01
+        full_command = lsp_command + (["-D", str(server_delay)] if self.concise else [])
         self.proc = subprocess.Popen(full_command,
                                      stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -75,7 +76,7 @@ class CoqLSPyInstance(CoqBackend):
         ignoredMessages = ['$/coq/fileProgress', '$/coq/filePerfData']
         self.messageQueues = {msg_type: queue.Queue() for
                               msg_type in queuedMessages}
-
+        self.timeout_for_message = timeout
         self.endpoint  = pylspclient.LspEndpoint(
             pylspclient.JsonRpcEndpoint(self.proc.stdin, self.proc.stdout),
             notify_callbacks={**{msg_type: cast(Callable[[Any], None],
@@ -262,7 +263,7 @@ class CoqLSPyInstance(CoqBackend):
             for expected_msg_pattern in msgs:
                 while True:
                     try:
-                        actual_message = self.messageQueues["$/logTrace"].get(timeout=10)['message']
+                        actual_message = self.messageQueues["$/logTrace"].get(timeout=self.timeout_for_message)['message']
                     except queue.Empty:
                         if anomaly_on_timeout:
                             raise CoqAnomaly("Timing out")

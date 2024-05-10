@@ -8,7 +8,7 @@ dfs_metadata_filename_for_retrieval: local.meta.json
 setup_cmds:
   - opam env --switch=CompCert --set-switch
 datasets:
-  - project: data/benchmarks/CompCert
+  - project: /mnt/amthakur/data/repos/CompCert # data/benchmarks/CompCert
     files:
       - path: backend/Locations.v
         theorems: "*"

@@ -59,6 +59,7 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
         proof_id = theorem_id # self.get_proof_id(theorem_id, file_namespace, line_number, lemma_name)
         local_lemma_refs_cnt = 0
         external_lemma_refs_cnt = 0
+        theorems = set(theorems) if theorems is not None else None
         while cmd_ran:
             if coq_executor.is_in_proof_mode() and lemma_name != "__NONE__" and (theorems is None or lemma_name in theorems):
                 proof_running = True

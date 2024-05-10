@@ -4,10 +4,11 @@ repos:
       commit: 7432feea2113a460eb5a69fbbba5fda02e2bf234
       branch: master
       build_cmds: # Verified on 2024-05-04
-        - opam switch create UniMath 4.09.0
+        - opam switch create UniMath 4.14.1
         - eval $(opam env --switch=UniMath --set-switch)
-        - opam pin add -y coq 8.16.1
-        - opam install coq-lsp --yes
+        - opam pin add -y coq 8.18.0
+        - eval $(opam env)
+        - opam install coq-lsp --yes # 0.1.8+8.18 version
         - make -j `nproc`
       setup_cmds:
         - opam env --switch=UniMath --set-switch
@@ -32,17 +33,17 @@ repos:
       commit: 2f038905da84b8e63f07e2bf5b1b1bf348e1e0a1
       branch: master
       build_cmds: # Verified on 2024-05-04
-        - opam switch create GeoCoq 4.09.0
+        - opam switch create GeoCoq 4.14.1
         - eval $(opam env --switch=GeoCoq --set-switch)
         - opam repo add coq-released https://coq.inria.fr/opam/released
-        - opam pin add -y coq 8.16.1
+        - opam pin add -y coq 8.18.0
         - opam install coq-lsp --yes
         - opam pin -n . --yes
-        - opam install ./coq-geocoq-coinc.opam --deps-only --yes
-        - opam install ./coq-geocoq-axioms.opam --deps-only --yes
-        - opam install ./coq-geocoq-elements.opam --deps-only --yes
-        - opam install ./coq-geocoq-main.opam --deps-only --yes
-        - opam install ./coq-geocoq-algebraic.opam --deps-only --yes
+        - opam install coq-geocoq-coinc --yes
+        - opam install coq-geocoq-axioms --yes
+        - opam install coq-geocoq-elements --yes
+        - opam install coq-geocoq-main --yes
+        - opam install coq-geocoq-algebraic --yes
         - opam install ./coq-geocoq.opam --deps-only --yes
         - ./configure.sh
         - make -j `nproc`
