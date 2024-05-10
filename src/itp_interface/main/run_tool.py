@@ -11,6 +11,8 @@ import time
 import shutil
 import ray
 import typing
+import numpy as np
+import yaml
 from itp_interface.rl.proof_action import ProofAction
 from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
 from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
@@ -24,6 +26,7 @@ from itp_interface.tools.dynamic_lean_proof_exec import DynamicProofExecutor as 
 from itp_interface.tools.dynamic_lean4_proof_exec import DynamicProofExecutor as DynamicLean4ProofExecutor
 from itp_interface.tools.coq_executor import get_all_lemmas_in_file as get_all_lemmas_coq
 from itp_interface.tools.lean4_sync_executor import get_all_theorems_in_file as get_all_lemmas_lean4, get_fully_qualified_theorem_name as get_fully_qualified_theorem_name_lean4
+from itp_interface.tools.bin_packing import best_fit_packing
 
 @ray.remote
 def get_all_lemmas(project_folder, 
@@ -70,6 +73,82 @@ def get_all_lemmas(project_folder,
         logger.exception(e)
     logger.info(f"Discovered {len(lemmas_to_prove)} lemmas")
     return lemmas_to_prove
+
+def partition_data(project_to_theorems: typing.Dict[str, typing.Dict[str, typing.List[str]]], partition: typing.List[float], logger: logging.Logger):
+        train_project_to_theorems = {}
+        eval_project_to_theorems = {}
+        test_project_to_theorems = {}
+        prob_train = partition[0]
+        prob_eval = partition[1]
+        prob_test = partition[2]
+        assert prob_train + prob_eval + prob_test == 1.0, f"Invalid partition: {partition}"
+        # Go over each project and classify into three categories
+        proj_file_to_theorems_named_tuple = typing.NamedTuple("proj_file_to_theorems", [("project", str), ("file", str), ("theorems", typing.List[str])])
+        proj_file_thms = []
+        for project, file_to_theorems in project_to_theorems.items():
+            for file, theorems in file_to_theorems.items():
+                # Generate a random number between 0 and 1
+                proj_file_thms.append(proj_file_to_theorems_named_tuple(project, file, theorems))
+        total_thm_cnt = sum([len(p.theorems) for p in proj_file_thms])
+        max_train_cnt = int(total_thm_cnt * prob_train)
+        max_eval_cnt = int(total_thm_cnt * prob_eval)
+        max_test_cnt = int(total_thm_cnt * prob_test)
+        if max_train_cnt + max_eval_cnt + max_test_cnt == 0:
+            # Make the highest probability set non-empty
+            if prob_train > prob_eval and prob_train > prob_test:
+                max_train_cnt = 1
+            elif prob_eval > prob_train and prob_eval > prob_test:
+                max_eval_cnt = 1
+            else:
+                max_test_cnt = 1
+        item_sizes = [len(p.theorems) for p in proj_file_thms]
+        logger.info(f"Total number of files: {len(item_sizes)}")
+        logger.info(f"Total number of theorems: {sum(item_sizes)}")
+        logger.info(f"Distribution:\n {item_sizes}")
+        bins = best_fit_packing([max_train_cnt, max_eval_cnt, max_test_cnt], item_sizes)
+        bin_item_sizes = [[item_sizes[i] for i in b] for b in bins]
+        bin_sizes = [sum(b) for b in bin_item_sizes]
+        logger.info(f"Expected bin sizes: {max_train_cnt}, {max_eval_cnt}, {max_test_cnt}")
+        logger.info(f"Actual bin sizes: {bin_sizes}")
+        logger.info(f"Bin distribution:\n {bin_item_sizes}")
+        for idx, _bin in enumerate(bins):
+            if idx == 0:
+                partition_project_to_theorems = train_project_to_theorems
+            elif idx == 1:
+                partition_project_to_theorems = eval_project_to_theorems
+            else:
+                partition_project_to_theorems = test_project_to_theorems
+            for item_idx in _bin:
+                proj_file_thms_tuple = proj_file_thms[item_idx]
+                if proj_file_thms_tuple.project not in partition_project_to_theorems:
+                    partition_project_to_theorems[proj_file_thms_tuple.project] = {}
+                if proj_file_thms_tuple.file not in partition_project_to_theorems[proj_file_thms_tuple.project]:
+                    partition_project_to_theorems[proj_file_thms_tuple.project][proj_file_thms_tuple.file] = []
+                partition_project_to_theorems[proj_file_thms_tuple.project][proj_file_thms_tuple.file].extend(proj_file_thms_tuple.theorems)
+        return train_project_to_theorems, eval_project_to_theorems, test_project_to_theorems
+
+def create_yaml(project_to_theorems, name, language, output_file):
+    data = {
+        "name": name,
+        "num_files": 0,
+        "language": str(language),
+        "few_shot_data_path_for_retrieval": None,
+        "few_shot_metadata_filename_for_retrieval": None,
+        "dfs_data_path_for_retrieval": None,
+        "dfs_metadata_filename_for_retrieval": "local.meta.json",
+        "theorem_cnt": 0,
+        "datasets": []
+    }
+    for project_root, file_dict in project_to_theorems.items():
+        dataset = {"project": project_root, "files": []}
+        for file_path, theorems in file_dict.items():
+            data["num_files"] += 1
+            data["theorem_cnt"] += len(theorems)
+            dataset["files"].append({"path": file_path, "theorems": theorems}) 
+        data["datasets"].append(dataset)
+
+    with open(output_file, 'w') as yaml_file:
+        yaml.dump(data, yaml_file, sort_keys=False)
 
 def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoint_info: EvalRunCheckpointInfo, logger: logging.Logger = None):
     try:
@@ -135,35 +214,47 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
                 save_intermidiat_transforms=len(transforms) > 1 or \
                 experiment.run_settings.save_intermidiate_transforms, 
                 logger=logger)
-        new_output_dir = os.path.join(experiment.run_settings.output_dir, str_time)
-        os.makedirs(new_output_dir, exist_ok=True)
-        projects = list(project_to_theorems.keys())
-        if experiment.run_settings.transform_type == TransformType.LOCAL:
-            # clone the root directory
-            if clone_dir is not None:
-                for project in projects:
-                    logger.info(f"==============================>Cloning root directory {project} to {clone_dir}<==============================")
-                    temp_clone_dir = os.path.join(clone_dir, project)
-                    shutil.copytree(project, temp_clone_dir, dirs_exist_ok=True)
-                    # change the root_dir in files to clone_dir
-                    project_to_theorems[temp_clone_dir] = project_to_theorems[project]
-                    del project_to_theorems[project]
-                logger.info(f"==============================>Cloned root directory {project} to {clone_dir}<==============================")
-            try:
-                data_transform.run_all_local_transforms(
-                    experiment.run_settings.pool_size,
-                    project_to_theorems, 
-                    use_human_readable=experiment.run_settings.use_human_readable, 
-                    new_output_dir=new_output_dir, 
-                    log_error=True)
-            finally:
+        
+        partition_map = partition_data(project_to_theorems, experiment.run_settings.train_eval_test_split, logger)
+        for idx, dataset_partition in enumerate(['train', 'eval', 'test']):
+            new_output_dir = os.path.join(experiment.run_settings.output_dir, str_time, dataset_partition)
+            partition_project_to_theorems = partition_map[idx]
+            os.makedirs(new_output_dir, exist_ok=True)
+            logger.info(f"==============================>Running {dataset_partition} partition<==============================")
+            # dump a yaml file with the partition
+            partition_name = f"{experiment.benchmark.name}_{dataset_partition}"
+            yaml_file = os.path.join(new_output_dir, f"{partition_name}.yaml")
+            create_yaml(partition_project_to_theorems, partition_name, experiment.benchmark.language, yaml_file)
+            if len(partition_project_to_theorems) == 0:
+                logger.info(f"==============================>No projects to process for {dataset_partition}<==============================")
+                continue
+            projects = list(partition_project_to_theorems.keys())
+            if experiment.run_settings.transform_type == TransformType.LOCAL:
+                # clone the root directory
                 if clone_dir is not None:
                     for project in projects:
+                        logger.info(f"==============================>Cloning root directory {project} to {clone_dir}<==============================")
                         temp_clone_dir = os.path.join(clone_dir, project)
-                        logger.info(f"==============================>Removing cloned root directory {temp_clone_dir}<==============================")
-                        shutil.rmtree(temp_clone_dir, ignore_errors=True)
-                        logger.info(f"==============================>Removed cloned root directory {temp_clone_dir}<==============================")
-                        shutil.rmtree(clone_dir, ignore_errors=True)
+                        shutil.copytree(project, temp_clone_dir, dirs_exist_ok=True)
+                        # change the root_dir in files to clone_dir
+                        partition_project_to_theorems[temp_clone_dir] = partition_project_to_theorems[project]
+                        del partition_project_to_theorems[project]
+                    logger.info(f"==============================>Cloned root directory {project} to {clone_dir}<==============================")
+                try:
+                    data_transform.run_all_local_transforms(
+                        experiment.run_settings.pool_size,
+                        partition_project_to_theorems, 
+                        use_human_readable=experiment.run_settings.use_human_readable, 
+                        new_output_dir=new_output_dir, 
+                        log_error=True)
+                finally:
+                    if clone_dir is not None:
+                        for project in projects:
+                            temp_clone_dir = os.path.join(clone_dir, project)
+                            logger.info(f"==============================>Removing cloned root directory {temp_clone_dir}<==============================")
+                            shutil.rmtree(temp_clone_dir, ignore_errors=True)
+                            logger.info(f"==============================>Removed cloned root directory {temp_clone_dir}<==============================")
+                            shutil.rmtree(clone_dir, ignore_errors=True)
     except Exception as e:
         logger.exception(e)
         raise e 

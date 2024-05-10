@@ -62,7 +62,7 @@ def set_parseSexpOneLevel_fn(newfn) -> None:
     global parseSexpOneLevel
     parseSexpOneLevel = newfn
 
-def GetCoqAgent(prelude: str = ".", verbosity: int = 0, set_env: bool = True, use_human_readable_str: bool = False, env_string: str = None) -> CoqAgent:
+def GetCoqAgent(prelude: str = ".", verbosity: int = 0, set_env: bool = True, use_human_readable_str: bool = False, env_string: str = None, timeout = 60) -> CoqAgent:
     if set_env:
         setup_opam_env(env_string)
     version_string = subprocess.run(["coqc", "--version"], stdout=subprocess.PIPE,
@@ -79,10 +79,11 @@ def GetCoqAgent(prelude: str = ".", verbosity: int = 0, set_env: bool = True, us
     try:
         if minor_version < 16:
             backend = CoqSeraPyInstance(["sertop", "--implicit"],
+                                        timeout=timeout,
                                         set_env=set_env)
             backend.verbosity = verbosity
         else:
-            backend = CoqLSPyInstance("coq-lsp", root_dir=prelude, set_env=set_env)
+            backend = CoqLSPyInstance("coq-lsp", root_dir=prelude, set_env=set_env, timeout=timeout)
         agent = CoqAgent(backend, prelude, verbosity=verbosity, use_human_readable=use_human_readable_str)
     except CoqAnomaly:
         eprint("Anomaly during initialization! Something has gone horribly wrong.")

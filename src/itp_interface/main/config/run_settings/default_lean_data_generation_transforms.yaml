@@ -16,3 +16,8 @@ max_steps_per_episode: 60
 render: False
 checkpoint_dir: .log/checkpoints
 should_checkpoint: False
+random_seed: 42
+train_eval_test_split:
+  - 1.0
+  - 0.0
+  - 0.0

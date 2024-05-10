@@ -66,7 +66,7 @@ class CoqExecutor:
                 logger.info(f"Continuing without setting up the environment")
         else:
             env_settings = None
-        self.coq : CoqAgent = GetCoqAgent(prelude=self.project_root, use_human_readable_str=self.use_human_readable_proof_context, env_string=env_settings)
+        self.coq : CoqAgent = GetCoqAgent(prelude=self.project_root, use_human_readable_str=self.use_human_readable_proof_context, env_string=env_settings, timeout=self.timeout_in_sec)
         if hasattr(self.coq, "quiet"):
             self.coq.quiet = self.suppress_error_log
         if self.main_file_iter is None:

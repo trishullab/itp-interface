@@ -87,6 +87,7 @@ class RunDataGenerationTransforms(object):
 
     @staticmethod
     def call_local_transform(
+        training_data,
         logger: logging.Logger,
         transform,
         output_dir,
@@ -112,7 +113,7 @@ class RunDataGenerationTransforms(object):
                 exec = Lean3Executor(project_path, None, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
             with exec:
                 project_id = project_path # project_path.replace('/', '.')
-                training_data = RunDataGenerationTransforms.get_training_data_object(transform, output_dir, logger)
+                # training_data = RunDataGenerationTransforms.get_training_data_object(transform, output_dir, logger)
                 if isinstance(transform, CoqLocalDataGenerationTransform):
                     transform(training_data, project_id, exec, _print_coq_callback, theorems)
                 elif isinstance(transform, LeanLocalDataGenerationTransform):
@@ -121,7 +122,6 @@ class RunDataGenerationTransforms(object):
                     raise Exception("Unknown transform")
         else:
             raise Exception("Unknown transform")
-        return training_data
 
     # @ray.remote(max_retries=-1)
     # def _save_training_data(storename: str, training_data: TrainingData):
@@ -159,15 +159,15 @@ class RunDataGenerationTransforms(object):
             return None
         else:
             logger.info(f"==============================>[{transform.name}] Running transform over file {file_path}<==============================")
+            training_data = RunDataGenerationTransforms.get_training_data_object(transform, output_dir, logger)
             try:
-                training_data : TrainingData = RunDataGenerationTransforms.call_local_transform(logger, transform, output_dir, project_path, file_path, log_error, use_human_readable, theorems)
+                RunDataGenerationTransforms.call_local_transform(training_data, logger, transform, output_dir, project_path, file_path, log_error, use_human_readable, theorems)
                 logger.info(f"==============================>[{transform.name}] Successfully ran transform over file {file_path}<==============================")
             except:
                 logger.warning(f"XXXXXXXXXXXXXXXXXXXXXXX>[{transform.name}] Failed in running transform over file {file_path}<XXXXXXXXXXXXXXXXXXXXXXXXXX")
                 logger.error(f"Got an exception while running transform over {file_path}")
                 logger.exception(f"Exception Log")
                 # Get an empty training data object
-                training_data = RunDataGenerationTransforms.get_training_data_object(transform, output_dir, logger)
                 pass
             return idx, training_data
 
