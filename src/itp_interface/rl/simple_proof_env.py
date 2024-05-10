@@ -17,11 +17,14 @@ from itp_interface.rl.proof_action import ProofAction
 from itp_interface.rl.abstraction import State, Action, Env
 from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
 from itp_interface.tools.training_data_format import TrainingDataFormat
+from itp_interface.tools.isabelle_executor import IsabelleExecutor, HammerMode
+from itp_interface.tools.dynamic_coq_proof_exec import DynamicProofExecutor as DynamicCoqProofExecutor
 from itp_interface.tools.dynamic_lean_proof_exec import DynamicProofExecutor as DynamicLeanProofExecutor
 from itp_interface.tools.dynamic_lean4_proof_exec import DynamicProofExecutor as DynamicLean4ProofExecutor
-from itp_interface.tools.dynamic_coq_proof_exec import DynamicProofExecutor as DynamicCoqProofExecutor
+from itp_interface.tools.dynamic_isabelle_proof_exec import DynamicProofExecutor as DynamicIsabelleProofExecutor
 from itp_interface.retrieval.coq_bm25_reranker import CoqBm25ReRanker
 from itp_interface.retrieval.lean3_bm25_reranker import Lean3Bm25ReRanker
+from itp_interface.retrieval.isabelle_bm25_reranker import IsabelleBm25ReRanker
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json
 from enum import Enum
@@ -77,7 +80,7 @@ class ProofEnv(Env):
         assert isinstance(max_proof_depth, int)
         assert isinstance(always_retrieve_thms, bool)
         self.dynamic_proof_executor_callback = dynamic_proof_executor_callback
-        self._dynamic_proof_executor : typing.Union[DynamicCoqProofExecutor, DynamicLeanProofExecutor] = None
+        self._dynamic_proof_executor : typing.Union[DynamicCoqProofExecutor, DynamicLeanProofExecutor, DynamicIsabelleProofExecutor] = None
         self._loaded = False
         self._history : typing.List[typing.Tuple[ProofState, ProofAction, ProofState, float, bool, ProofEnvInfo]] = []
         self._name = name
@@ -106,6 +109,8 @@ class ProofEnv(Env):
                     ProofEnv._re_ranker = Lean3Bm25ReRanker(language=str(self.language))
                 elif self.language == ProofAction.Language.LEAN4:
                     ProofEnv._re_ranker = Lean3Bm25ReRanker(language=str(self.language))
+                elif self.language == ProofAction.Language.ISABELLE:
+                    ProofEnv._re_ranker = IsabelleBm25ReRanker(language=str(self.language))
                 else:
                     raise NotImplementedError(f"Language {self.language} not implemented")
             self._re_ranker = ProofEnv._re_ranker
@@ -206,7 +211,10 @@ class ProofEnv(Env):
         self._foward_to_lemma_proof()
         self.goal_start_time = time.time()
         self.inferences_used = 0
-        pass
+
+        # If in Isabelle, automatically enter proof
+        if self.language == ProofAction.Language.ISABELLE:
+            self._dynamic_proof_executor.run_tactics(["proof -"])
 
     def step(self, action: Action) -> typing.Tuple[State, Action, State, float, bool, ProofEnvInfo]:
         assert self._loaded, "Env not loaded, call reset() first"
@@ -307,6 +315,7 @@ class ProofEnv(Env):
         assert all([isinstance(tactic, str) for tactic in tactics])
         # Remove unnecessary spaces, newlines, and tabs
         tactics = [tactic.strip() for tactic in tactics]
+        original_tactics = copy.deepcopy(tactics)
         try:
             state, next_state, reward, done, env_info = self._run_tactics(tactics, state, action, env_info)
         except Exception:
@@ -318,6 +327,14 @@ class ProofEnv(Env):
             done = False
             env_info.progress = ProgressState.FAILED
             env_info.error_message = self._dynamic_proof_executor.get_last_exception()
+        
+        if self.language == ProofAction.Language.ISABELLE and \
+        (len(original_tactics) != len(tactics) or \
+         any([original_tactics[i] != tactics[i] for i in range(len(original_tactics))])):
+            # It is possible in case of Isabelle that tactics are modified by the proof executor when hammer is used
+            # So we need to update the tactics in the action
+            action.kwargs["tactics"] = tactics
+        
         self._history[history_idx] = (state, action, next_state, reward, done, env_info)
 
     def _run_tactics(self, tactics: typing.List[str], state: ProofState, action: ProofAction, env_info: ProofEnvInfo):
@@ -511,6 +528,20 @@ class ProofEnv(Env):
             isinstance(self._dynamic_proof_executor, DynamicLean4ProofExecutor):
             self._dynamic_proof_executor.skip_to_theorem(self.lemma_name)
             lemma_found = True
+        elif isinstance(self._dynamic_proof_executor, DynamicIsabelleProofExecutor):
+            while not self._dynamic_proof_executor.execution_complete and not lemma_found:
+                assert not self._dynamic_proof_executor.is_in_proof_mode(), "executor must not be in proof mode"
+                _ = list(self._dynamic_proof_executor.run_till_next_lemma_return_exec_stmt())
+                if self._dynamic_proof_executor.execution_complete:
+                    break
+                lemma_name = self._dynamic_proof_executor.get_lemma_name_if_running()
+                if lemma_name is not None:
+                    lemma_name = lemma_name.strip()
+                lemma_found = lemma_name.startswith(self.lemma_name) if lemma_name is not None else False
+                if not lemma_found:
+                    _ = list(self._dynamic_proof_executor.run_to_finish_lemma_return_exec())
+                    if self._dynamic_proof_executor.execution_complete:
+                        break
         else:
             raise NotImplementedError(f"Proof executor {type(self._dynamic_proof_executor)} not implemented")
 
@@ -569,7 +600,7 @@ if __name__ == "__main__":
         else:
             raise Exception(f"Invalid action type {action_type}")
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    inp = input("Want to run coq or lean env? (Enter 'coq'/'lean'/'lean4') ")
+    inp = input("Want to run coq, lean, or isabelle env? (Enter 'coq'/'lean'/'lean4'/'isabelle') ")
     language = ProofAction.Language.COQ
     if inp == 'coq':
         proof_exec_callback = ProofExecutorCallback(
@@ -605,41 +636,59 @@ if __name__ == "__main__":
         language = ProofAction.Language.LEAN4
         always_retrieve_thms = False
         retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
+    elif inp == 'isabelle':
+        proof_exec_callback = ProofExecutorCallback(
+            project_folder="data/test",
+            file_path="data/test/SimpleAlgebra.thy",
+            language=ProofAction.Language.ISABELLE,
+            use_hammer=HammerMode.AUTO
+        )
+        theorem_name = "sqrt_comp"
+        language = ProofAction.Language.ISABELLE
+        always_retrieve_thms = False
+        retrieval_strategy = ProofEnvReRankStrategy.BM25
     else:
-        raise Exception(f"Invalid input {inp} for choosing coq/lean/lean4 env")
-    test_ray = True
-    if test_ray:
-        logger = logging.getLogger(__name__)
-        ray.init()
-        env_actor = ProofEnvActor.remote("test", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms, logger=logger)
-        # with env:
-        done_id = env_actor.get_done.remote()
-        done = ray.get(done_id)
-        action = scan_action(language)
-        while action.action_type != ProofAction.ActionType.EXIT and not done:
-            step_id = env_actor.step.remote(action)
-            state, _, _, reward, done, info = ray.get(step_id)
-            print(f"Reward: {reward}")
-            print(f"Done: {done}")
-            print(f"Info: {info.to_json()}")
-            ray.get(env_actor.render.remote())
-            if not done:
-                action = scan_action(language)
-        # Assuming proof_env_actor is your actor reference
-        cleanup_future = env_actor.cleanup.remote()
+        raise Exception(f"Invalid input {inp} for choosing coq/lean/lean4/isabelle env")
 
-        # Optionally wait for the cleanup to complete before proceeding
-        ray.get(cleanup_future)
-
-        # If you wish to explicitly kill the actor, do so after the cleanup
-        ray.kill(env_actor)
-    else:
-        with ProofEnv("test", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms) as env:
-            done = env.done
+    if language == ProofAction.Language.ISABELLE:
+        IsabelleExecutor.start_server(port=17000)
+    
+    try:
+        test_ray = True
+        if test_ray:
+            logger = logging.getLogger(__name__)
+            ray.init()
+            env_actor = ProofEnvActor.remote("test", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms, logger=logger)
+            # with env:
+            done_id = env_actor.get_done.remote()
+            done = ray.get(done_id)
             action = scan_action(language)
             while action.action_type != ProofAction.ActionType.EXIT and not done:
-                state, _, _, reward, done, info = env.step(action)
-                env.render()
+                step_id = env_actor.step.remote(action)
+                state, _, _, reward, done, info = ray.get(step_id)
+                print(f"Reward: {reward}")
+                print(f"Done: {done}")
+                print(f"Info: {info.to_json()}")
+                ray.get(env_actor.render.remote())
                 if not done:
                     action = scan_action(language)
-    pass
+            # Assuming proof_env_actor is your actor reference
+            cleanup_future = env_actor.cleanup.remote()
+
+            # Optionally wait for the cleanup to complete before proceeding
+            ray.get(cleanup_future)
+
+            # If you wish to explicitly kill the actor, do so after the cleanup
+            ray.kill(env_actor)
+        else:
+            with ProofEnv("test", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms) as env:
+                done = env.done
+                action = scan_action(language)
+                while action.action_type != ProofAction.ActionType.EXIT and not done:
+                    state, _, _, reward, done, info = env.step(action)
+                    env.render()
+                    if not done:
+                        action = scan_action(language)
+    finally:
+        if language == ProofAction.Language.ISABELLE:
+            IsabelleExecutor.stop_server()

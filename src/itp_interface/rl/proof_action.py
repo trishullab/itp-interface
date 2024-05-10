@@ -8,6 +8,7 @@ if root_dir not in sys.path:
 import typing
 from itp_interface.tools.coq_parse_utils import CoqLineByLineReader
 from itp_interface.tools.lean_parse_utils import LeanLineByLineReader
+from itp_interface.tools.isabelle_parse_utils import IsabelleLineByLineReader
 from itp_interface.rl.abstraction import Action
 from enum import Enum
 from dataclasses import dataclass, field
@@ -20,6 +21,7 @@ class ProofAction(Action):
         COQ = 'COQ'
         LEAN = 'LEAN'
         LEAN4 = 'LEAN4'
+        ISABELLE = 'ISABELLE'
 
         def __str__(self):
             return self.name
@@ -96,6 +98,11 @@ class ProofAction(Action):
             elif self.language == ProofAction.Language.LEAN:
                 all_tactics = '\n'.join(self.kwargs['tactics'])
                 # reader = LeanLineByLineReader(file_content=all_tactics)
+                tactics = [all_tactics]
+                self.kwargs['tactics'] = tactics
+            elif self.language == ProofAction.Language.ISABELLE:
+                all_tactics = '\n'.join(self.kwargs['tactics'])
+                # reader = IsabelleLineByLineReader(file_content=all_tactics)
                 tactics = [all_tactics]
                 self.kwargs['tactics'] = tactics
         self.original_message : typing.Any = None
