@@ -18,14 +18,17 @@ from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
 from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
 from itp_interface.tools.coq_local_data_generation_transform import LocalDataGenerationTransform as CoqLocalDataGenerationTransform
 from itp_interface.tools.lean_local_data_generation_transform import LocalDataGenerationTransform as LeanLocalDataGenerationTransform
+from itp_interface.tools.isabelle_local_data_generation_transform import LocalDataGenerationTransform as IsabelleLocalDataGenerationTransform
 from itp_interface.tools.run_data_generation_transforms import RunDataGenerationTransforms
 from itp_interface.tools.log_utils import setup_logger
 from itp_interface.main.config import Experiments, EvalRunCheckpointInfo, TransformType, parse_config
 from itp_interface.tools.dynamic_coq_proof_exec import DynamicProofExecutor as DynamicCoqProofExecutor
 from itp_interface.tools.dynamic_lean_proof_exec import DynamicProofExecutor as DynamicLeanProofExecutor
 from itp_interface.tools.dynamic_lean4_proof_exec import DynamicProofExecutor as DynamicLean4ProofExecutor
+from itp_interface.tools.dynamic_isabelle_proof_exec import DynamicProofExecutor as DynamicIsabelleProofExecutor
 from itp_interface.tools.coq_executor import get_all_lemmas_in_file as get_all_lemmas_coq
 from itp_interface.tools.lean4_sync_executor import get_all_theorems_in_file as get_all_lemmas_lean4, get_fully_qualified_theorem_name as get_fully_qualified_theorem_name_lean4
+from itp_interface.tools.isabelle_executor import get_all_lemmas_in_file as get_all_lemmas_isabelle
 from itp_interface.tools.bin_packing import best_fit_packing
 
 @ray.remote
@@ -66,6 +69,9 @@ def get_all_lemmas(project_folder,
                 assert isinstance(main_executor, DynamicLean4ProofExecutor)
                 theorem_details = get_all_lemmas_lean4(file_path)
                 lemmas_to_prove = [get_fully_qualified_theorem_name_lean4(theorem) for theorem in theorem_details]
+            elif language == ProofAction.Language.ISABELLE:
+                assert isinstance(main_executor, DynamicIsabelleProofExecutor)
+                lemmas_to_prove = get_all_lemmas_isabelle(main_executor, logger)
             else:
                 raise ValueError(f"Unexpected language: {language}")
     except Exception as e:
@@ -173,6 +179,14 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
                     no_dfns=only_proof_state,
                     no_thms=only_proof_state)
                 clone_dir = None
+            elif experiment.benchmark.language == ProofAction.Language.ISABELLE:
+                transform = IsabelleLocalDataGenerationTransform(
+                    experiment.run_settings.dep_depth,
+                    max_search_results=experiment.run_settings.max_search_results, 
+                    buffer_size=experiment.run_settings.buffer_size, 
+                    logger=logger
+                )
+                os.makedirs(clone_dir, exist_ok=True)
             else:
                 raise ValueError(f"Unexpected language: {experiment.benchmark.language}")
             transforms.append(transform)

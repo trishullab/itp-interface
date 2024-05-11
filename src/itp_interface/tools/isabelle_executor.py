@@ -748,7 +748,24 @@ class IsabelleExecutor:
         
         return ProofContext(goals, [], [], [])
 
-
+def get_all_lemmas_in_file(isabelle_executor: IsabelleExecutor, logger: logging.Logger) -> typing.List[str]:
+    lemmas_to_prove = []
+    while not isabelle_executor.execution_complete:
+        assert not isabelle_executor.is_in_proof_mode(), "main_executor must not be in proof mode"
+        _ = list(isabelle_executor.run_till_next_lemma_return_exec_stmt())
+        if isabelle_executor.execution_complete:
+            break
+        lemma_name = isabelle_executor.get_lemma_name_if_running()
+        if lemma_name is None:
+            _ = list(isabelle_executor.run_to_finish_lemma_return_exec())
+            if isabelle_executor.execution_complete:
+                break
+        else:
+            logger.info(f"Discovered lemma: {lemma_name}")
+            lemmas_to_prove.append(lemma_name)
+            isabelle_executor.run_to_finish_lemma()
+    return lemmas_to_prove
+    
 class IsabelleStdInOutExecutor:
     def __init__(self):
         self.isabelle_stdin_reader = IsabelleStepByStepStdInReader()
