@@ -134,8 +134,8 @@ if __name__ == "__main__":
     IsabelleExecutor.start_server(port=13000)
     
     try:
-        with IsabelleExecutor(project_root=project_dir, main_file=file_name, use_human_readable_proof_context=True, suppress_error_log=True) as coq_exec:
-            transform(training_data, project_id, coq_exec, _print_isabelle_executor_callback)
+        with IsabelleExecutor(project_root=project_dir, main_file=file_name, use_human_readable_proof_context=True, suppress_error_log=True) as isabelle_exec:
+            transform(training_data, project_id, isabelle_exec, _print_isabelle_executor_callback)
     finally:
         IsabelleExecutor.stop_server()
     
