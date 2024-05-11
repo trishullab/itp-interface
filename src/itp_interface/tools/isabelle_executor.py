@@ -103,7 +103,7 @@ class IsabelleExecutor:
     }
 
     # Matches theorem declarations
-    theorem_regex = r"((((theorem\s+|lemma\s+)([\w+|\d+'_]*)))(\s*:\s*)([\S|\s]*))"
+    theorem_regex = r"((((theorem\s+|lemma\s+)([\w+|\d+'_]*)))(\s*:\s*)?([\S|\s]*))"
     theorem_match = re.compile(theorem_regex, re.MULTILINE)
 
     # Matches proof context returned by Isabelle engine
@@ -571,6 +571,10 @@ class IsabelleExecutor:
             full_thm_stmt, _, _, _, thm_name, _, thm_value = last_thm_details[-1]
             full_thm_stmt, thm_name, thm_value = full_thm_stmt.strip(), thm_name.strip(), thm_value.strip()
 
+            # Some lemmas don't have names
+            if not thm_name:
+                thm_name = thm_value
+
             self.local_theorem_lemma_description[thm_name] = full_thm_stmt
             self.curr_lemma_name, self.curr_lemma = thm_name, thm_value
             self._proof_running = True # Set proof mode
@@ -835,7 +839,7 @@ if __name__ == "__main__":
     os.chdir(root_dir)
     IsabelleExecutor.start_server(port=13000)
     try:
-        with IsabelleCustomFileExec("data/test/SimpleAlgebra.thy", "data/test") as isabelle_exec:
+        with IsabelleCustomFileExec("data/test/isabelle/custom_hol/Basic_Logic.thy", "data/test/isabelle/custom_hol") as isabelle_exec:
             isabelle_exec.run_in_loop()
     finally:
         IsabelleExecutor.stop_server()
