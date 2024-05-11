@@ -159,6 +159,8 @@ def create_yaml(project_to_theorems, name, language, output_file):
 
 def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoint_info: EvalRunCheckpointInfo, logger: logging.Logger = None):
     if experiment.benchmark.language == ProofAction.Language.ISABELLE:
+        # Only one server supported for now
+        assert experiment.run_settings.pool_size == 1, "Only one server supported in Isabelle for now"
         # Check if environment variable PISA_PORT is set
         if "PISA_PORT" not in os.environ:
             os.environ["PISA_PORT"] = "13000"
