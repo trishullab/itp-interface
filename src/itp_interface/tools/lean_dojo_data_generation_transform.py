@@ -9,7 +9,8 @@ import typing
 import json
 import uuid
 import yaml
-from itp_interface.lean_server.lean_utils import Lean3Utils, ProofContext
+from itp_interface.lean_server.lean_context import ProofContext
+from itp_interface.lean_server.lean4_utils import Lean4Utils
 from itp_interface.tools.training_data import TrainingData
 from itp_interface.tools.training_data_format import Goal, MergableCollection, TrainingDataCollection, TrainingDataFormat, TrainingDataMetadataFormat
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
@@ -133,8 +134,18 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
                 state_after = tactic['state_after']
                 state_before = tactic['state_before']
                 tactic = tactic['tactic']
-                start_goals: ProofContext = Lean3Utils.parse_proof_context_human_readable(state_before)
-                end_goals: ProofContext = Lean3Utils.parse_proof_context_human_readable(state_after)
+                try:
+                    start_goals: ProofContext = Lean4Utils.parse_proof_context_human_readable(state_before)
+                    end_goals: ProofContext = Lean4Utils.parse_proof_context_human_readable(state_after)
+                except Exception as e:
+                    print(f"Error parsing proof context for {theorem_id} {theorem_name} \ntactic: {tactic}")
+                    print("State before:")
+                    print(state_before)
+                    self.logger.error(f"Error parsing proof context for {theorem_id} {theorem_name} {tactic}")
+                    self.logger.error(f"Error: \n{e}")
+                    print("State after:")
+                    print(state_after)
+                    raise
                 if len(start_goals.all_goals) > 0:
                     # Create a training data object
                     training_data_format = TrainingDataFormat(
@@ -156,14 +167,15 @@ if __name__ == "__main__":
     import time
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input_json", type=str, default=f".log/benchmarks/leandojo_benchmark/random/test.json")
+    parser.add_argument("--input_json", type=str, default=f".log/benchmarks/leandojo_benchmark_4/leandojo_benchmark_4/random/test.json")
+    parser.add_argument("--output_dir", type=str, default=f"/mnt/amthakur/data/proofsteps/leandojo/random/test")
     args = parser.parse_args()
     os.chdir(root_dir)
     project_dir = "data/test/lean_proj"
     file_name = "data/test/lean_proj/src/simple_solved.lean"
     project_id = project_dir.replace('/', '.')
     time_str = time.strftime("%Y%m%d-%H%M%S")
-    output_path = f".log/run_data_generation_transforms/data/{time_str}"
+    output_path = os.path.join(args.output_dir, time_str) # f".log/run_data_generation_transforms/data/{time_str}"
     log_path = f".log/run_data_generation_transforms/log/{time_str}"
     log_file = f"{log_path}/run_data_generation_transforms-{time_str}.log"
     os.makedirs(output_path, exist_ok=True)

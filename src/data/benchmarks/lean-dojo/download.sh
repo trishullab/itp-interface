@@ -10,18 +10,22 @@ if [[ ! -d "src/.log/benchmarks" ]]; then
     mkdir src/.log/benchmarks
 fi
 # Check if the file is already downloaded
-if [[ ! -f "src/.log/benchmarks/leandojo_benchmark_v1.tar.gz" ]]; then
-    echo "Downloading leandojo_benchmark_v1.tar.gz..."
-    wget "https://zenodo.org/records/8016386/files/leandojo_benchmark_v1.tar.gz?download=1" -O src/.log/benchmarks/leandojo_benchmark_v1.tar.gz
-    echo "Downloaded leandojo_benchmark_v1.tar.gz successfully!"
+file_link="https://zenodo.org/records/10929138/files/leandojo_benchmark_4.tar.gz?download=1"
+file_version="leandojo_benchmark_4"
+file_name="$file_version.tar.gz"
+if [[ ! -f "src/.log/benchmarks/$file_name" ]]; then
+    echo "Downloading $file_name..."
+    wget $file_link -O src/.log/benchmarks/$file_name
+    echo "Downloaded $file_name successfully!"
 else
-    echo "leandojo_benchmark_v1.tar.gz already exists, skipping download..."
+    echo "$file_name already exists, skipping download..."
 fi
 # Check if the file is already extracted
-if [[ ! -d "src/.log/benchmarks/leandojo_benchmark_v1" ]]; then
-    echo "Extracting leandojo_benchmark_v1.tar.gz..."
-    tar -xzf src/.log/benchmarks/leandojo_benchmark_v1.tar.gz -C src/.log/benchmarks
-    echo "Extracted leandojo_benchmark_v1.tar.gz successfully!"
+if [[ ! -d "src/.log/benchmarks/$file_version" ]]; then
+    echo "Extracting $file_name..."
+    mkdir src/.log/benchmarks/$file_version
+    tar -xzf src/.log/benchmarks/$file_name -C src/.log/benchmarks/$file_version
+    echo "Extracted $file_name successfully!"
 else
-    echo "leandojo_benchmark_v1.tar.gz already extracted, skipping extraction..."
+    echo "$file_name already extracted, skipping extraction..."
 fi

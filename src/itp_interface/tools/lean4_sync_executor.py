@@ -10,7 +10,8 @@ import logging
 import re
 import time
 import json
-from itp_interface.lean_server.lean_utils import Lean3Utils, ProofContext
+from itp_interface.lean_server.lean_context import ProofContext
+from itp_interface.lean_server.lean4_utils import Lean4Utils
 from itp_interface.tools.lean_parse_utils import LeanLineByLineReader
 from itp_interface.tools.theorem_details import TheoremDetails
 from itp_interface.lean_server.lean4_repl_interface import ProcessInterface
@@ -564,7 +565,7 @@ class Lean4SyncExecutor:
         goals = []
         for proof_goal in proof_goals:
             if self.use_human_readable_proof_context:
-                goals.append(Lean3Utils.parse_goal(proof_goal))
+                goals.append(Lean4Utils.parse_proof_context_human_readable(proof_goal))
             else:
                 raise NotImplementedError("Parsing of non-human readable proof context is not implemented")
         if len(goals) == 0:

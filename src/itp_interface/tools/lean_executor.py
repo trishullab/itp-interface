@@ -13,7 +13,8 @@ import functools
 import random
 import re
 from collections import OrderedDict
-from itp_interface.lean_server.lean_utils import Lean3Utils, Obligation, ProofContext
+from itp_interface.lean_server.lean_context import Obligation, ProofContext
+from itp_interface.lean_server.lean_utils import Lean3Utils
 from itp_interface.lean_server.lean_sync_server import SyncLeanServer
 from itp_interface.lean_server.commands import Message
 from itp_interface.retrieval.abstraction import ReRanker

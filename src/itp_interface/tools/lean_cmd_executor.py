@@ -17,7 +17,8 @@ import copy
 from collections import OrderedDict
 from itp_interface.tools.lean_parse_utils import LeanLineByLineReader
 from itp_interface.lean_server.lean_cmd_server import LeanCmdServer
-from itp_interface.lean_server.lean_utils import Lean3Utils, ProofContext, Obligation
+from itp_interface.lean_server.lean_context import Obligation, ProofContext
+from itp_interface.lean_server.lean_utils import Lean3Utils
 from itp_interface.lean_server.lean3_search_tool import Constants, Lean3Lemma, Lean3SearchTool
 logger = logging.getLogger()
 
