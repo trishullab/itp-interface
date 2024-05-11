@@ -1,0 +1,23 @@
+name: default_isabelle_data_generation_transforms
+use_human_readable: True
+save_intermidiate_transforms: True
+buffer_size: 10000
+pool_size: 1
+transform_type: LOCAL
+dep_depth: 0
+max_search_results:
+output_dir: .log/run_data_generation_transforms/data/train/isabelle
+setting_type: Agent
+timeout_in_secs: 60 # tactic execution timeout
+proof_retries: 1
+max_theorems_in_prompt: 7
+max_number_of_episodes: 1
+max_steps_per_episode: 60
+render: False
+checkpoint_dir: .log/checkpoints
+should_checkpoint: False
+random_seed: 42
+train_eval_test_split:
+  - 1.0
+  - 0.0
+  - 0.0

@@ -22,6 +22,7 @@ from itp_interface.tools.isabelle_local_data_generation_transform import LocalDa
 from itp_interface.tools.run_data_generation_transforms import RunDataGenerationTransforms
 from itp_interface.tools.log_utils import setup_logger
 from itp_interface.main.config import Experiments, EvalRunCheckpointInfo, TransformType, parse_config
+from itp_interface.tools.isabelle_executor import IsabelleExecutor
 from itp_interface.tools.dynamic_coq_proof_exec import DynamicProofExecutor as DynamicCoqProofExecutor
 from itp_interface.tools.dynamic_lean_proof_exec import DynamicProofExecutor as DynamicLeanProofExecutor
 from itp_interface.tools.dynamic_lean4_proof_exec import DynamicProofExecutor as DynamicLean4ProofExecutor
@@ -157,6 +158,15 @@ def create_yaml(project_to_theorems, name, language, output_file):
         yaml.dump(data, yaml_file, sort_keys=False)
 
 def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoint_info: EvalRunCheckpointInfo, logger: logging.Logger = None):
+    if experiment.benchmark.language == ProofAction.Language.ISABELLE:
+        # Check if environment variable PISA_PORT is set
+        if "PISA_PORT" not in os.environ:
+            os.environ["PISA_PORT"] = "13000"
+            if IsabelleExecutor.check_server_running(logger):
+                raise Exception(
+                "PISA_PORT environment variable is not set but the PISA service is already running on default port 17000. " + 
+                "Please set the PISA_PORT environment variable to the port on which the PISA service is running.")
+        IsabelleExecutor.start_server(logger)
     try:
         transforms = []
         str_time = time.strftime("%Y%m%d-%H%M%S")
@@ -272,6 +282,9 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
     except Exception as e:
         logger.exception(e)
         raise e 
+    finally:
+        if experiment.benchmark.language == ProofAction.Language.ISABELLE:
+            IsabelleExecutor.stop_server()
 
 
 def run_data_generation(experiment: Experiments, log_dir: str, logger: logging.Logger = None):
