@@ -12,13 +12,15 @@ import typing
 import shutil
 import psutil
 import gc
-from itp_interface.tools.lean_cmd_executor import Lean3Executor
 from itp_interface.tools.ray_utils import RayUtils
 from itp_interface.tools.training_data import TrainingData
 from itp_interface.tools.coq_build_tool import CoqRepoBuilder
 from itp_interface.tools.coq_executor import CoqExecutor
+from itp_interface.tools.lean_cmd_executor import Lean3Executor
+from itp_interface.tools.isabelle_executor import IsabelleExecutor
 from itp_interface.tools.coq_local_data_generation_transform import LocalDataGenerationTransform as CoqLocalDataGenerationTransform
 from itp_interface.tools.lean_local_data_generation_transform import LocalDataGenerationTransform as LeanLocalDataGenerationTransform
+from itp_interface.tools.isabelle_local_data_generation_transform import LocalDataGenerationTransform as IsabelleLocalDataGenerationTransform
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
 
 class RunDataGenerationTransforms(object):
@@ -106,11 +108,17 @@ class RunDataGenerationTransforms(object):
             search_lean_exec = Lean3Executor(project_path, None, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
             search_lean_exec.__enter__()
             return search_lean_exec
-        if isinstance(transform, CoqLocalDataGenerationTransform) or isinstance(transform, LeanLocalDataGenerationTransform):
+        def _print_isabelle_callback():
+            search_isabelle_exec = IsabelleExecutor(project_path, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
+            search_isabelle_exec.__enter__()
+            return search_isabelle_exec
+        if isinstance(transform, CoqLocalDataGenerationTransform) or isinstance(transform, LeanLocalDataGenerationTransform) or isinstance(transform, IsabelleLocalDataGenerationTransform):
             if isinstance(transform, CoqLocalDataGenerationTransform):
                 exec = CoqExecutor(project_path, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
             elif isinstance(transform, LeanLocalDataGenerationTransform):
                 exec = Lean3Executor(project_path, None, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
+            elif isinstance(transform, IsabelleLocalDataGenerationTransform):
+                exec = IsabelleExecutor(project_path, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
             with exec:
                 project_id = project_path # project_path.replace('/', '.')
                 # training_data = RunDataGenerationTransforms.get_training_data_object(transform, output_dir, logger)
@@ -118,6 +126,8 @@ class RunDataGenerationTransforms(object):
                     transform(training_data, project_id, exec, _print_coq_callback, theorems)
                 elif isinstance(transform, LeanLocalDataGenerationTransform):
                     transform(training_data, project_id, exec, _print_lean_callback, theorems)
+                elif isinstance(transform, IsabelleLocalDataGenerationTransform):
+                    transform(training_data, project_id, exec, _print_isabelle_callback, theorems)
                 else:
                     raise Exception("Unknown transform")
         else:
@@ -174,7 +184,7 @@ class RunDataGenerationTransforms(object):
     def merge_local_transforms(self,
                 final_training_data: TrainingData,
                 tds: typing.List[TrainingData],
-                transform: typing.Union[CoqLocalDataGenerationTransform, LeanLocalDataGenerationTransform]):
+                transform: typing.Union[CoqLocalDataGenerationTransform, LeanLocalDataGenerationTransform, IsabelleLocalDataGenerationTransform]):
         self.logger.info(f"==============================>[{transform.name}] Merging local transforms for all projects<==============================")
         process = psutil.Process()
         for idx in range(len(tds)):
@@ -194,7 +204,7 @@ class RunDataGenerationTransforms(object):
             idx += 1
         self.logger.info(f"==============================>[{transform.name}] Merged local transforms for all projects<==============================")
 
-    def run_local_transform(self, pool_size: int , transform: typing.Union[CoqLocalDataGenerationTransform, LeanLocalDataGenerationTransform], projects: typing.Dict[str, typing.Dict[str, str]], use_human_readable: bool, new_output_dir: str, log_error: bool, save_transform: bool = True, preserve_temp: bool = True):
+    def run_local_transform(self, pool_size: int , transform: typing.Union[CoqLocalDataGenerationTransform, LeanLocalDataGenerationTransform, IsabelleLocalDataGenerationTransform], projects: typing.Dict[str, typing.Dict[str, str]], use_human_readable: bool, new_output_dir: str, log_error: bool, save_transform: bool = True, preserve_temp: bool = True):
         assert pool_size > 0, "pool_size should be greater than 0"
         assert transform is not None, "transform should not be None"
         assert projects is not None, "projects should not be None"
@@ -230,7 +240,7 @@ class RunDataGenerationTransforms(object):
                 # Create temporary directory for each file
                 full_file_path = os.path.join(project_path, file_path)
                 relative_file_path = file_path
-                relative_file_path = relative_file_path.replace("/", ".").replace(".v", "").replace(".lean", "")
+                relative_file_path = relative_file_path.replace("/", ".").replace(".v", "").replace(".lean", "").replace(".thy", "")
                 temp_file_dir = os.path.join(temp_project_dir, relative_file_path)
                 os.makedirs(temp_file_dir, exist_ok=True)
                 log_file = os.path.join(self.logging_dir, f"{relative_file_path}.log")

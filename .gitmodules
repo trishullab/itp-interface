@@ -6,6 +6,10 @@
 	path = src/data/benchmarks/miniF2F
 	url = https://github.com/facebookresearch/miniF2F.git
 	ignore = dirty
+[submodule "src/itp_interface/pisa"]
+	path = src/itp_interface/pisa
+	url = https://github.com/albertqjiang/Portal-to-ISAbelle.git
+	ignore = dirty
 [submodule "src/itp_interface/tools/repl"]
 	path = src/itp_interface/tools/repl
 	url = https://github.com/amit9oct/repl.git

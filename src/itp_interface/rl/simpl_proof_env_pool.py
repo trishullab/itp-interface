@@ -8,6 +8,7 @@ import copy
 import typing
 import logging
 import ray
+from itp_interface.tools.isabelle_executor import IsabelleExecutor, HammerMode
 from itp_interface.rl.proof_action import ProofAction
 from itp_interface.rl.proof_state import ProofState
 from itp_interface.rl.simple_proof_env import ProofEnv, ProofEnvActor, ProofEnvInfo, ProofEnvReRankStrategy, ProofExecutorCallback
@@ -196,7 +197,7 @@ if __name__ == "__main__":
         else:
             raise Exception(f"Invalid action type {action_type}")
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    inp = input("Want to run coq or lean env? (Enter 'coq'/'lean'/'lean4') ")
+    inp = input("Want to run coq, lean, or isabelle env? (Enter 'coq'/'lean'/'lean4'/'isabelle') ")
     language = ProofAction.Language.COQ
     if inp == 'coq':
         proof_exec_callback = ProofExecutorCallback(
@@ -232,34 +233,54 @@ if __name__ == "__main__":
         language = ProofAction.Language.LEAN4
         always_retrieve_thms = False
         retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
+    elif inp == 'isabelle':
+        proof_exec_callback = ProofExecutorCallback(
+            project_folder="data/test",
+            file_path="data/test/SimpleAlgebra.thy",
+            language=ProofAction.Language.ISABELLE,
+            use_hammer=HammerMode.AUTO
+        )
+        theorem_name = "sqrt_comp"
+        language = ProofAction.Language.ISABELLE
+        always_retrieve_thms = False
+        retrieval_strategy = ProofEnvReRankStrategy.BM25
     else:
         raise Exception(f"Invalid input {inp} for choosing coq/lean/lean4 env")
-    test_ray = True
-    if test_ray:
-        logger = logging.getLogger(__name__)
-        ray.init()
-        env_actors = [
-        ProofEnvActor.remote("test", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms, logger=logger, should_load_env=False)
-        for _ in range(4)]
-        pool = ProofEnvPool(proof_env_actors=env_actors, logger=logger)
-        with pool:
-            dones = pool.get_done(list(range(4)))
-            action = scan_action(language)
-            while action.action_type != ProofAction.ActionType.EXIT and not all(dones):
-                step_res = pool.step([action]*4, list(range(4)))
-                dones = []
-                for i, (state, act, new_state, reward, done, info) in enumerate(step_res):
-                    if done:
-                        print(f"Environment {i} done")
-                    else:
-                        print(f"Environment {i} not done")
-                    dones.append(done)
-                    print(f"[{i}] Reward: {reward}")
-                    print(f"[{i}] Done: {done}")
-                    print(f"[{i}] Info: {info.to_json()}")
-                if not all(dones):
-                    action = scan_action(language)
+    
+    if language == ProofAction.Language.ISABELLE:
+        IsabelleExecutor.start_server(port=13000)
+    
+    try:
+        test_ray = True
+        if test_ray:
+            logger = logging.getLogger(__name__)
+            ray.init()
+            env_actors = [
+            ProofEnvActor.remote("test", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms, logger=logger, should_load_env=False)
+            for _ in range(4)]
+            pool = ProofEnvPool(proof_env_actors=env_actors, logger=logger)
+            with pool:
+                dones = pool.get_done(list(range(4)))
+                action = scan_action(language)
+                while action.action_type != ProofAction.ActionType.EXIT and not all(dones):
+                    step_res = pool.step([action]*4, list(range(4)))
+                    dones = []
+                    for i, (state, act, new_state, reward, done, info) in enumerate(step_res):
+                        if done:
+                            print(f"Environment {i} done")
+                        else:
+                            print(f"Environment {i} not done")
+                        dones.append(done)
+                        print(f"[{i}] Reward: {reward}")
+                        print(f"[{i}] Done: {done}")
+                        print(f"[{i}] Info: {info.to_json()}")
+                    if not all(dones):
+                        action = scan_action(language)
 
-        # If you wish to explicitly kill the actor, do so after the cleanup
-        for env_actor in env_actors:
-            ray.kill(env_actor)
+            # If you wish to explicitly kill the actor, do so after the cleanup
+            for env_actor in env_actors:
+                ray.kill(env_actor)
+    finally:
+        if language == ProofAction.Language.ISABELLE:
+            IsabelleExecutor.stop_server()
+    
