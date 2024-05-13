@@ -5,3 +5,6 @@ defaults:
   - run_settings: default_coq_data_generation_transforms
   - env_settings: no_retrieval
   - override hydra/job_logging: 'disabled'
+
+run_settings:
+ output_dir: /mnt/amthakur/data/proofsteps/CompCert/
