@@ -139,6 +139,30 @@ class Lean4Utils:
         #     raise
         return ProofContext(goals, [], [], [])
 
+    def parse_proof_context_human_readable_as_goals(proof_context_str: str) -> typing.List[Obligation]:
+        if len(proof_context_str) == 0 and Lean4Utils.proof_context_separator not in proof_context_str:
+            return None
+        if proof_context_str == "no goals":
+            return ProofContext.empty()
+        proof_context_str = proof_context_str.strip()
+        proof_context_str += "\n\n"
+        all_matches = re.findall(Lean4Utils.proof_context_regex, proof_context_str, re.MULTILINE)
+        goal_strs = []
+        for match in all_matches:
+            goal_str = match[2]
+            goal_str = goal_str.strip()
+            goal_strs.append(goal_str)
+        goals = []
+        # try:
+        for goal_str in goal_strs:
+            goal = Lean4Utils.parse_goal(goal_str)
+            goals.append(goal)
+        # except Exception as e:
+        #     print(f"proof_context_str:\n {proof_context_str}")
+        #     print(f"goal_strs:\n {goal_strs}")
+        #     raise
+        return goals
+
     def parse_goal(goal_str: str):
         goal_str = goal_str.strip()
         goal = ""

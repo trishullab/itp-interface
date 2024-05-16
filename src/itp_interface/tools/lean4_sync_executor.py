@@ -565,7 +565,7 @@ class Lean4SyncExecutor:
         goals = []
         for proof_goal in proof_goals:
             if self.use_human_readable_proof_context:
-                goals.append(Lean4Utils.parse_proof_context_human_readable(proof_goal))
+                goals.extend(Lean4Utils.parse_proof_context_human_readable_as_goals(proof_goal))
             else:
                 raise NotImplementedError("Parsing of non-human readable proof context is not implemented")
         if len(goals) == 0:
