@@ -88,7 +88,7 @@ class DynamicProofExecutor(IsabelleExecutor):
             return -1
 
 
-    def __init__(self, isabelle_context_helper: IsabelleContextHelper, project_folder: str = None, proof_file: str = None, instruction_iter: typing.Optional[str] = None, use_hammer: HammerMode = HammerMode.AUTO, timeout_in_seconds: int = 60, use_human_readable_proof_context: bool = True, suppress_error_log: bool = True, context_type: ContextType = ContextType.NoContext):
+    def __init__(self, isabelle_context_helper: IsabelleContextHelper, project_folder: str = None, proof_file: str = None, instruction_iter: typing.Optional[str] = None, use_hammer: HammerMode = HammerMode.AUTO, timeout_in_seconds: int = 60, use_human_readable_proof_context: bool = True, suppress_error_log: bool = True, context_type: ContextType = ContextType.NoContext, port: typing.Optional[int] = None):
         assert proof_file is None or os.path.exists(proof_file), f"Proof file {proof_file} does not exist"
         assert isabelle_context_helper is not None, "isabelle_context_helper must not be None"
         self.proof_file = proof_file
@@ -98,7 +98,7 @@ class DynamicProofExecutor(IsabelleExecutor):
         self.run_state = DynamicProofExecutor.RunState()
         self.logger = None
         self.isabelle_context_helper = isabelle_context_helper
-        super().__init__(project_root=project_folder, main_file=proof_file, proof_step_iter=self.tactic_switch_iterator, use_hammer=use_hammer, timeout_in_sec=timeout_in_seconds, use_human_readable_proof_context=use_human_readable_proof_context, suppress_error_log=suppress_error_log)
+        super().__init__(project_root=project_folder, main_file=proof_file, proof_step_iter=self.tactic_switch_iterator, use_hammer=use_hammer, timeout_in_sec=timeout_in_seconds, use_human_readable_proof_context=use_human_readable_proof_context, suppress_error_log=suppress_error_log, port=port)
 
     def __enter__(self):
         self.isabelle_context_helper.__enter__()

@@ -10,3 +10,9 @@ datasets:
     files:
       - path: Basic_Logic.thy
         theorems: "*"
+      - path: Basic_Logic2.thy
+        theorems: "*"
+  - project: /mnt/amthakur/data/repos/AFP/afp-2022-12-06/thys/FunWithFunctions
+    files:
+      - path: FunWithFunctions.thy
+        theorems: "*"

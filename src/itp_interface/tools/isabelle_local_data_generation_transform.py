@@ -6,11 +6,15 @@ if root_dir not in sys.path:
     sys.path.append(root_dir)
 import typing
 import uuid
+import os
 from itp_interface.tools.isabelle_executor import IsabelleExecutor
 from itp_interface.tools.isabelle_context_helper import IsabelleContextHelper
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
 from itp_interface.tools.training_data_format import Goal, MergableCollection, TrainingDataMetadataFormat, TrainingDataCollection, TrainingDataFormat
 from itp_interface.tools.training_data import TrainingData
+
+# See this for running transformation on AFP
+# https://github.com/albertqjiang/Portal-to-ISAbelle/blob/56def2c39f85d211e1f40cc5765581a567879106/src/main/python/legacy/demo.py#L2
 
 class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
     def __init__(self,
@@ -18,11 +22,14 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
                 max_search_results = None,
                 buffer_size : int = 10000,
                 logger = None,
-                max_parallelism : int = 4):
+                max_parallelism : int = 4,
+                **kwargs):
         super().__init__(TrainingDataGenerationType.LOCAL, buffer_size, logger)
         self.depth = depth
         self.max_search_results = max_search_results
         self.max_parallelism = max_parallelism
+        self.ray_resource_pool = kwargs.get('resource_pool', None)
+        self.pisa_severs = []
 
     def get_meta_object(self) -> MergableCollection:
         return TrainingDataMetadataFormat(training_data_buffer_size=self.buffer_size)
@@ -36,7 +43,7 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
     def load_data_from_file(self, file_path) -> MergableCollection:
         return TrainingDataCollection.load_from_file(file_path, self.logger)
 
-    def __call__(self, training_data: TrainingData, project_id : str, isabelle_executor: IsabelleExecutor, print_coq_executor_callback: typing.Callable[[], IsabelleExecutor], theorems: typing.List[str] = None) -> TrainingData:
+    def __call__(self, training_data: TrainingData, project_id : str, isabelle_executor: IsabelleExecutor, print_coq_executor_callback: typing.Callable[[], IsabelleExecutor], theorems: typing.List[str] = None, other_args: dict = {}) -> TrainingData:
         print_isabelle_executor = print_coq_executor_callback()
         isabelle_context_helper = IsabelleContextHelper(print_isabelle_executor, self.depth, self.logger)
         isabelle_context_helper.__enter__()
@@ -105,7 +112,6 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
 
 
 if __name__ == "__main__":
-    import os
     import logging
     import time
     os.chdir(root_dir)

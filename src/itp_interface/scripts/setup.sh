@@ -13,7 +13,14 @@ lean_repo="leanprover-community/lean" # For Lean 3
 # Check if lean_version is passed as an argument
 if [[ $# -eq 1 ]]; then
     lean_type=$1
+    afp_folder=$HOME
 fi
+
+if [[ $# -eq 2 ]]; then
+    lean_type=$1
+    afp_folder=$2
+fi
+
 if [[ $lean_type == "lean" ]]; then
     lean_version=$lean3_version
     lean_repo="leanprover-community/lean"
@@ -202,3 +209,35 @@ popd
 echo "Isabelle Setup complete!"
 
 echo "ITP Interface Setup complete!"
+
+echo "Building AFP"
+afp_installed_built=false
+if [[ -d "$afp_folder" ]]; then
+    echo "AFP is already installed at $afp_folder"
+    echo "If you want to reinstall AFP, please delete the directory $afp_folder and run this script again"
+    afp_installed_built=true
+fi
+
+afp_version="2022-12-06"
+if [[ $afp_installed_built == false ]]; then
+    mkdir -p $afp_folder
+    echo "Downloading AFP..."
+    wget https://www.isa-afp.org/release/afp-$afp_version.tar.gz
+    echo "Downloaded AFP successfully!"
+    echo "Extracting AFP..."
+    # Extract AFP in the $afp_folder
+    tar -xzf afp-$afp_version.tar.gz -C $afp_folder
+    echo "Extracted AFP successfully!"
+    echo "Cleaning up..."
+    afp_name=$(ls $afp_folder)
+    export AFP="$afp_folder/$afp_name/thys"
+    echo "$AFP"
+    rm afp-$afp_version.tar.gz
+    echo "Cleaned up!"
+    echo "Building AFP..."
+    export ISABELLE_BUILD_OPTIONS="timeout=3600"
+    export ML_OPTIONS="--maxheap 10000"
+    isabelle build -b -D $AFP -j 35
+fi
+
+echo "AFP Setup complete!"

@@ -36,7 +36,7 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
     def load_data_from_file(self, file_path) -> MergableCollection:
         return TrainingDataCollection.load_from_file(file_path, self.logger)
 
-    def __call__(self, training_data: TrainingData, project_id : str, lean_executor: Lean3Executor, print_coq_executor_callback: typing.Callable[[], Lean3Executor], theorems: typing.List[str] = None) -> TrainingData:
+    def __call__(self, training_data: TrainingData, project_id : str, lean_executor: Lean3Executor, print_coq_executor_callback: typing.Callable[[], Lean3Executor], theorems: typing.List[str] = None, other_args: dict = {}) -> TrainingData:
         print_lean_executor = print_coq_executor_callback()
         lean_context_helper = Lean3ContextHelper(print_lean_executor, self.depth, self.logger)
         lean_context_helper.__enter__()

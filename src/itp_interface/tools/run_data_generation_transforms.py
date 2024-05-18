@@ -97,11 +97,15 @@ class RunDataGenerationTransforms(object):
         file_path,
         log_error,
         use_human_readable,
-        theorems) -> typing.Any:
+        theorems,
+        other_args) -> typing.Any:
         if not isinstance(transform, GenericTrainingDataGenerationTransform):
             raise Exception("transform should be a GenericTrainingDataGenerationTransform")
+        port = None
+        setup_cmds = []
         def _print_coq_callback():
-            search_coq_exec = CoqExecutor(project_path, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
+            nonlocal setup_cmds
+            search_coq_exec = CoqExecutor(project_path, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error, setup_cmds=setup_cmds)
             search_coq_exec.__enter__()
             return search_coq_exec
         def  _print_lean_callback():
@@ -109,27 +113,37 @@ class RunDataGenerationTransforms(object):
             search_lean_exec.__enter__()
             return search_lean_exec
         def _print_isabelle_callback():
-            search_isabelle_exec = IsabelleExecutor(project_path, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
+            nonlocal port
+            search_isabelle_exec = IsabelleExecutor(project_path, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error, port=port)
             search_isabelle_exec.__enter__()
             return search_isabelle_exec
         if isinstance(transform, CoqLocalDataGenerationTransform) or isinstance(transform, LeanLocalDataGenerationTransform) or isinstance(transform, IsabelleLocalDataGenerationTransform):
-            if isinstance(transform, CoqLocalDataGenerationTransform):
-                exec = CoqExecutor(project_path, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
-            elif isinstance(transform, LeanLocalDataGenerationTransform):
-                exec = Lean3Executor(project_path, None, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
-            elif isinstance(transform, IsabelleLocalDataGenerationTransform):
-                exec = IsabelleExecutor(project_path, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
-            with exec:
-                project_id = project_path # project_path.replace('/', '.')
-                # training_data = RunDataGenerationTransforms.get_training_data_object(transform, output_dir, logger)
+            if isinstance(transform, IsabelleLocalDataGenerationTransform) and transform.ray_resource_pool is not None:
+                # This is a blocking call
+                port = ray.get(transform.ray_resource_pool.wait_and_acquire.remote(1))[0]
+                transform.logger.info(f"Acquired PISA Server with port: {port}")
+            try:
                 if isinstance(transform, CoqLocalDataGenerationTransform):
-                    transform(training_data, project_id, exec, _print_coq_callback, theorems)
+                    exec = CoqExecutor(project_path, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error, setup_cmds=setup_cmds)
                 elif isinstance(transform, LeanLocalDataGenerationTransform):
-                    transform(training_data, project_id, exec, _print_lean_callback, theorems)
+                    exec = Lean3Executor(project_path, None, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
                 elif isinstance(transform, IsabelleLocalDataGenerationTransform):
-                    transform(training_data, project_id, exec, _print_isabelle_callback, theorems)
-                else:
-                    raise Exception("Unknown transform")
+                    exec = IsabelleExecutor(project_path, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error, port=port)
+                with exec:
+                    project_id = project_path # project_path.replace('/', '.')
+                    if isinstance(transform, CoqLocalDataGenerationTransform):
+                        transform(training_data, project_id, exec, _print_coq_callback, theorems, other_args)
+                    elif isinstance(transform, LeanLocalDataGenerationTransform):
+                        transform(training_data, project_id, exec, _print_lean_callback, theorems, other_args)
+                    elif isinstance(transform, IsabelleLocalDataGenerationTransform):
+                        transform(training_data, project_id, exec, _print_isabelle_callback, theorems, other_args)
+                    else:
+                        raise Exception("Unknown transform")
+            finally:
+                if isinstance(transform, IsabelleLocalDataGenerationTransform) and transform.ray_resource_pool is not None:
+                    ray.get(transform.ray_resource_pool.release.remote([port]))
+                    transform.logger.info(f"Released PISA Server with port: {port}")
+
         else:
             raise Exception("Unknown transform")
 
@@ -158,7 +172,7 @@ class RunDataGenerationTransforms(object):
         return training_data
 
     @ray.remote(max_retries=-1)
-    def run_local_transform_on_file(idx, log_file: str, output_dir: str, project_path: str, file_path: str, use_human_readable: bool, transform: GenericTrainingDataGenerationTransform, log_error: bool, save_transform: bool = True, theorems: typing.List[str] = None):
+    def run_local_transform_on_file(idx, log_file: str, output_dir: str, project_path: str, file_path: str, use_human_readable: bool, transform: GenericTrainingDataGenerationTransform, log_error: bool, save_transform: bool = True, theorems: typing.List[str] = None, other_args: dict = {}):
         logging.basicConfig(filename=log_file, filemode='w', level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         logger = logging.getLogger("FullTransform")
         logger.info(f"Process ID: {os.getpid()}")
@@ -171,7 +185,7 @@ class RunDataGenerationTransforms(object):
             logger.info(f"==============================>[{transform.name}] Running transform over file {file_path}<==============================")
             training_data = RunDataGenerationTransforms.get_training_data_object(transform, output_dir, logger)
             try:
-                RunDataGenerationTransforms.call_local_transform(training_data, logger, transform, output_dir, project_path, file_path, log_error, use_human_readable, theorems)
+                RunDataGenerationTransforms.call_local_transform(training_data, logger, transform, output_dir, project_path, file_path, log_error, use_human_readable, theorems, other_args)
                 logger.info(f"==============================>[{transform.name}] Successfully ran transform over file {file_path}<==============================")
             except:
                 logger.warning(f"XXXXXXXXXXXXXXXXXXXXXXX>[{transform.name}] Failed in running transform over file {file_path}<XXXXXXXXXXXXXXXXXXXXXXXXXX")
@@ -204,7 +218,7 @@ class RunDataGenerationTransforms(object):
             idx += 1
         self.logger.info(f"==============================>[{transform.name}] Merged local transforms for all projects<==============================")
 
-    def run_local_transform(self, pool_size: int , transform: typing.Union[CoqLocalDataGenerationTransform, LeanLocalDataGenerationTransform, IsabelleLocalDataGenerationTransform], projects: typing.Dict[str, typing.Dict[str, str]], use_human_readable: bool, new_output_dir: str, log_error: bool, save_transform: bool = True, preserve_temp: bool = True):
+    def run_local_transform(self, pool_size: int , transform: typing.Union[CoqLocalDataGenerationTransform, LeanLocalDataGenerationTransform, IsabelleLocalDataGenerationTransform], projects: typing.Dict[str, typing.Dict[str, str]], use_human_readable: bool, new_output_dir: str, log_error: bool, save_transform: bool = True, preserve_temp: bool = True, other_args: typing.Dict[str, typing.Dict[str, dict]] = {}):
         assert pool_size > 0, "pool_size should be greater than 0"
         assert transform is not None, "transform should not be None"
         assert projects is not None, "projects should not be None"
@@ -235,8 +249,10 @@ class RunDataGenerationTransforms(object):
             assert os.path.exists(project_path), f"project_path {project_path} does not exist"
             some_files_processed = False
             files = list(projects[project].keys())
+            file_args = other_args.get(project, {})
             for file_path in sorted(files):
                 some_files_processed = True
+                job_more_args = file_args.get(file_path, {})
                 # Create temporary directory for each file
                 full_file_path = os.path.join(project_path, file_path)
                 relative_file_path = file_path
@@ -245,7 +261,7 @@ class RunDataGenerationTransforms(object):
                 os.makedirs(temp_file_dir, exist_ok=True)
                 log_file = os.path.join(self.logging_dir, f"{relative_file_path}.log")
                 theorems = projects[project][file_path]
-                job_spec.append((job_idx, log_file, temp_file_dir, project_path, full_file_path, use_human_readable, transform, log_error, save_transform, theorems))
+                job_spec.append((job_idx, log_file, temp_file_dir, project_path, full_file_path, use_human_readable, transform, log_error, save_transform, theorems, job_more_args))
                 temporary_files_found.append(temp_file_dir)
                 job_idx += 1
             if not some_files_processed:
@@ -302,9 +318,9 @@ class RunDataGenerationTransforms(object):
         self.logger.warning(f"==============================>[{transform.name}] Removing temp directory {temp_output_dir}<==============================")
         shutil.rmtree(temp_output_dir)
 
-    def run_all_local_transforms(self, pool_size: int, projects: typing.Dict[str, typing.Dict[str, str]], use_human_readable: bool, new_output_dir: str, log_error: bool):
+    def run_all_local_transforms(self, pool_size: int, projects: typing.Dict[str, typing.Dict[str, str]], use_human_readable: bool, new_output_dir: str, log_error: bool, other_args: typing.Dict[str, typing.Dict[str, dict]] = {}):
         for idx, transform in enumerate(self.transforms):
             last_transform = idx == len(self.transforms) - 1
             save_transform = self.save_intermidiate_transforms or last_transform
-            self.run_local_transform(pool_size, transform, projects, use_human_readable, new_output_dir, log_error, save_transform, preserve_temp=self.save_intermidiate_transforms)
+            self.run_local_transform(pool_size, transform, projects, use_human_readable, new_output_dir, log_error, save_transform, preserve_temp=self.save_intermidiate_transforms, other_args=other_args)
         pass

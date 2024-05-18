@@ -41,7 +41,7 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
     def load_data_from_file(self, file_path) -> MergableCollection:
         return TrainingDataCollection.load_from_file(file_path, self.logger)
 
-    def __call__(self, training_data: TrainingData, project_id : str, coq_executor: CoqExecutor, print_coq_executor_callback: typing.Callable[[], CoqExecutor], theorems: typing.List[str] = None) -> TrainingData:
+    def __call__(self, training_data: TrainingData, project_id : str, coq_executor: CoqExecutor, print_coq_executor_callback: typing.Callable[[], CoqExecutor], theorems: typing.List[str] = None, other_args: dict = {}) -> TrainingData:
         print_coq_executor = print_coq_executor_callback()
         coq_context_helper = CoqContextHelper(print_coq_executor, self.depth, self.logger)
         coq_context_helper.__enter__()

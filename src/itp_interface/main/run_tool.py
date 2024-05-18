@@ -13,7 +13,9 @@ import ray
 import typing
 import numpy as np
 import yaml
+from itp_interface.tools.ray_utils import RayResourcePoolActor
 from itp_interface.rl.proof_action import ProofAction
+from itp_interface.tools.isabelle_server import IsabelleServer
 from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
 from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
 from itp_interface.tools.coq_local_data_generation_transform import LocalDataGenerationTransform as CoqLocalDataGenerationTransform
@@ -42,8 +44,17 @@ def get_all_lemmas(project_folder,
         suppress_error_log, 
         always_use_retrieval,
         setup_cmds: typing.List[str], 
-        log_file: str):
+        log_file: str,
+        transform: typing.Any):
     logger = setup_logger('get_all_lemmas', log_file, logging.INFO, '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    port = None
+    port_pool = None
+    if language == ProofAction.Language.ISABELLE:
+        assert transform is not None, "Transform is required for Isabelle"
+        assert isinstance(transform, IsabelleLocalDataGenerationTransform)
+        port_pool = transform.ray_resource_pool
+        port = ray.get(port_pool.wait_and_acquire.remote(1))[0]
+        logger.info(f"Using PISA server on port {port} for {file_path}")
     proof_exec_callback = ProofExecutorCallback(
         project_folder=project_folder,
         file_path=file_path,
@@ -54,7 +65,8 @@ def get_all_lemmas(project_folder,
         suppress_error_log=suppress_error_log,
         always_use_retrieval=always_use_retrieval,
         logger=logger,
-        setup_cmds=setup_cmds
+        setup_cmds=setup_cmds,
+        port=port
     )
     lemmas_to_prove = []
     try:
@@ -71,8 +83,15 @@ def get_all_lemmas(project_folder,
                 theorem_details = get_all_lemmas_lean4(file_path)
                 lemmas_to_prove = [get_fully_qualified_theorem_name_lean4(theorem) for theorem in theorem_details]
             elif language == ProofAction.Language.ISABELLE:
-                assert isinstance(main_executor, DynamicIsabelleProofExecutor)
-                lemmas_to_prove = get_all_lemmas_isabelle(main_executor, logger)
+                assert transform is not None, "Transform is required for Isabelle"
+                assert isinstance(transform, IsabelleLocalDataGenerationTransform)
+                assert port is not None, "Port is required for Isabelle"
+                assert port_pool is not None, "Port pool is required for Isabelle"
+                try:
+                    lemmas_to_prove = get_all_lemmas_isabelle(main_executor, logger)
+                finally:
+                    ray.get(port_pool.release.remote([port]))
+                    logger.info(f"Released PISA server on port {port}")
             else:
                 raise ValueError(f"Unexpected language: {language}")
     except Exception as e:
@@ -158,17 +177,30 @@ def create_yaml(project_to_theorems, name, language, output_file):
         yaml.dump(data, yaml_file, sort_keys=False)
 
 def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoint_info: EvalRunCheckpointInfo, logger: logging.Logger = None):
+    pisa_servers = []
+    resources = []
     if experiment.benchmark.language == ProofAction.Language.ISABELLE:
         # Only one server supported for now
-        assert experiment.run_settings.pool_size == 1, "Only one server supported in Isabelle for now"
+        assert experiment.run_settings.pool_size <= 8, "At most 8 servers are supported"
+        ports = [10000 + i * 1000 for i in range(experiment.run_settings.pool_size)]
         # Check if environment variable PISA_PORT is set
-        if "PISA_PORT" not in os.environ:
-            os.environ["PISA_PORT"] = "13000"
-            if IsabelleExecutor.check_server_running(logger):
-                raise Exception(
-                "PISA_PORT environment variable is not set but the PISA service is already running on default port 17000. " + 
-                "Please set the PISA_PORT environment variable to the port on which the PISA service is running.")
-        IsabelleExecutor.start_server(logger)
+        # if "PISA_PORT" not in os.environ:
+        #     os.environ["PISA_PORT"] = "13000"
+        #     if IsabelleExecutor.check_server_running(logger):
+        #         raise Exception(
+        #         "PISA_PORT environment variable is not set but the PISA service is already running on default port 17000. " + 
+        #         "Please set the PISA_PORT environment variable to the port on which the PISA service is running.")
+        pisa_server_remotes = []
+        for port in ports:
+            logger.info(f"Starting PISA server on port {port}")
+            logfile = os.path.join(log_dir, f"PISA-{port}.log")
+            pisa_server_actor = IsabelleServer.remote(logfile, port)
+            pisa_servers.append(pisa_server_actor)
+            pisa_server_start_remote = pisa_server_actor.start_server.remote()
+            pisa_server_remotes.append(pisa_server_start_remote)
+            resources.append(port)
+        ray.get(pisa_server_remotes)
+        logger.info(f"Started PISA servers on ports\n {resources}")
     try:
         transforms = []
         str_time = time.strftime("%Y%m%d-%H%M%S")
@@ -196,9 +228,11 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
                     experiment.run_settings.dep_depth,
                     max_search_results=experiment.run_settings.max_search_results, 
                     buffer_size=experiment.run_settings.buffer_size, 
-                    logger=logger
+                    logger=logger,
+                    resource_pool=RayResourcePoolActor.remote(resources)
                 )
-                os.makedirs(clone_dir, exist_ok=True)
+                clone_dir = None
+                # os.makedirs(clone_dir, exist_ok=True)
             else:
                 raise ValueError(f"Unexpected language: {experiment.benchmark.language}")
             transforms.append(transform)
@@ -206,14 +240,18 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
             raise ValueError(f"Unexpected transform_type: {experiment.run_settings.transform_type}")
         # Find all the lemmas to prove
         project_to_theorems = {}
+        other_args = {}
         for idx, dataset in enumerate(experiment.benchmark.datasets):
             if dataset.project not in project_to_theorems:
                 project_to_theorems[dataset.project] = {}
+                other_args[dataset.project] = {}
             file_to_theorems = project_to_theorems[dataset.project]
+            file_args = other_args[dataset.project]
             lemma_discovery_remotes = [] 
             for file_idx, file in enumerate(dataset.files):
                 if file.path not in file_to_theorems:
                     file_to_theorems[file.path] = []
+                    file_args[file.path] = {}
                 if isinstance(file.theorems, list):
                     file_to_theorems[file.path].extend(file.theorems)
                 else:
@@ -228,7 +266,8 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
                         suppress_error_log=True,
                         always_use_retrieval=False,
                         setup_cmds=experiment.benchmark.setup_cmds,
-                        log_file=discover_log_file))
+                        log_file=discover_log_file,
+                        transform=transforms[0]))
                 pass
             if len(lemma_discovery_remotes) > 0:
                 lemmas = ray.get(lemma_discovery_remotes)
@@ -272,7 +311,8 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
                         partition_project_to_theorems, 
                         use_human_readable=experiment.run_settings.use_human_readable, 
                         new_output_dir=new_output_dir, 
-                        log_error=True)
+                        log_error=True,
+                        other_args=other_args)
                 finally:
                     if clone_dir is not None:
                         for project in projects:
@@ -286,8 +326,12 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
         raise e 
     finally:
         if experiment.benchmark.language == ProofAction.Language.ISABELLE:
-            IsabelleExecutor.stop_server()
-
+            pisa_server_stop_remotes = []
+            for port, actor in zip(resources, pisa_servers):
+                logger.info(f"Stopping PISA server on port: {port}")
+                pisa_server_stop_remotes.append(actor.stop_server.remote())
+            ray.get(pisa_server_stop_remotes)
+            logger.info(f"Stopped PISA servers on ports\n {resources}")
 
 def run_data_generation(experiment: Experiments, log_dir: str, logger: logging.Logger = None):
     trial_cnt = 1

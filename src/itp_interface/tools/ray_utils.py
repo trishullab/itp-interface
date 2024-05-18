@@ -4,7 +4,7 @@ import sys
 root_dir = f"{__file__.split('itp_interface')[0]}"
 if root_dir not in sys.path:
     sys.path.append(root_dir)
-
+import time
 import ray
 import typing
 import psutil
@@ -86,10 +86,101 @@ class RayUtils(object):
             else:
                 diff_remotes = 0
 
+
+@ray.remote
+class RayResourcePoolActor(object):
+    def __init__(self, resources: list):
+        self.resources = resources
+        self.available = list(resources)
+        self.acquired = []
+
+    def acquire(self, num: int):
+        if len(self.available) < num:
+            return None
+        acquired = self.available[:num]
+        self.available = self.available[num:]
+        self.acquired.extend(acquired)
+        return acquired
+    
+    def release(self, resources: list):
+        for resource in resources:
+            try:
+                self.acquired.remove(resource)
+                self.available.append(resource)
+            except ValueError:
+                pass
+        return True
+    
+    def get_acquired(self):
+        return list(self.acquired)
+    
+    def get_available(self):
+        return list(self.available)
+    
+    def wait_and_acquire(self, num: int, timeout: typing.Optional[float] = None):
+        polling_time = 0.1
+        start_time = time.time()
+        while True:
+            acquired = self.acquire(num)
+            if acquired is not None:
+                return acquired
+            if timeout is not None and time.time() - start_time > timeout:
+                return None
+            time.sleep(polling_time)
+
 if __name__ == "__main__":
     import os
     import time
     import random
+    import unittest
+    class TestRayResourcePoolActor(unittest.TestCase):
+        @classmethod
+        def setUpClass(cls):
+            ray.init(ignore_reinit_error=True)
+
+        @classmethod
+        def tearDownClass(cls):
+            ray.shutdown()
+
+        def setUp(self):
+            resources = ["res1", "res2", "res3", "res4"]
+            self.pool = RayResourcePoolActor.remote(resources)
+
+        def test_acquire(self):
+            result = ray.get(self.pool.acquire.remote(2))
+            self.assertEqual(result, ["res1", "res2"])
+            self.assertEqual(ray.get(self.pool.get_available.remote()), ["res3", "res4"])
+            self.assertEqual(ray.get(self.pool.get_acquired.remote()), ["res1", "res2"])
+
+        def test_acquire_more_than_available(self):
+            result = ray.get(self.pool.acquire.remote(5))
+            self.assertIsNone(result)
+
+        def test_release(self):
+            ray.get(self.pool.acquire.remote(2))
+            ray.get(self.pool.release.remote(["res1"]))
+            self.assertEqual(ray.get(self.pool.get_available.remote()), ["res3", "res4", "res1"])
+            self.assertEqual(ray.get(self.pool.get_acquired.remote()), ["res2"])
+
+        def test_release_non_acquired_resource(self):
+            ray.get(self.pool.acquire.remote(2))
+            result = ray.get(self.pool.release.remote(["res5"]))
+            self.assertTrue(result)
+            self.assertEqual(ray.get(self.pool.get_available.remote()), ["res3", "res4"])
+            self.assertEqual(ray.get(self.pool.get_acquired.remote()), ["res1", "res2"])
+
+        def test_wait_and_acquire_success(self):
+            print("Available: " + str(ray.get(self.pool.get_available.remote())))
+            print("Acquired: " + str(ray.get(self.pool.get_acquired.remote())))
+            result = ray.get(self.pool.wait_and_acquire.remote(2))
+            self.assertEqual(result, ["res1", "res2"])
+
+        def test_wait_and_acquire_timeout(self):
+            result = ray.get(self.pool.wait_and_acquire.remote(5, timeout=1))
+            self.assertIsNone(result)
+    
+    unittest.main()
+
 
     log_folder = f".log/ray_utils"
     os.makedirs(log_folder, exist_ok=True)
