@@ -4,6 +4,7 @@ import sys
 root_dir = f"{__file__.split('itp_interface')[0]}"
 if root_dir not in sys.path:
     sys.path.append(root_dir)
+import asyncio
 import time
 import ray
 import typing
@@ -87,29 +88,32 @@ class RayUtils(object):
                 diff_remotes = 0
 
 
-@ray.remote
+@ray.remote(num_cpus=0)
 class RayResourcePoolActor(object):
     def __init__(self, resources: list):
         self.resources = resources
         self.available = list(resources)
+        self.lock_event = asyncio.Lock()
         self.acquired = []
 
-    def acquire(self, num: int):
-        if len(self.available) < num:
-            return None
-        acquired = self.available[:num]
-        self.available = self.available[num:]
-        self.acquired.extend(acquired)
-        return acquired
+    async def acquire(self, num: int):
+        async with self.lock_event:
+            if len(self.available) < num:
+                return None
+            acquired = self.available[:num]
+            self.available = self.available[num:]
+            self.acquired.extend(acquired)
+            return acquired
     
-    def release(self, resources: list):
-        for resource in resources:
-            try:
-                self.acquired.remove(resource)
-                self.available.append(resource)
-            except ValueError:
-                pass
-        return True
+    async def release(self, resources: list):
+        async with self.lock_event:
+            for resource in resources:
+                try:
+                    self.acquired.remove(resource)
+                    self.available.append(resource)
+                except ValueError:
+                    pass
+            return True
     
     def get_acquired(self):
         return list(self.acquired)
@@ -117,16 +121,16 @@ class RayResourcePoolActor(object):
     def get_available(self):
         return list(self.available)
     
-    def wait_and_acquire(self, num: int, timeout: typing.Optional[float] = None):
+    async def wait_and_acquire(self, num: int, timeout: typing.Optional[float] = None):
         polling_time = 0.1
         start_time = time.time()
         while True:
-            acquired = self.acquire(num)
+            acquired = await self.acquire(num)
             if acquired is not None:
                 return acquired
             if timeout is not None and time.time() - start_time > timeout:
                 return None
-            time.sleep(polling_time)
+            await asyncio.sleep(polling_time)
 
 if __name__ == "__main__":
     import os
