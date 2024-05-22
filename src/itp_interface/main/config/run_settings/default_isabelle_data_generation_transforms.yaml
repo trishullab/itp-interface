@@ -2,7 +2,7 @@ name: default_isabelle_data_generation_transforms
 use_human_readable: True
 save_intermidiate_transforms: True
 buffer_size: 10000
-pool_size: 3
+pool_size: 7
 transform_type: LOCAL
 dep_depth: 0
 max_search_results:
