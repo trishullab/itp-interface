@@ -87,7 +87,7 @@ class RayUtils(object):
             else:
                 diff_remotes = 0
 
-@ray.remote(num_cpus=0)
+@ray.remote(num_cpus=1)
 class RayResourcePoolActor(object):
     def __init__(self, resources: list):
         self.resources = resources
@@ -132,7 +132,7 @@ class RayResourcePoolActor(object):
             await asyncio.sleep(polling_time)
 
 
-class RayTimedExec(Exception):
+class RayTimedException(Exception):
     pass
 
 @ray.remote
@@ -143,6 +143,7 @@ class TimedRayExec(object):
         self.func = func
         self.args = args if args else []
         self.kwargs = kwargs if kwargs else {}
+        self._is_cancelled = False
 
     def execute_with_timeout(self, timeout: float = 60):
         ray_id = self.func.remote(*self.args, **self.kwargs)
@@ -151,12 +152,16 @@ class TimedRayExec(object):
         if len(unfinished) > 0:
             ray.cancel(ray_id, force=True)
             is_cancelled = True
+        self._is_cancelled = is_cancelled
         if not is_cancelled:
             assert len(finished) == 1, f"len(finished): {len(finished)}"
             return_typ = ray.get(finished[0])
             return return_typ
         else:
-            raise RayTimedExec(f"Function {self.func} did not finish within {timeout} seconds")
+            return None
+    
+    def is_cancelled(self):
+        return self._is_cancelled
 
 if __name__ == "__main__":
     import os

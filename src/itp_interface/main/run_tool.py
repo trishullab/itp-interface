@@ -13,7 +13,8 @@ import ray
 import typing
 import numpy as np
 import yaml
-from itp_interface.tools.ray_utils import RayResourcePoolActor
+import uuid
+from itp_interface.tools.ray_utils import RayResourcePoolActor, TimedRayExec, RayUtils
 from itp_interface.rl.proof_action import ProofAction
 from itp_interface.tools.isabelle_server import IsabelleServer
 from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
@@ -34,8 +35,11 @@ from itp_interface.tools.lean4_sync_executor import get_all_theorems_in_file as 
 from itp_interface.tools.isabelle_executor import get_all_lemmas_in_file as get_all_lemmas_isabelle
 from itp_interface.tools.bin_packing import best_fit_packing
 
-@ray.remote
-def get_all_lemmas(project_folder, 
+ray_resource_pool = None
+
+@ray.remote(num_cpus=0.5)
+def get_all_lemmas(
+        project_folder, 
         file_path, 
         language, 
         use_hammer, 
@@ -45,14 +49,15 @@ def get_all_lemmas(project_folder,
         always_use_retrieval,
         setup_cmds: typing.List[str], 
         log_file: str,
-        transform: typing.Any):
-    logger = setup_logger('get_all_lemmas', log_file, logging.INFO, '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        port: typing.Optional[int] = None):
+    global ray_resource_pool
+    log_id = str(uuid.uuid4())
+    logger = setup_logger(f'get_all_lemmas_{log_id}', log_file, logging.INFO, '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     port = None
     port_pool = None
     if language == ProofAction.Language.ISABELLE:
-        assert transform is not None, "Transform is required for Isabelle"
-        assert isinstance(transform, IsabelleLocalDataGenerationTransform)
-        port_pool = transform.ray_resource_pool
+        assert ray_resource_pool is not None, "ray_resource_pool is required for Isabelle"
+        port_pool = ray_resource_pool
         port = ray.get(port_pool.wait_and_acquire.remote(1))[0]
         logger.info(f"Using PISA server on port {port} for {file_path}")
     proof_exec_callback = ProofExecutorCallback(
@@ -83,8 +88,6 @@ def get_all_lemmas(project_folder,
                 theorem_details = get_all_lemmas_lean4(file_path)
                 lemmas_to_prove = [get_fully_qualified_theorem_name_lean4(theorem) for theorem in theorem_details]
             elif language == ProofAction.Language.ISABELLE:
-                assert transform is not None, "Transform is required for Isabelle"
-                assert isinstance(transform, IsabelleLocalDataGenerationTransform)
                 assert port is not None, "Port is required for Isabelle"
                 assert port_pool is not None, "Port pool is required for Isabelle"
                 try:
@@ -177,6 +180,7 @@ def create_yaml(project_to_theorems, name, language, output_file):
         yaml.dump(data, yaml_file, sort_keys=False)
 
 def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoint_info: EvalRunCheckpointInfo, logger: logging.Logger = None):
+    global ray_resource_pool
     pisa_servers = []
     resources = []
     if experiment.benchmark.language == ProofAction.Language.ISABELLE:
@@ -224,12 +228,13 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
                     no_thms=only_proof_state)
                 clone_dir = None
             elif experiment.benchmark.language == ProofAction.Language.ISABELLE:
+                ray_resource_pool = RayResourcePoolActor.remote(resources)
                 transform = IsabelleLocalDataGenerationTransform(
                     experiment.run_settings.dep_depth,
                     max_search_results=experiment.run_settings.max_search_results, 
                     buffer_size=experiment.run_settings.buffer_size, 
                     logger=logger,
-                    resource_pool=RayResourcePoolActor.remote(resources)
+                    resource_pool=ray_resource_pool
                 )
                 clone_dir = None
                 # os.makedirs(clone_dir, exist_ok=True)
@@ -241,13 +246,13 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
         # Find all the lemmas to prove
         project_to_theorems = {}
         other_args = {}
+        lemma_discovery_remotes = []
         for idx, dataset in enumerate(experiment.benchmark.datasets):
             if dataset.project not in project_to_theorems:
                 project_to_theorems[dataset.project] = {}
                 other_args[dataset.project] = {}
             file_to_theorems = project_to_theorems[dataset.project]
             file_args = other_args[dataset.project]
-            lemma_discovery_remotes = [] 
             for file_idx, file in enumerate(dataset.files):
                 if file.path not in file_to_theorems:
                     file_to_theorems[file.path] = []
@@ -256,7 +261,7 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
                     file_to_theorems[file.path].extend(file.theorems)
                 else:
                     discover_log_file = os.path.join(log_dir, f"discover{idx}_{file_idx}.log")
-                    lemma_discovery_remotes.append(get_all_lemmas.remote(
+                    timed_exec = TimedRayExec.remote(get_all_lemmas, kwargs=dict(
                         project_folder=dataset.project,
                         file_path=os.path.join(dataset.project, file.path),
                         language=experiment.benchmark.language,
@@ -266,14 +271,21 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
                         suppress_error_log=True,
                         always_use_retrieval=False,
                         setup_cmds=experiment.benchmark.setup_cmds,
-                        log_file=discover_log_file,
-                        transform=transforms[0]))
+                        log_file=discover_log_file))
+                    timeout_in_secs = experiment.run_settings.timeout_in_secs * 100
+                    timed_exec_remote = timed_exec.execute_with_timeout.remote(timeout=timeout_in_secs)
+                    lemma_discovery_remotes.append(timed_exec_remote)
                 pass
-            if len(lemma_discovery_remotes) > 0:
-                lemmas = ray.get(lemma_discovery_remotes)
-                for file, theorems in zip(dataset.files, lemmas):
-                    file_to_theorems[file.path].extend(theorems)
-            pass
+        if len(lemma_discovery_remotes) > 0:
+            lemmas = ray.get(lemma_discovery_remotes)
+            _idx = 0
+            for idx, dataset in enumerate(experiment.benchmark.datasets):
+                for file_idx, file in enumerate(dataset.files):
+                    if lemmas[_idx] is not None:
+                        project_to_theorems[dataset.project][file.path].extend(lemmas[_idx])
+                    else:
+                        logger.error(f"Discovering lemmas failed because of timeout for {dataset.project}/{file.path}")
+                    _idx += 1
         data_transform = RunDataGenerationTransforms(transforms, 
                 log_dir, 
                 save_intermidiat_transforms=len(transforms) > 1 or \
@@ -366,6 +378,8 @@ def run_data_generation(experiment: Experiments, log_dir: str, logger: logging.L
 
 @hydra.main(config_path="config", config_name="experiments", version_base="1.2")
 def main(cfg):
+    os.environ["PYTHONPATH"] = f"{root_dir}:{os.environ.get('PYTHONPATH', '')}"
+    # RayUtils.init_ray(num_of_cpus=cfg.run_settings.pool_size, object_store_memory_in_gb=100)
     experiment = parse_config(cfg)
     os.chdir(root_dir)
     # top_level_dir = os.path.dirname(root_dir)

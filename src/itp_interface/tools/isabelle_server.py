@@ -8,6 +8,7 @@ import signal
 import subprocess
 import time
 import threading
+import uuid
 from itp_interface.tools.log_utils import setup_logger
 
 @ray.remote
@@ -17,7 +18,10 @@ class IsabelleServer(object):
         assert port < 65536, "Port number must be less than 65536"
         self.log_filename = log_filename
         self.port = port
-        self.logger = setup_logger("isabelle_server", log_filename)
+        logger_id = str(uuid.uuid4())
+        with open(log_filename, "w") as f:
+            f.write("")
+        self.logger = setup_logger(f"isabelle_server_{logger_id}", log_filename)
         self.pid = None
         self.thread_id = None
         self.process_killed = False
