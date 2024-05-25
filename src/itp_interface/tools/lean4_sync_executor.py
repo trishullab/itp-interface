@@ -663,11 +663,16 @@ def get_theorem_name_resembling(file_path: str, theorem_name: str, use_cache: bo
     assert thm_found, "The theorem was not found some code bug in finding the theorem names"
     theorem_name_matches = all_theorems_name_unique_map[full_name]
     if len(theorem_name_matches) == 1:
-        return full_name
+        if len(theorem_name_matches[0].theorem_namespace) == 0:
+            return theorem_name_matches[0].theorem_name
+        else:
+            dict_thm = {"namespace": theorem_name_matches[0].theorem_namespace, "name": theorem_name_matches[0].theorem_name}
+            return json.dumps(dict_thm)
     else:
         # We need to find the namespace which matches with the theorem_name
         for thm in theorem_name_matches:
-            if theorem_name.endswith(thm.theorem_namespace + '.' + thm.theorem_name):
+            if theorem_name.endswith(thm.theorem_namespace + '.' + thm.theorem_name) or\
+            (theorem_name.strip() == thm.theorem_name and len(thm.theorem_namespace) == 0):
                 dict_thm = {"namespace": thm.theorem_namespace, "name": thm.theorem_name}
                 return json.dumps(dict_thm)
         raise ValueError(f"The theorem '{theorem_name}' was not found in the file '{file_path}'")
