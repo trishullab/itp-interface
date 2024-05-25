@@ -74,7 +74,6 @@ class ProofEnvPool(object):
             ]
         else:
             self.pool_size = len(proof_env_actors)
-            self._actual_pool_size = len(proof_env_actors)
             self._frozeen_env = None
             self._proof_env_pool : typing.List[ProofEnvActor] = proof_env_actors
         self._errd_envs = set()
@@ -102,7 +101,59 @@ class ProofEnvPool(object):
         self._is_initialized = False
         cleanup_remotes = [proof_env_actor.cleanup.remote() for proof_env_actor in self._proof_env_pool]
         ray.get(cleanup_remotes)
-    
+
+    def add_and_init_proof_envs(self, count: int = 1):
+        count_before = len(self._proof_env_pool)
+        self.add_proof_envs(count=count)
+        count_after = len(self._proof_env_pool)
+        return self.reset(list(range(count_before, count_after)))
+
+    def add_proof_envs(self, count: int = 1):
+        assert not self._is_initialized, "Cannot add proof environments after initialization"
+        assert self._frozeen_env is not None, "Frozen environment must be provided"
+        self._proof_env_pool.extend([
+            ProofEnvActor.remote(
+                name=self._frozeen_env.name,
+                dynamic_proof_executor_callback=self._frozeen_env.dynamic_proof_executor_callback,
+                lemma_name=self._frozeen_env.lemma_name,
+                retrieval_strategy=self._frozeen_env.retrieve_strategy,
+                max_proof_depth=self._frozeen_env.max_proof_depth,
+                always_retrieve_thms=self._frozeen_env._always_retrieve_thms,
+                logger=None
+            )
+            for _ in range(count)
+        ])
+        self.pool_size += count
+
+    def add_proof_env(self, proof_env: ProofEnv = None):
+        assert not self._is_initialized, "Cannot add proof environments after initialization"
+        if proof_env is None:
+            assert self._frozeen_env is not None, "Frozen environment must be provided"
+            self._proof_env_pool.append(
+                ProofEnvActor.remote(
+                    name=self._frozeen_env.name,
+                    dynamic_proof_executor_callback=self._frozeen_env.dynamic_proof_executor_callback,
+                    lemma_name=self._frozeen_env.lemma_name,
+                    retrieval_strategy=self._frozeen_env.retrieve_strategy,
+                    max_proof_depth=self._frozeen_env.max_proof_depth,
+                    always_retrieve_thms=self._frozeen_env._always_retrieve_thms,
+                    logger=None
+                )
+            )
+        else:
+            self._proof_env_pool.append(
+                ProofEnvActor.remote(
+                    name=proof_env.name,
+                    dynamic_proof_executor_callback=proof_env.dynamic_proof_executor_callback,
+                    lemma_name=proof_env.lemma_name,
+                    retrieval_strategy=proof_env.retrieve_strategy,
+                    max_proof_depth=proof_env.max_proof_depth,
+                    always_retrieve_thms=proof_env._always_retrieve_thms,
+                    logger=None
+                )
+            )
+        self.pool_size += 1
+
     def get_errd_envs(self):
         return copy.deepcopy(self._errd_envs)
     
