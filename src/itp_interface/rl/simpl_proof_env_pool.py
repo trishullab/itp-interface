@@ -109,7 +109,7 @@ class ProofEnvPool(object):
         return self.reset(list(range(count_before, count_after)))
 
     def add_proof_envs(self, count: int = 1):
-        assert not self._is_initialized, "Cannot add proof environments after initialization"
+        assert self._is_initialized, "Cannot add proof environments after initialization"
         assert self._frozeen_env is not None, "Frozen environment must be provided"
         self._proof_env_pool.extend([
             ProofEnvActor.remote(
@@ -126,7 +126,7 @@ class ProofEnvPool(object):
         self.pool_size += count
 
     def add_proof_env(self, proof_env: ProofEnv = None):
-        assert not self._is_initialized, "Cannot add proof environments after initialization"
+        assert self._is_initialized, "Cannot add proof environments after initialization"
         if proof_env is None:
             assert self._frozeen_env is not None, "Frozen environment must be provided"
             self._proof_env_pool.append(
