@@ -389,23 +389,14 @@ class Lean4SyncExecutor:
         process_namespaces(full_stmt, self._namespaces, has_content)
         if is_theorem_started and is_theorem_ended:
             last_thm = self._parse_theorem_stmt(full_stmt)
-            if last_thm is None:
-                is_theorem_ended = False
-                self._theorem_started = True
-            else:
-                self._last_theorem = last_thm
-                self._theorem_started = False
-        elif is_theorem_started:
-            self._theorem_started = True
-        elif is_theorem_ended and self._theorem_started:
-            last_thm = self._parse_theorem_stmt(full_stmt)
-            if last_thm is None:
-                is_theorem_ended = False
-                self._theorem_started = True
-            else:
-                self._theorem_started = False
-                self._last_theorem = last_thm
-        return is_theorem_started or self._theorem_started or is_theorem_ended
+        else:
+            last_thm = None
+        self._theorem_started = last_thm is not None
+        is_theorem_started = self._theorem_started
+        is_theorem_ended = is_theorem_started and is_theorem_ended
+        if last_thm is not None:
+            self._last_theorem = last_thm
+        return is_theorem_started
     
     def _get_env(self, idx) -> Optional[int]:
         env_idx = None
@@ -423,7 +414,7 @@ class Lean4SyncExecutor:
         self._last_proof_state_idx = idx
     
     def _should_start_proof(self, stmt: str) -> bool:
-        return not self._theorem_started
+        return self._theorem_started
     
     def _remove_proof_add_sorry(self) -> str:
         # Find the last ':= by' and replace it with 'sorry' and remove the rest of the proof
@@ -493,7 +484,10 @@ class Lean4SyncExecutor:
             self.process_interace.send_command(cmd)
             timed_out = False
             try:
-                response = self.process_interace.read_response(self.timeout_in_sec)
+                timed_out_in_secs = self.timeout_in_sec
+                if use_file:
+                    timed_out_in_secs *= 4 # File can be big and take time
+                response = self.process_interace.read_response(timed_out_in_secs)
                 if 'messages' in response and 'proofState' not in response and 'sorries' not in response:
                     messages = response['messages']
                     sevierities = [msg['severity'] for msg in messages]
@@ -740,6 +734,10 @@ if __name__ == "__main__":
     # project_root = 'data/test/Mathlib/'
     # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Analysis/SpecificLimits/Normed.lean'
     # theorems_similar_to_test = get_theorem_name_resembling(file_path, "tendsto_pow_const_mul_const_pow_of_abs_lt_one", use_cache=True)
+    # project_root = 'data/test/Mathlib/'
+    # theorem_name = 'ftaylorSeriesWithin_univ'
+    # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Analysis/Calculus/ContDiff/Defs.lean'
+    # theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
     with Lean4SyncExecutor(main_file=file_path, project_root=project_root) as executor:
         executor._skip_to_theorem(theorems_similar_to_test)
         while not executor.execution_complete:
