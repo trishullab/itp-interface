@@ -435,6 +435,9 @@ class Lean4SyncExecutor:
                     raise ValueError(f"Could not find the start of proof in the statement: {self._content_till_last_theorem_stmt}")
                 full_stmt = full_stmt + remaining_stmt[:thm_end_idx] + ' :='
                 new_stmt = full_stmt
+            else:
+                full_stmt = full_stmt[:thm_end_idx] + ' :='
+                new_stmt = full_stmt
         else:
             new_stmt = full_stmt
         new_stmt += " by sorry"
