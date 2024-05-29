@@ -444,6 +444,10 @@ class Lean4SyncExecutor:
         self._content_till_last_theorem_stmt = new_stmt
 
     def _run_stmt_on_lean_server(self, idx : int, stmt: str):
+        if "sorry" in stmt and self._proof_running:
+            # We don't need to run the sorry statements. This should be treated as a failed proof step
+            self.lean_error_messages = ["The tactic 'sorry' was found in the statement, this is not allowed"]
+            return
         proof_should_run = False
         if not self._proof_running and self._stmt_has_lemma(stmt):
             proof_should_run = self._should_start_proof(stmt)
@@ -547,7 +551,7 @@ class Lean4SyncExecutor:
             else:
                 self.lean_error_messages = []
             if error_messages is None:
-                assert proof_running, "Proof is not running but no error message is present"
+                assert proof_running, f"Proof is not running but no error message is present, response:\n{response}, \nstmt: \n{stmt}, \nlemma: \n{self.curr_lemma_name}, \nlemma_stmt: \n{self.curr_lemma}, \nline_num: \n{self.line_num}"
                 self._proof_running = proof_running
                 if self._proof_running:
                     proof_state_idx = None
