@@ -553,7 +553,10 @@ class Lean4SyncExecutor:
                     proof_state_idx = None
                     proof_goals = []
                     if 'sorries' in response:
-                        proof_state = response['sorries'][0]
+                        sorries = response['sorries']
+                        # TODO: Go over all the sorries and find the one which matches the line number with idx + 1
+                        # Now we are only supporting the last sorry
+                        proof_state = sorries[-1]
                         proof_state_idx = proof_state['proofState']
                         proof_goals = [proof_state['goal']]
                     elif 'proofState' in response:
