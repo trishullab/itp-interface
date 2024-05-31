@@ -149,7 +149,7 @@ class Lean4SyncExecutor:
             os.remove(self.temp_file_full_path)
 
     def is_in_proof_mode(self):
-        return True if self.proof_context else False
+        return True if self.proof_context else (len(self.lean_error_messages) > 0) # It is still in proof mode if we encountered a wrong proof
 
     def run_next(self) -> bool:
         try:
@@ -332,13 +332,10 @@ class Lean4SyncExecutor:
                 return None
     
     def get_lemma_stmt_if_running(self) -> Optional[str]:
-        if not self.is_in_proof_mode():
+        try:
+            return self.local_theorem_lemma_description[self.curr_lemma_name]
+        except:
             return None
-        else:
-            try:
-                return self.local_theorem_lemma_description[self.curr_lemma_name]
-            except:
-                return None
         
     def get_current_lemma_name(self) -> Optional[str]:
         if self.curr_lemma_name is None:
@@ -532,10 +529,11 @@ class Lean4SyncExecutor:
                     messages = response['messages']
                     # Go over all sev after the line number and check if there is an error
                     for msg in messages:
-                        if 'pos' in msg and 'endPos' in msg and \
-                        msg['endPos'] is not None and \
-                        'line' in msg['endPos'] and \
-                        msg['endPos']['line'] >= idx + 1:
+                        if msg['severity'] == 'error' and 'pos' in msg and 'endPos' in msg and \
+                        ((msg['endPos'] is not None and 'line' in msg['endPos'] and msg['endPos']['line'] >= idx + 1) or \
+                         (msg['pos'] is not None and 'line' in msg['pos'] and msg['pos']['line'] >= idx + 1)):
+                            if msg['data'].startswith("unexpected end of input; expected '{'") and msg['endPos'] is None:
+                                continue # Ignore this error
                             relevant_messages.append(msg)
                     sevierities = [msg['severity'] for msg in messages]
                     if 'error' in sevierities:
