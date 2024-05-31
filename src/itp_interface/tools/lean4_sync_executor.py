@@ -458,6 +458,10 @@ class Lean4SyncExecutor:
             # We don't need to run the sorry statements. This should be treated as a failed proof step
             self.lean_error_messages = ["The tactic 'sorry' was found in the statement, this is not allowed"]
             return
+        elif len(stmt.strip()) == 0 and self._proof_running:
+            # We don't need to run the empty statements. This should be treated as a failed proof step
+            self.lean_error_messages = ["There is no tactic in the statement, it is just empty line or whitespace"]
+            return
         proof_should_run = False
         if not self._proof_running and self._stmt_has_lemma(stmt):
             proof_should_run = self._should_start_proof(stmt)
@@ -808,16 +812,21 @@ if __name__ == "__main__":
     # theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
     with Lean4SyncExecutor(main_file=file_path, project_root=project_root) as executor:
         executor._skip_to_theorem(theorems_similar_to_test)
+        proof_exec = False
         while not executor.execution_complete:
-            executor.run_next()
-            print("Current statement:", executor.current_stmt)
             if executor.proof_context is not None:
+                proof_exec = True
                 for goal in executor.proof_context.all_goals:
                     for hyp in goal.hypotheses:
                         print(hyp)
                     print('-'*10)
                     print(goal.goal)
                 print('-'*20)
+            executor.run_next()
+            print("Current statement:", executor.current_stmt)
+            if executor.proof_context is None and proof_exec:
+                proof_exec = False
+                print("Proof finished")
             if executor.lean_error_messages:
                 print("Error messages:\n", executor.lean_error_messages)
     mathlib_test_file = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Data/Nat/Bits.lean'
