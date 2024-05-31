@@ -528,7 +528,7 @@ class Lean4SyncExecutor:
                     timed_out_in_secs *= 4 # File can be big and take time
                 response = self.process_interace.read_response(timed_out_in_secs)
                 relevant_messages = []
-                if 'messages' in response and 'proofState' not in response and 'sorries' not in response:
+                if 'messages' in response and (use_file or ('proofState' not in response and 'sorries' not in response)):
                     messages = response['messages']
                     # Go over all sev after the line number and check if there is an error
                     for msg in messages:
