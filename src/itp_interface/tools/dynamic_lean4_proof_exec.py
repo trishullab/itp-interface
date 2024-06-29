@@ -231,10 +231,6 @@ class DynamicProofExecutor(Lean4SyncExecutor):
                 if line_num >= tactic_line_num:
                     del self.run_state.line_proof_context_map[line_num]
             self.line_num = tactic_line_num
-            if tactic_line_num in self._line_num_seek_map:
-                seek = self._line_num_seek_map[tactic_line_num]
-                self._file_handle.seek(seek)
-                self._file_handle.truncate()
-                self._file_handle.flush()
-                cancelled_some_tactics = True
+            cancelled_some_tactics = self._backtrack_tactic_line(tactic_line_num)
+            self._proof_running = self.proof_context is not None
         return cancelled_some_tactics

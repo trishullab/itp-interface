@@ -124,6 +124,7 @@ class Lean4SyncExecutor:
         self._last_tactics = {}
         self._last_tactic_line_idx = None
         self._error_messages_so_far = set()
+        self._error_messages_since_last_thm = {}
         if self._enable_search:
             pass
         pass
@@ -375,6 +376,7 @@ class Lean4SyncExecutor:
                     if full_error_msg in self._error_messages_so_far:
                         continue
                     has_new_errors += 1
+                    self._errors_since_last_thm(idx, full_error_msg)
         return has_cnt == 1 and has_unfocussed_goal == 1 and has_new_errors == 0
     
     def _parse_theorem_stmt(self, idx: int, stmt: str, do_full_check: bool = False, interesting_span: typing.Tuple[int, int] = None) -> str:
@@ -568,12 +570,33 @@ class Lean4SyncExecutor:
             return {"cmd": "\n".join(tactics_so_far)}
         else:
             return {"cmd": "\n".join(tactics_so_far), "env": self._env_idx_last_thm}
+    
+    def _errors_since_last_thm(self, idx, error_message: str):
+        if idx not in self._error_messages_since_last_thm:
+            self._error_messages_since_last_thm[idx] = error_message
 
     def _backtrack_tactic_line(self, idx: int):
-        for i in range(idx, self._last_tactic_line_idx, -1):
-            if i in self._last_tactics:
-                del self._last_tactics[i]
+        # identify the keys to remove
+        idx_to_remove = []
+        backtracked = False
+        for k in self._last_tactics.keys():
+            if k >= idx:
+                idx_to_remove.append(k)
+        for k in idx_to_remove:
+            backtracked = True
+            del self._last_tactics[k]
+        idx_to_remove = []
+        for k in self._error_messages_since_last_thm.keys():
+            if k >= idx:
+                idx_to_remove.append(k)
+        for k in idx_to_remove:
+            backtracked = True
+            msg = self._error_messages_since_last_thm[k]
+            if msg in self._error_messages_so_far:
+                self._error_messages_so_far.remove(msg)
+            del self._error_messages_since_last_thm[k]
         self._last_tactic_line_idx = max(self._last_tactics.keys(), default=None) 
+        return backtracked
 
     def _clear_tacitcs(self):
         tactics_so_far = [(k, v) for k, v in self._last_tactics.items()]
@@ -582,6 +605,7 @@ class Lean4SyncExecutor:
         self._write_lean_file(self._last_tactic_line_idx, "\n".join(tactics_so_far))
         self._last_tactics = {}
         self._last_tactic_line_idx = None
+        self._error_messages_since_last_thm = {}
         pass
 
     def _run_stmt_on_lean_server(self, idx : int, stmt: str, theorem_started: bool = False):
@@ -639,6 +663,7 @@ class Lean4SyncExecutor:
                             if full_error_msg in self._error_messages_so_far:
                                 continue
                             self._error_messages_so_far.add(full_error_msg)
+                            self._errors_since_last_thm(idx, full_error_msg)
                             relevant_messages.append(msg)
                     cmd_was_executed = True
                 elif 'message' in response and 'proofState' not in response and 'sorries' not in response:
