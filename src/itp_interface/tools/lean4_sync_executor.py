@@ -119,6 +119,11 @@ class Lean4SyncExecutor:
         self._last_file_seek = 0
         self._line_num_seek_map = {}
         self._file_handle = None
+        self._in_tactic_mode = False
+        self._env_idx_last_thm = None
+        self._last_tactics = {}
+        self._last_tactic_line_idx = None
+        self._error_messages_so_far = set()
         if self._enable_search:
             pass
         pass
@@ -348,37 +353,31 @@ class Lean4SyncExecutor:
         else:
             return self.curr_lemma_name
     
-    def _check_if_thm_read(self, full_stmt: str) -> bool:
-        ticks = self.ticks + "1"
-        temp_filename_suffix = f"temptodel{ticks}.lean"
-        temp_file_full_path = os.path.join(self.project_root, temp_filename_suffix)
-        temp_file_full_path = os.path.abspath(temp_file_full_path)
-        try:
-            with open(temp_file_full_path, "w") as f:
-                f.write(full_stmt)
-            self.process_interace.send_command({"path": temp_file_full_path})
-            timeout_in_secs = self.timeout_in_sec * 4
-            response = self.process_interace.read_response(timeout_in_secs)
-            messages = response.get('messages', [])
-            has_cnt = 0
-            has_unfocussed_goal = 0
-            has_other_error = 0
-            for msg in messages:
-                if msg['severity'] == 'error' and 'pos' in msg and 'endPos' in msg and \
-                ((msg['endPos'] is not None and 'line' in msg['endPos'] and msg['endPos']['line'] >= self.line_num) or \
-                    (msg['pos'] is not None and 'line' in msg['pos'] and msg['pos']['line'] >= self.line_num)):
-                    if msg['data'].startswith(Lean4SyncExecutor.theorem_detection_message) and msg['endPos'] is None:
-                        has_cnt += 1
-                    elif msg['data'].startswith(Lean4SyncExecutor.unsolved_message):
-                        has_unfocussed_goal += 1
-                    else:
-                        has_other_error += 1
-            return has_cnt == 1 and has_unfocussed_goal == 1 and has_other_error == 0
-        finally:
-            if os.path.exists(temp_file_full_path):
-                os.remove(temp_file_full_path)
+    def _check_if_thm_read(self, idx: int, full_stmt: str) -> bool:
+        cmd = self._get_cmd_tactic_mode(idx, full_stmt)
+        self.process_interace.send_command(cmd)
+        timeout_in_secs = self.timeout_in_sec
+        response = self.process_interace.read_response(timeout_in_secs)
+        messages = response.get('messages', [])
+        has_cnt = 0
+        has_unfocussed_goal = 0
+        has_new_errors = 0
+        for msg in messages:
+            if msg['severity'] == 'error' and 'pos' in msg and 'endPos' in msg and \
+            ((msg['endPos'] is not None and 'line' in msg['endPos']) or \
+                (msg['pos'] is not None and 'line' in msg['pos'])):
+                if msg['data'].startswith(Lean4SyncExecutor.theorem_detection_message) and msg['endPos'] is None:
+                    has_cnt += 1
+                elif msg['data'].startswith(Lean4SyncExecutor.unsolved_message):
+                    has_unfocussed_goal += 1
+                else:
+                    full_error_msg = self._get_error_msg(msg)
+                    if full_error_msg in self._error_messages_so_far:
+                        continue
+                    has_new_errors += 1
+        return has_cnt == 1 and has_unfocussed_goal == 1 and has_new_errors == 0
     
-    def _parse_theorem_stmt(self, stmt: str, do_full_check: bool = False, interesting_span: typing.Tuple[int, int] = None) -> str:
+    def _parse_theorem_stmt(self, idx: int, stmt: str, do_full_check: bool = False, interesting_span: typing.Tuple[int, int] = None) -> str:
         if interesting_span is not None:
             span_start, span_end = interesting_span
             full_stmt = stmt[span_start:span_end]
@@ -415,11 +414,15 @@ class Lean4SyncExecutor:
                 theorem_stmt = theorem_stmt[:thm_end_idx]
         if do_full_check:
             check_stmt = stmt[:span_start] + full_stmt + ' by\n'
-            if not self._check_if_thm_read(check_stmt):
+            if not self._check_if_thm_read(idx, check_stmt):
                 return None
         return theorem_name, theorem_stmt, full_stmt
+    
+    def _execute_till_last_theorem(self, idx: int, full_stmt: str):
+        self._write_lean_file(idx, full_stmt)
+        self._run_file_on_lean_server(self.timeout_in_sec * 4)
 
-    def _stmt_has_lemma(self, stmt: str, do_full_check: bool = False) -> bool:
+    def _stmt_has_lemma(self, idx: int, stmt: str, do_full_check: bool = False) -> bool:
         # Match the theorem regex
         has_content = self._content_till_last_theorem_stmt is not None
         full_stmt = (stmt if self._content_till_last_theorem_stmt is None else self._content_till_last_theorem_stmt + '\n' + stmt) + '\n'
@@ -432,22 +435,30 @@ class Lean4SyncExecutor:
         process_namespaces(full_stmt, self._namespaces, has_content)
         if is_theorem_started and is_theorem_ended:
             last_span_start, last_span_end = theorem_started[-1].span()
+            stmt_before_theorem = full_stmt[:last_span_start]
+            if len(stmt_before_theorem.strip()) > 0 and do_full_check:
+                # We need to run the statement before the theorem
+                self._execute_till_last_theorem(idx, stmt_before_theorem)
+                self._content_till_last_theorem_stmt = self._content_till_last_theorem_stmt[last_span_start:]
+                last_span_end -= last_span_start
+                full_stmt = full_stmt[last_span_start:]
+                last_span_start = 0
             # Look for all ':=' in the full_stmt
             endings = [i for i in range(last_span_end, len(full_stmt)) if full_stmt.startswith(':=', i)]
             last_thm = None
             for ending in endings:
-                interesting_stmt = full_stmt[:ending] + ':= ' # We need to add ':=' to the end
+                interesting_stmt = full_stmt[:ending] + ' := ' # We need to add ':=' to the end
                 interesting_span = (last_span_start, len(interesting_stmt))
-                last_thm = self._parse_theorem_stmt(interesting_stmt, do_full_check, interesting_span) 
+                last_thm = self._parse_theorem_stmt(idx, interesting_stmt, do_full_check, interesting_span) 
                 if last_thm is not None:
                     self._content_till_last_theorem_stmt = full_stmt[:last_span_start] + last_thm[2] + ' by\n'
                     break
             if last_thm is None:
                 endings = [i for i in range(last_span_end, len(full_stmt)) if full_stmt.startswith('=> ', i)]
                 for ending in endings:
-                    interesting_stmt = full_stmt[:ending] + '=> ' # We need to add '=>' to the end
+                    interesting_stmt = full_stmt[:ending] + ' => ' # We need to add '=>' to the end
                     interesting_span = (last_span_start, len(interesting_stmt))
-                    last_thm = self._parse_theorem_stmt(interesting_stmt, do_full_check, interesting_span) 
+                    last_thm = self._parse_theorem_stmt(idx, interesting_stmt, do_full_check, interesting_span) 
                     if last_thm is not None:
                         self._content_till_last_theorem_stmt = full_stmt[:last_span_start] + last_thm[2] + ' by\n'
                         break
@@ -508,9 +519,72 @@ class Lean4SyncExecutor:
             new_stmt += " by\n"
         self._content_till_last_theorem_stmt = new_stmt
 
+    def _write_lean_file(self, idx: int, file_content: str):
+        if self._file_handle is None:
+            self._file_handle = open(self.temp_file_full_path, "a+")
+        self._last_file_seek = self._file_handle.tell()
+        self._line_num_seek_map[idx] = self._last_file_seek
+        self._file_handle.write(file_content)
+        self._file_handle.flush()
+        pass
+    
+    def _get_error_msg(self, msg) -> str:
+        line_start = msg['pos']['line'] if msg['pos'] is not None else ""
+        line_end = msg['endPos']['line'] if msg['endPos'] is not None else ""
+        full_error_msg = str(line_start) + " - " + str(line_end) + ": " + str(msg['data'])
+        return full_error_msg
+
+    def _run_file_on_lean_server(self, timeout_in_sec: int):
+        cmd = {"path": self.temp_file_full_path}
+        self.process_interace.send_command(cmd)
+        response = self.process_interace.read_response(timeout_in_sec)
+        if 'messages' in response:
+            messages = response['messages']
+            # Go over all sev after the line number and check if there is an error
+            for msg in messages:
+                if msg['severity'] == 'error' and 'pos' in msg and 'endPos' in msg and \
+                ((msg['endPos'] is not None and 'line' in msg['endPos']) or \
+                    (msg['pos'] is not None and 'line' in msg['pos'])):
+                    if msg['data'].startswith(Lean4SyncExecutor.theorem_detection_message) and msg['endPos'] is None:
+                        continue # Ignore this error
+                    full_error_msg = self._get_error_msg(msg)
+                    self._error_messages_so_far.add(full_error_msg)
+        if 'env' in response:
+            self._update_env(response['env'])
+        self._env_idx_last_thm = response.get('env', None)
+        return response
+    
+    def _add_last_tactic(self, idx: int, stmt: str):
+        if idx not in self._last_tactics:
+            self._last_tactics[idx] = stmt
+            self._last_tactic_line_idx = idx
+
+    def _get_cmd_tactic_mode(self, idx: int, stmt: str):
+        self._add_last_tactic(idx, stmt)
+        tactics_so_far = [(k, v) for k, v in self._last_tactics.items()]
+        tactics_so_far = sorted(tactics_so_far, key=lambda x: x[0])
+        tactics_so_far = [v for _, v in tactics_so_far]
+        if self._env_idx_last_thm is None:
+            return {"cmd": "\n".join(tactics_so_far)}
+        else:
+            return {"cmd": "\n".join(tactics_so_far), "env": self._env_idx_last_thm}
+
+    def _backtrack_tactic_line(self, idx: int):
+        for i in range(idx, self._last_tactic_line_idx, -1):
+            if i in self._last_tactics:
+                del self._last_tactics[i]
+        self._last_tactic_line_idx = max(self._last_tactics.keys(), default=None) 
+
+    def _clear_tacitcs(self):
+        tactics_so_far = [(k, v) for k, v in self._last_tactics.items()]
+        tactics_so_far = sorted(tactics_so_far, key=lambda x: x[0])
+        tactics_so_far = [v for _, v in tactics_so_far]
+        self._write_lean_file(self._last_tactic_line_idx, "\n".join(tactics_so_far))
+        self._last_tactics = {}
+        self._last_tactic_line_idx = None
+        pass
+
     def _run_stmt_on_lean_server(self, idx : int, stmt: str, theorem_started: bool = False):
-        always_use_file = True
-        self.use_file = always_use_file
         if "sorry" in stmt and self._proof_running:
             # We don't need to run the sorry statements. This should be treated as a failed proof step
             self.lean_error_messages = ["The tactic 'sorry' was found in the statement, this is not allowed"]
@@ -520,7 +594,7 @@ class Lean4SyncExecutor:
             self.lean_error_messages = ["There is no tactic in the statement, it is just empty line or whitespace"]
             return
         proof_should_run = False
-        if theorem_started or (not self._proof_running and self._stmt_has_lemma(stmt)):
+        if theorem_started or (not self._proof_running and self._stmt_has_lemma(idx, stmt, do_full_check = True)):
             proof_should_run = self._should_start_proof(stmt)
             if proof_should_run:
                 theorem_name, theorem_stmt, full_stmt = self._last_theorem
@@ -533,74 +607,40 @@ class Lean4SyncExecutor:
                 self.local_theorem_lemma_description[theorem_name] = full_stmt
         if not self._proof_running and not proof_should_run:
             return
-        # if proof_should_run:
-        #     # We need to augment the statement with a sorry
-        #     self._remove_proof_add_sorry()
         env_idx = self._get_env(idx)
         cmd_was_executed = False
-        use_file = self.use_file or always_use_file
         response = None
         while not cmd_was_executed:
-            if not self._proof_running:
-                # Run the statement in cmd mode
-                if not use_file:
-                    cmd = {"cmd": self._content_till_last_theorem_stmt}
-                else:
-                    # This might be due to not being able to sync with text
-                    if self._file_handle is None:
-                        self._file_handle = open(self.temp_file_full_path, "a+")
-                    self._last_file_seek = self._file_handle.tell()
-                    self._line_num_seek_map[idx] = self._last_file_seek
-                    self._file_handle.write(self._content_till_last_theorem_stmt)
-                    self._file_handle.flush()
-                    # with open(self.temp_file_full_path, "a") as f:
-                    #     f.write(self._content_till_last_theorem_stmt)
-                    cmd = {"path": self.temp_file_full_path}
-                self._content_till_last_theorem_stmt = None
-            else:
-                # Run the statement in tactic mode
-                last_proof_state_idx = self._last_proof_state_idx
-                if use_file:
-                    if self._file_handle is None:
-                        self._file_handle = open(self.temp_file_full_path, "a+")
-                    self._last_file_seek = self._file_handle.tell()
-                    self._line_num_seek_map[idx] = self._last_file_seek
-                    if not stmt.endswith("\n"):
-                        stmt += "\n"
-                    self._file_handle.write(stmt)
-                    self._file_handle.flush()
-                    # with open(self.temp_file_full_path, "a") as f:
-                    #     f.write(stmt)
-                    cmd = {"path": self.temp_file_full_path}
-                else:
-                    assert last_proof_state_idx is not None, "Proof state index is not set"
-                    cmd = {"tactic": stmt, "proofState": last_proof_state_idx}
-            if env_idx is not None:
+            # Run the statement in tactic mode
+            if self._env_idx_last_thm is None:
+                self._env_idx_last_thm = env_idx
+            if self.process_interace.is_rebooted():
+                self._run_file_on_lean_server(self.timeout_in_sec * 4)
+            cmd = self._get_cmd_tactic_mode(idx, stmt)
+            if env_idx is not None and 'env' not in cmd:
                 cmd["env"] = env_idx
             self.process_interace.send_command(cmd)
+            self._content_till_last_theorem_stmt = None
             timed_out = False
             try:
                 timed_out_in_secs = self.timeout_in_sec
-                if use_file:
-                    timed_out_in_secs *= 4 # File can be big and take time
                 response = self.process_interace.read_response(timed_out_in_secs)
                 relevant_messages = []
-                if 'messages' in response and (use_file or ('proofState' not in response and 'sorries' not in response)):
+                if 'messages' in response:
                     messages = response['messages']
                     # Go over all sev after the line number and check if there is an error
                     for msg in messages:
                         if msg['severity'] == 'error' and 'pos' in msg and 'endPos' in msg and \
-                        ((msg['endPos'] is not None and 'line' in msg['endPos'] and msg['endPos']['line'] >= idx + 1) or \
-                         (msg['pos'] is not None and 'line' in msg['pos'] and msg['pos']['line'] >= idx + 1)):
+                        ((msg['endPos'] is not None and 'line' in msg['endPos']) or \
+                         (msg['pos'] is not None and 'line' in msg['pos'])):
                             if msg['data'].startswith(Lean4SyncExecutor.theorem_detection_message) and msg['endPos'] is None:
                                 continue # Ignore this error
+                            full_error_msg = self._get_error_msg(msg)
+                            if full_error_msg in self._error_messages_so_far:
+                                continue
+                            self._error_messages_so_far.add(full_error_msg)
                             relevant_messages.append(msg)
-                    sevierities = [msg['severity'] for msg in messages]
-                    if 'error' in sevierities:
-                        cmd_was_executed = use_file
-                        use_file = True
-                    else:
-                        cmd_was_executed = True
+                    cmd_was_executed = True
                 elif 'message' in response and 'proofState' not in response and 'sorries' not in response:
                     self.lean_error_messages = [response['message']]
                     cmd_was_executed = True # There is an irrecoverable error
@@ -618,8 +658,7 @@ class Lean4SyncExecutor:
                 if not self.suppress_error_log:
                     self.logger.error(f"Got an exception while running '{stmt}' on lean. File name: {self.main_file}")
                     self.logger.exception(f"Exception Log")
-                cmd_was_executed = use_file # This will force it to run at most twice
-                use_file = True
+                cmd_was_executed = True
                 if cmd_was_executed:
                     raise
         if timed_out:
@@ -632,6 +671,9 @@ class Lean4SyncExecutor:
             else:
                 env_idx = None
             self._update_env(env_idx)
+            if self._env_idx_last_thm is None and not self._proof_running:
+                # self._add_last_tactic(idx, last_content)
+                self._env_idx_last_thm = env_idx
             proof_running = 'sorries' in response or 'proofState' in response
             error_messages = response.get('message', None)
             goal_text = None
@@ -692,6 +734,8 @@ class Lean4SyncExecutor:
                         self.proof_context = None
                         self.curr_lemma = None
                         self.curr_lemma_name = None
+                        self._clear_tacitcs()
+                        self._env_idx_last_thm = None
                 else:
                     self.proof_context = None
         pass
@@ -708,7 +752,7 @@ class Lean4SyncExecutor:
                 break
             self.current_stmt = stmt
             self.line_num += 1
-            if self._stmt_has_lemma(stmt):
+            if self._stmt_has_lemma(self.line_num - 1, stmt):
                 proof_should_run = self._should_start_proof(stmt)
                 if proof_should_run:
                     thm_name, thm_stmt, full_thm_stmt = self._last_theorem
@@ -718,19 +762,17 @@ class Lean4SyncExecutor:
                         orig_thm_started = self._theorem_started
                         self._theorem_started = True
                         self._content_till_last_theorem_stmt = '\n'.join(self._lines_executed)
-                        if self._stmt_has_lemma(stmt, do_full_check=True):
+                        if self._stmt_has_lemma(self.line_num - 1, stmt, do_full_check=True):
                             self._run_stmt_on_lean_server(len(self._lines_executed), stmt, theorem_started=True)
                         else:
                             found_theorem = False
                             self._theorem_started = orig_thm_started
-                    elif thm_name is not None:
-                        if len(thm_name) == 0:
+                    else:
+                        if thm_name is None or len(thm_name) == 0:
                             self._anon_theorem_count += 1
                             thm_name = f"anon_theorem____{self._anon_theorem_count}"
                         self.local_file_lemmas[thm_name] = thm_stmt
                         self.local_theorem_lemma_description[thm_name] = full_thm_stmt
-                        self._content_till_last_theorem_stmt = None
-                    else:
                         self._content_till_last_theorem_stmt = None
             self._lines_executed.append(stmt)
         if not found_theorem:
@@ -905,15 +947,7 @@ if __name__ == "__main__":
     with Lean4SyncExecutor(main_file=mathlib_test_file, project_root=project_root, timeout_in_sec=120) as executor:
         executor._skip_to_theorem("one_bits")
         assert executor.proof_context is not None, "Proof context should be present"
-        print("Starting the proof")
-        for goal in executor.proof_context.all_goals:
-            for hyp in goal.hypotheses:
-                print(hyp)
-            print('-'*10)
-            print(goal.goal)
-        while not executor.execution_complete and executor.proof_context is not None:
-            executor.run_next()
-            print("Current statement:", executor.current_stmt)
+        while not executor.execution_complete:
             if executor.proof_context is not None:
                 for goal in executor.proof_context.all_goals:
                     for hyp in goal.hypotheses:
@@ -921,5 +955,10 @@ if __name__ == "__main__":
                     print('-'*10)
                     print(goal.goal)
                 print('-'*20)
+            executor.run_next()
+            print("Current statement:", executor.current_stmt)
+            if executor.proof_context is None:
+                print("Proof finished")
+                break
             if executor.lean_error_messages:
                 print("Error messages:\n", executor.lean_error_messages)
