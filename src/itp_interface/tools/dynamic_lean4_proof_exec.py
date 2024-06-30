@@ -92,7 +92,7 @@ class DynamicProofExecutor(Lean4SyncExecutor):
         assert coq_context_helper is not None, "coq_context_helper must not be None"
         self.proof_file = proof_file
         self.context_type = context_type
-        self.lean_file_iter = LeanLineByLineReader(proof_file).instruction_step_generator() if proof_file is not None else instruction_iter
+        self.lean_file_iter = LeanLineByLineReader(proof_file, remove_comments=True, no_strip=True).instruction_step_generator() if proof_file is not None else instruction_iter
         self.tactic_switch_iterator = IntertwinedIterator(self.lean_file_iter)
         self.run_state = DynamicProofExecutor.RunState()
         self.logger = None
