@@ -665,6 +665,13 @@ class Lean4SyncExecutor:
                             self._error_messages_so_far.add(full_error_msg)
                             self._errors_since_last_thm(idx, full_error_msg)
                             relevant_messages.append(msg)
+                        elif msg['severity'] == 'warning' and 'pos' in msg and 'endPos' in msg and 'sorry' in msg['data']:
+                            full_error_msg = self._get_error_msg(msg)
+                            if full_error_msg in self._error_messages_so_far:
+                                continue
+                            self._error_messages_so_far.add(full_error_msg)
+                            self._errors_since_last_thm(idx, full_error_msg)
+                            relevant_messages.append(msg)
                     cmd_was_executed = True
                 elif 'message' in response and 'proofState' not in response and 'sorries' not in response:
                     self.lean_error_messages = [response['message']]
@@ -934,17 +941,9 @@ if __name__ == "__main__":
     theorems_similar_to_test = get_theorem_name_resembling(file_path, "Lean4Proj2.test", use_cache=True)
     print("Theorem similar to ", "Lean4Proj2.test", " is ", theorems_similar_to_test)
     # project_root = 'data/test/Mathlib/'
-    # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Analysis/SpecificLimits/Normed.lean'
-    # theorems_similar_to_test = get_theorem_name_resembling(file_path, "tendsto_pow_const_mul_const_pow_of_abs_lt_one", use_cache=True)
-    # project_root = 'data/test/Mathlib/'
     # theorem_name = 'diag_injective'
     # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Data/Sym/Sym2.lean'
-    # theorem_name = 'pow_add_period_smul'
-    # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Dynamics/PeriodicPts.lean'
-    # theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
-    # theorem_name = 'putnam_1994_a1'
-    # file_path = 'data/test/lean4_proj/Lean4Proj/putnam.lean'
-    # theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
+    theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
     with Lean4SyncExecutor(main_file=file_path, project_root=project_root) as executor:
         executor._skip_to_theorem(theorems_similar_to_test)
         proof_exec = False
