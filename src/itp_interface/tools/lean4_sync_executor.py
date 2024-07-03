@@ -804,7 +804,7 @@ class Lean4SyncExecutor:
                 proof_should_run = self._should_start_proof(stmt)
                 if proof_should_run:
                     thm_name, thm_stmt, full_thm_stmt = self._last_theorem
-                    last_namespace = self._namespaces[-1] if len(self._namespaces) > 0 else ""
+                    last_namespace = ".".join(self._namespaces) if len(self._namespaces) > 0 else ""
                     if thm_name is not None and thm_name == given_theorem_name and (len(thm_namespace) == 0 or thm_namespace == last_namespace):
                         found_theorem = True
                         orig_thm_started = self._theorem_started
@@ -957,9 +957,9 @@ if __name__ == "__main__":
     theorems_similar_to_test = get_theorem_name_resembling(file_path, "Lean4Proj2.test", use_cache=True)
     print("Theorem similar to ", "Lean4Proj2.test", " is ", theorems_similar_to_test)
     # project_root = 'data/test/Mathlib/'
-    # theorem_name = 'lcm_comm'
-    # file_path = 'data/test/Mathlib/temp.lean'
-    theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
+    # theorem_name = 'MeasureTheory.SimpleFunc.nearestPtInd_succ'
+    # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/MeasureTheory/Function/SimpleFuncDense.lean'
+    # theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
     with Lean4SyncExecutor(main_file=file_path, project_root=project_root) as executor:
         executor._skip_to_theorem(theorems_similar_to_test)
         proof_exec = False
