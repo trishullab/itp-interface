@@ -446,7 +446,7 @@ class Lean4SyncExecutor:
             stmt_before_theorem = full_stmt[:last_span_start]
             if len(stmt_before_theorem.strip()) > 0 and do_full_check:
                 # We need to run the statement before the theorem
-                self._execute_till_last_theorem(idx, stmt_before_theorem)
+                self._execute_till_last_theorem(0, stmt_before_theorem)
                 self._content_till_last_theorem_stmt = self._content_till_last_theorem_stmt[last_span_start:]
                 last_span_end -= last_span_start
                 full_stmt = full_stmt[last_span_start:]
@@ -954,11 +954,12 @@ if __name__ == "__main__":
     print("Theorem similar to ", "Turing.TM1to1.tr_supports", " is ", theorems_similar_to_test)
     project_root = 'data/test/lean4_proj/'
     file_path = 'data/test/lean4_proj/Lean4Proj/Basic.lean'
-    theorems_similar_to_test = get_theorem_name_resembling(file_path, "Lean4Proj2.test", use_cache=True)
+    theorem_name = "Lean4Proj2.test"
+    theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
     print("Theorem similar to ", "Lean4Proj2.test", " is ", theorems_similar_to_test)
     # project_root = 'data/test/Mathlib/'
-    # theorem_name = 'MeasureTheory.SimpleFunc.nearestPtInd_succ'
-    # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/MeasureTheory/Function/SimpleFuncDense.lean'
+    # theorem_name = 'tendsto_pow_const_mul_const_pow_of_abs_lt_one'
+    # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Analysis/SpecificLimits/Normed.lean'
     # theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
     with Lean4SyncExecutor(main_file=file_path, project_root=project_root) as executor:
         executor._skip_to_theorem(theorems_similar_to_test)
