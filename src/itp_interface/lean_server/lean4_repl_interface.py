@@ -44,7 +44,7 @@ class ProcessInterface:
         # Check if the process is still running
         if not self.process_is_running():
             raise Exception("Process is not running.")
-        json_command = json.dumps(command_dict, ensure_ascii=True) + '\n\n'
+        json_command = json.dumps(command_dict, ensure_ascii=False) + '\n\n'
         normalized_command = json_command.replace('\r\n', '\n')  # Normalize newlines
         os.write(self.master, normalized_command.encode('utf-8'))  # Send command to process
         self.logger.debug(f"Sent: {normalized_command}")
