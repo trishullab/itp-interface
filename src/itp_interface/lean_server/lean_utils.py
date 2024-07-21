@@ -2,13 +2,13 @@
 
 import sys
 
-from itp_interface.lean_server.lean_context import Obligation, ProofContext
 root_dir = f"{__file__.split('itp_interface')[0]}"
 if root_dir not in sys.path:
     sys.path.append(root_dir)
 import os
 import re
 import typing
+from itp_interface.lean_server.lean_context import Obligation, ProofContext
 
 class Lean3Utils:
     lean_internal_lib_cmd = "elan which lean"
@@ -18,6 +18,9 @@ class Lean3Utils:
     goal_regex = rf"([\s|\S]*?){proof_context_separator}([\s|\S]*)"
 
     def remove_comments(text: str) -> str:
+        # NOTE: This will ONLY work correctly if the comments are well-formed
+        # we will need stack based parsing to handle incomplete comments, this faster
+        # when we know that the file compiles
         # Remove comments
         #1. First remove all nested comments
         #2. Then remove all single line comments

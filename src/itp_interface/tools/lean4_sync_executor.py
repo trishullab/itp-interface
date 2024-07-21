@@ -11,6 +11,7 @@ import re
 import time
 import json
 import typing
+import uuid
 from itp_interface.lean_server.lean_context import ProofContext
 from itp_interface.lean_server.lean4_utils import Lean4Utils
 from itp_interface.tools.lean_parse_utils import LeanLineByLineReader
@@ -619,6 +620,41 @@ class Lean4SyncExecutor:
         self._error_messages_since_last_thm = {}
         pass
 
+    def get_all_proofs_in_file(self) -> List[str]:
+        assert self.main_file is not None, "Main file is not provided"
+        abs_main_file = os.path.abspath(self.main_file)
+        self.process_interace.send_command({"path": abs_main_file, "allTactics": True})
+        response = self.process_interace.read_response(self.timeout_in_sec*20)
+        tactics_resp = response.get('tactics', [])
+        # Parse all goals in these tactics
+        goals = [self._parse_proof_context([t['goals']]) for t in tactics_resp]
+        tactics = [t['tactic'] for t in tactics_resp]
+        line_nums = [t['pos']['line'] for t in tactics_resp]
+        line_num_dx = 0
+        result = {}
+        thm_id = uuid.uuid4().hex
+        thm_cnt = 0
+        with open(abs_main_file, "r") as f:
+            lines = f.readlines()
+            for idx, line in enumerate(lines):
+                if "theorem" in line:
+                    thm_id = uuid.uuid4().hex + f"_{thm_cnt}"
+                    thm_cnt += 1
+                while line_num_dx < len(line_nums) and line_nums[line_num_dx] == idx + 1:
+                    if thm_id not in result:
+                        result[thm_id] = [
+                        {
+                            "tactic": tactics[line_num_dx],
+                            "goals": goals[line_num_dx]
+                        }]
+                    else:
+                        result[thm_id].append({
+                            "tactic": tactics[line_num_dx],
+                            "goals": goals[line_num_dx]
+                        })
+                    line_num_dx += 1
+        return result
+
     def _run_stmt_on_lean_server(self, idx : int, stmt: str, theorem_started: bool = False):
         if "sorry" in stmt and self._proof_running:
             # We don't need to run the sorry statements. This should be treated as a failed proof step
@@ -961,6 +997,9 @@ if __name__ == "__main__":
     # theorem_name = 'tendsto_pow_const_mul_const_pow_of_abs_lt_one'
     # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Analysis/SpecificLimits/Normed.lean'
     # theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
+    with Lean4SyncExecutor(main_file=file_path, project_root=project_root) as executor:
+        all_proofs = executor.get_all_proofs_in_file()
+        print(all_proofs)
     with Lean4SyncExecutor(main_file=file_path, project_root=project_root) as executor:
         executor._skip_to_theorem(theorems_similar_to_test)
         proof_exec = False
