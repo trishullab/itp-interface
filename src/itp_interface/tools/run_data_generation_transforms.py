@@ -17,9 +17,11 @@ from itp_interface.tools.training_data import TrainingData
 from itp_interface.tools.coq_build_tool import CoqRepoBuilder
 from itp_interface.tools.coq_executor import CoqExecutor
 from itp_interface.tools.lean_cmd_executor import Lean3Executor
+from itp_interface.tools.lean4_sync_executor import Lean4SyncExecutor
 from itp_interface.tools.isabelle_executor import IsabelleExecutor
 from itp_interface.tools.coq_local_data_generation_transform import LocalDataGenerationTransform as CoqLocalDataGenerationTransform
 from itp_interface.tools.lean_local_data_generation_transform import LocalDataGenerationTransform as LeanLocalDataGenerationTransform
+from itp_interface.tools.lean4_local_data_generation_transform import Local4DataGenerationTransform as Lean4LocalDataGenerationTransform
 from itp_interface.tools.isabelle_local_data_generation_transform import LocalDataGenerationTransform as IsabelleLocalDataGenerationTransform
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
 
@@ -112,12 +114,16 @@ class RunDataGenerationTransforms(object):
             search_lean_exec = Lean3Executor(project_path, None, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
             search_lean_exec.__enter__()
             return search_lean_exec
+        def _print_lean4_callback():
+            search_lean4_exec = Lean4SyncExecutor(project_path, None, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
+            search_lean4_exec.__enter__()
+            return search_lean4_exec
         def _print_isabelle_callback():
             nonlocal port
             search_isabelle_exec = IsabelleExecutor(project_path, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error, port=port)
             search_isabelle_exec.__enter__()
             return search_isabelle_exec
-        if isinstance(transform, CoqLocalDataGenerationTransform) or isinstance(transform, LeanLocalDataGenerationTransform) or isinstance(transform, IsabelleLocalDataGenerationTransform):
+        if isinstance(transform, CoqLocalDataGenerationTransform) or isinstance(transform, LeanLocalDataGenerationTransform) or isinstance(transform, IsabelleLocalDataGenerationTransform) or isinstance(transform, Lean4LocalDataGenerationTransform):
             if isinstance(transform, IsabelleLocalDataGenerationTransform) and transform.ray_resource_pool is not None:
                 # This is a blocking call
                 port = ray.get(transform.ray_resource_pool.wait_and_acquire.remote(1))[0]
@@ -129,6 +135,10 @@ class RunDataGenerationTransforms(object):
                     exec = Lean3Executor(project_path, None, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
                 elif isinstance(transform, IsabelleLocalDataGenerationTransform):
                     exec = IsabelleExecutor(project_path, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error, port=port)
+                elif isinstance(transform, Lean4LocalDataGenerationTransform):
+                    exec = Lean4SyncExecutor(project_path, None, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
+                else:
+                    raise Exception("Unknown transform")
                 with exec:
                     project_id = project_path # project_path.replace('/', '.')
                     if isinstance(transform, CoqLocalDataGenerationTransform):
@@ -137,6 +147,8 @@ class RunDataGenerationTransforms(object):
                         transform(training_data, project_id, exec, _print_lean_callback, theorems, other_args)
                     elif isinstance(transform, IsabelleLocalDataGenerationTransform):
                         transform(training_data, project_id, exec, _print_isabelle_callback, theorems, other_args)
+                    elif isinstance(transform, Lean4LocalDataGenerationTransform):
+                        transform(training_data, project_id, exec, _print_lean4_callback, theorems, other_args)
                     else:
                         raise Exception("Unknown transform")
             finally:

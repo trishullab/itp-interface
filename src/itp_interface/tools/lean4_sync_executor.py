@@ -620,7 +620,7 @@ class Lean4SyncExecutor:
         self._error_messages_since_last_thm = {}
         pass
 
-    def get_all_proofs_in_file(self) -> List[str]:
+    def get_all_proofs_in_file(self) -> Dict[str, List[Tuple[ProofContext, str]]]:
         assert self.main_file is not None, "Main file is not provided"
         abs_main_file = os.path.abspath(self.main_file)
         self.process_interace.send_command({"path": abs_main_file, "allTactics": True})
@@ -642,16 +642,9 @@ class Lean4SyncExecutor:
                     thm_cnt += 1
                 while line_num_dx < len(line_nums) and line_nums[line_num_dx] == idx + 1:
                     if thm_id not in result:
-                        result[thm_id] = [
-                        {
-                            "tactic": tactics[line_num_dx],
-                            "goals": goals[line_num_dx]
-                        }]
+                        result[thm_id] = [(goals[line_num_dx], tactics[line_num_dx])]
                     else:
-                        result[thm_id].append({
-                            "tactic": tactics[line_num_dx],
-                            "goals": goals[line_num_dx]
-                        })
+                        result[thm_id].append((goals[line_num_dx], tactics[line_num_dx]))
                     line_num_dx += 1
         return result
 

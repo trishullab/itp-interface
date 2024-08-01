@@ -7,7 +7,7 @@ if root_dir not in sys.path:
 
 import logging
 import typing
-from itp_interface.tools.lean4_sync_executor import Lean4SyncExecutor
+from itp_interface.tools.lean4_sync_executor import Lean4SyncExecutor, ProofContext
 from itp_interface.tools.training_data_format import Goal, LemmaRefWithScore, LemmaReferences, TrainingDataFormat
 from typing import List
 
@@ -29,6 +29,10 @@ class Lean4ContextHelper(object):
     def get_focussed_goals(self, lean_executor: Lean4SyncExecutor) -> List[Goal]:
         # Only consider the foreground goals because we can handle the multi-line tactics
         return [Goal(hypotheses=goal.hypotheses, goal=goal.goal) for goal in lean_executor.proof_context.fg_goals]
+
+    def get_focussed_goals_from_proof_context(self, proof_context: ProofContext) -> List[Goal]:
+        # Only consider the foreground goals because we can handle the multi-line tactics
+        return [Goal(hypotheses=goal.hypotheses, goal=goal.goal) for goal in proof_context.fg_goals]
     
     def get_unfocussed_goals(self, lean_executor: Lean4SyncExecutor) -> List[Goal]:
         # Only consider the foreground goals because we can handle the multi-line tactics
