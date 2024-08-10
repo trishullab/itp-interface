@@ -14,6 +14,9 @@ class Lean4Utils:
     theorem_lemma_search_regex = re.compile(r"(theorem|lemma) ([\w+|\d+]*) ([\S|\s]*?):=")
     proof_context_separator = "⊢"
     proof_context_regex = r"((\d+) goals)*((case [\S]+(\n|\n\n))*[\s|\S]*?)\n\n"
+    proof_context_regex_cmp = re.compile(proof_context_regex)
+    proof_context_regex2 = r"((\d+) goals)*((case [\S]+(\n|\n\n))*[\s|\S]*?)\ncase [\S]+"
+    proof_context_regex2_cmp = re.compile(proof_context_regex2)
     goal_regex = rf"([\s|\S]*?){proof_context_separator}([\s|\S]*)"
 
     def remove_comments(text: str) -> str:
@@ -146,12 +149,26 @@ class Lean4Utils:
             return ProofContext.empty()
         proof_context_str = proof_context_str.strip()
         proof_context_str += "\n\n"
-        all_matches = re.findall(Lean4Utils.proof_context_regex, proof_context_str, re.MULTILINE)
+        all_matches = Lean4Utils.proof_context_regex_cmp.findall(proof_context_str)  # re.findall(Lean4Utils.proof_context_regex, proof_context_str, re.MULTILINE)
         goal_strs = []
         for match in all_matches:
             goal_str = match[2]
             goal_str = goal_str.strip()
-            goal_strs.append(goal_str)
+            goal_has_multiple_goals = True
+            while goal_has_multiple_goals:
+                match_goal = Lean4Utils.proof_context_regex2_cmp.match(goal_str)
+                if match_goal is not None:
+                    goal_sub_str = match_goal.group(3)
+                    goal_strs.append(goal_sub_str)
+                    _, span_end = match_goal.span(3)
+                    goal_str = goal_str[span_end:]
+                    goal_str = goal_str.strip()
+                    if len(goal_str) == 0:
+                        goal_has_multiple_goals = False
+                else:
+                    goal_strs.append(goal_str)
+                    goal_has_multiple_goals = False
+            # goal_strs.append(goal_str)
         goals = []
         # try:
         for goal_str in goal_strs:

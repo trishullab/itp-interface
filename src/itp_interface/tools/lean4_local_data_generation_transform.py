@@ -42,23 +42,20 @@ class Local4DataGenerationTransform(GenericTrainingDataGenerationTransform):
         lean_context_helper.__enter__()
         file_namespace = lean_executor.main_file.replace('/', '.')
         self.logger.info(f"=========================Processing {file_namespace}=========================")
-        proof_running = False
-        cmd_ran = lean_executor.run_next()
-        cmd_exec = lean_executor.current_stmt
         prev_goal : typing.List[Goal] = lean_context_helper.get_focussed_goals(lean_executor) if lean_executor.is_in_proof_mode() else []
-        line_number = lean_executor.line_num
-        lemma_name = lean_executor.get_lemma_name_if_running()
-        if lemma_name is None:
-            lemma_name = "__NONE__"
         theorem_id = str(uuid.uuid4())
         proof_id = theorem_id
         theorems = set(theorems) if theorems is not None else None
         proofs = lean_executor.get_all_proofs_in_file()
         for thm_id, proof_steps in proofs.items():
+            if theorems is not None and thm_id not in theorems:
+                self.logger.info(f"Skipping lemma [{thm_id}] as it is not in the list of theorems to process")
+                continue
             self.logger.info(f"Processing lemma [{thm_id}]")
-            for goal, proof_step in proof_steps:
-                prev_goal : typing.List[Goal] = [Goal(goal.hypotheses, goal.goal) for goal in prev_goal]
-                next_goal : typing.List[Goal] = lean_context_helper.get_focussed_goals_from_proof_context(goal)
+            for idx, (goal, proof_step) in enumerate(proof_steps):
+                prev_goal : typing.List[Goal] = lean_context_helper.get_focussed_goals_from_proof_context(goal)
+                next_g = proof_steps[idx+1][0] if idx+1 < len(proof_steps) else None
+                next_goal : typing.List[Goal] = lean_context_helper.get_focussed_goals_from_proof_context(next_g) if next_g is not None else []
                 if len(prev_goal) > 0:
                     training_data_format = TrainingDataFormat(
                         proof_id=thm_id,
@@ -73,7 +70,6 @@ class Local4DataGenerationTransform(GenericTrainingDataGenerationTransform):
                         project_id=project_id)
                     assert len(training_data_format.proof_steps) > 0, f"Proof steps cannot be empty for {proof_id}"
                     training_data.merge(training_data_format)
-                    prev_goal = next_goal
             prev_goal = []
             
         self.logger.info(f"===============Finished processing {file_namespace}=====================")
@@ -88,8 +84,8 @@ if __name__ == "__main__":
     import logging
     import time
     os.chdir(root_dir)
-    project_dir = "data/test/lean_proj"
-    file_name = "data/test/lean_proj/src/simple_solved.lean"
+    project_dir = 'data/test/lean4_proj/'
+    file_name = 'data/test/lean4_proj/Lean4Proj/Basic.lean'
     project_id = project_dir.replace('/', '.')
     time_str = time.strftime("%Y%m%d-%H%M%S")
     output_path = f".log/local_data_generation_transform/data/{time_str}"
@@ -100,16 +96,16 @@ if __name__ == "__main__":
     logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger(__name__)
     def _print_lean_executor_callback():
-        search_lean_exec = Lean3Executor(project_root=project_dir, main_file=file_name, use_human_readable_proof_context=True, suppress_error_log=True)
+        search_lean_exec = Lean4SyncExecutor(main_file=file_name, project_root=project_dir)
         search_lean_exec.__enter__()
         return search_lean_exec
-    transform = LocalDataGenerationTransform(0, buffer_size=1000)
+    transform = Local4DataGenerationTransform(0, buffer_size=1000)
     training_data = TrainingData(
         output_path, 
         "training_metadata.json",
         training_meta=transform.get_meta_object(), 
         logger=logger)
-    with Lean3Executor(project_root=project_dir, main_file=file_name, use_human_readable_proof_context=True, suppress_error_log=True) as coq_exec:
+    with Lean4SyncExecutor(project_root=project_dir, main_file=file_name, use_human_readable_proof_context=True, suppress_error_log=True) as coq_exec:
         transform(training_data, project_id, coq_exec, _print_lean_executor_callback)
     save_info = training_data.save()
     logger.info(f"Saved training data to {save_info}")

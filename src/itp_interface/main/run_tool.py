@@ -32,7 +32,7 @@ from itp_interface.tools.dynamic_lean_proof_exec import DynamicProofExecutor as 
 from itp_interface.tools.dynamic_lean4_proof_exec import DynamicProofExecutor as DynamicLean4ProofExecutor
 from itp_interface.tools.dynamic_isabelle_proof_exec import DynamicProofExecutor as DynamicIsabelleProofExecutor
 from itp_interface.tools.coq_executor import get_all_lemmas_in_file as get_all_lemmas_coq
-from itp_interface.tools.lean4_sync_executor import get_all_theorems_in_file as get_all_lemmas_lean4, get_fully_qualified_theorem_name as get_fully_qualified_theorem_name_lean4
+from itp_interface.tools.lean4_sync_executor import get_all_theorems_in_file as get_all_lemmas_lean4, get_fully_qualified_theorem_name as get_fully_qualified_theorem_name_lean4, get_theorem_name_resembling as get_theorem_name_resembling_lean4
 from itp_interface.tools.isabelle_executor import get_all_lemmas_in_file as get_all_lemmas_isabelle
 from itp_interface.tools.bin_packing import best_fit_packing
 
@@ -266,7 +266,13 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
                     file_to_theorems[file.path] = []
                     file_args[file.path] = {}
                 if isinstance(file.theorems, list):
-                    file_to_theorems[file.path].extend(file.theorems)
+                    # if language is Lean4 then change the theorem names to fully qualified names
+                    if experiment.benchmark.language == ProofAction.Language.LEAN4:
+                        full_file_path = os.path.join(dataset.project, file.path)
+                        theorems_in_file = [get_theorem_name_resembling_lean4(full_file_path, theorem, use_cache=True) for theorem in file.theorems]
+                    else:
+                        theorems_in_file = file.theorems
+                    file_to_theorems[file.path].extend(theorems_in_file)
                 else:
                     discover_log_file = os.path.join(log_dir, f"discover{idx}_{file_idx}.log")
                     timed_exec = TimedRayExec.remote(get_all_lemmas, kwargs=dict(
