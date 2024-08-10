@@ -25,4 +25,17 @@ export PATH="/home/$USER/.opam/default/bin:$PATH"
 export PATH="/home/$USER/.elan/bin:$PATH"
 ```
 
-7. The experiments are not necessarily thread safe. So, it is recommended to run them sequentially. The commands to run the desired experiments can be found in the file `./src/main/config/experiments.yaml`.
+7. You need to run the following command to generate sample proof step data for Lean 4:
+```
+python src/itp_interface/main/run_tool.py --config-name simple_lean_data_gen
+```
+Check the `simple_lean_data_gen.yaml` configuration in the `src/itp_interface/configs` directory for more details. These config files are based on the `hydra` library (see (here)[https://hydra.cc/docs/intro/]).
+
+8. You need to run the following command to generate sample proof step data for Coq:
+```
+python src/itp_interface/main/run_tool.py --config-name simple_coq_data_gen
+```
+Check the `simple_coq_data_gen.yaml` configuration in the `src/itp_interface/configs` directory for more details.
+
+## Important Notes:
+The ITP projects must be built before running proof step data generation. Make sure that the switch is set correctly while generating data for Coq projects because the Coq projects can be using different versions of Coq. Instructions for Coq project setup are listed in `src/itp_interface/main/config/repo/coq_repos.yaml` file.
