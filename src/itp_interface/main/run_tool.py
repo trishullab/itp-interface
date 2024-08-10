@@ -21,6 +21,7 @@ from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
 from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
 from itp_interface.tools.coq_local_data_generation_transform import LocalDataGenerationTransform as CoqLocalDataGenerationTransform
 from itp_interface.tools.lean_local_data_generation_transform import LocalDataGenerationTransform as LeanLocalDataGenerationTransform
+from itp_interface.tools.lean4_local_data_generation_transform import Local4DataGenerationTransform
 from itp_interface.tools.isabelle_local_data_generation_transform import LocalDataGenerationTransform as IsabelleLocalDataGenerationTransform
 from itp_interface.tools.run_data_generation_transforms import RunDataGenerationTransforms
 from itp_interface.tools.log_utils import setup_logger
@@ -31,7 +32,7 @@ from itp_interface.tools.dynamic_lean_proof_exec import DynamicProofExecutor as 
 from itp_interface.tools.dynamic_lean4_proof_exec import DynamicProofExecutor as DynamicLean4ProofExecutor
 from itp_interface.tools.dynamic_isabelle_proof_exec import DynamicProofExecutor as DynamicIsabelleProofExecutor
 from itp_interface.tools.coq_executor import get_all_lemmas_in_file as get_all_lemmas_coq
-from itp_interface.tools.lean4_sync_executor import get_all_theorems_in_file as get_all_lemmas_lean4, get_fully_qualified_theorem_name as get_fully_qualified_theorem_name_lean4
+from itp_interface.tools.lean4_sync_executor import get_all_theorems_in_file as get_all_lemmas_lean4, get_fully_qualified_theorem_name as get_fully_qualified_theorem_name_lean4, get_theorem_name_resembling as get_theorem_name_resembling_lean4
 from itp_interface.tools.isabelle_executor import get_all_lemmas_in_file as get_all_lemmas_isabelle
 from itp_interface.tools.bin_packing import best_fit_packing
 
@@ -217,6 +218,13 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
                     buffer_size=experiment.run_settings.buffer_size, 
                     logger=logger)
                 os.makedirs(clone_dir, exist_ok=True)
+            elif experiment.benchmark.language == ProofAction.Language.LEAN4:
+                transform = Local4DataGenerationTransform(
+                    experiment.run_settings.dep_depth, 
+                    max_search_results=experiment.run_settings.max_search_results, 
+                    buffer_size=experiment.run_settings.buffer_size, 
+                    logger=logger)
+                clone_dir = None
             elif experiment.benchmark.language == ProofAction.Language.COQ:
                 only_proof_state = experiment.env_settings.retrieval_strategy == ProofEnvReRankStrategy.NO_RE_RANK
                 transform = CoqLocalDataGenerationTransform(
@@ -258,7 +266,13 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
                     file_to_theorems[file.path] = []
                     file_args[file.path] = {}
                 if isinstance(file.theorems, list):
-                    file_to_theorems[file.path].extend(file.theorems)
+                    # if language is Lean4 then change the theorem names to fully qualified names
+                    if experiment.benchmark.language == ProofAction.Language.LEAN4:
+                        full_file_path = os.path.join(dataset.project, file.path)
+                        theorems_in_file = [get_theorem_name_resembling_lean4(full_file_path, theorem, use_cache=True) for theorem in file.theorems]
+                    else:
+                        theorems_in_file = file.theorems
+                    file_to_theorems[file.path].extend(theorems_in_file)
                 else:
                     discover_log_file = os.path.join(log_dir, f"discover{idx}_{file_idx}.log")
                     timed_exec = TimedRayExec.remote(get_all_lemmas, kwargs=dict(

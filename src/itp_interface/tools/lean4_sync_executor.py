@@ -12,6 +12,8 @@ import time
 import json
 import typing
 import uuid
+import bisect
+import shutil
 from itp_interface.lean_server.lean_context import ProofContext
 from itp_interface.lean_server.lean4_utils import Lean4Utils
 from itp_interface.tools.lean_parse_utils import LeanLineByLineReader
@@ -620,40 +622,60 @@ class Lean4SyncExecutor:
         self._error_messages_since_last_thm = {}
         pass
 
-    def get_all_proofs_in_file(self) -> List[str]:
+    def get_all_proofs_in_file(self) -> Dict[str, List[Tuple[ProofContext, str]]]:
         assert self.main_file is not None, "Main file is not provided"
         abs_main_file = os.path.abspath(self.main_file)
-        self.process_interace.send_command({"path": abs_main_file, "allTactics": True})
-        response = self.process_interace.read_response(self.timeout_in_sec*20)
-        tactics_resp = response.get('tactics', [])
-        # Parse all goals in these tactics
-        goals = [self._parse_proof_context([t['goals']]) for t in tactics_resp]
-        tactics = [t['tactic'] for t in tactics_resp]
-        line_nums = [t['pos']['line'] for t in tactics_resp]
-        line_num_dx = 0
-        result = {}
-        thm_id = uuid.uuid4().hex
-        thm_cnt = 0
-        with open(abs_main_file, "r") as f:
-            lines = f.readlines()
-            for idx, line in enumerate(lines):
-                if "theorem" in line:
-                    thm_id = uuid.uuid4().hex + f"_{thm_cnt}"
-                    thm_cnt += 1
-                while line_num_dx < len(line_nums) and line_nums[line_num_dx] == idx + 1:
-                    if thm_id not in result:
-                        result[thm_id] = [
-                        {
-                            "tactic": tactics[line_num_dx],
-                            "goals": goals[line_num_dx]
-                        }]
-                    else:
-                        result[thm_id].append({
-                            "tactic": tactics[line_num_dx],
-                            "goals": goals[line_num_dx]
-                        })
-                    line_num_dx += 1
-        return result
+        assert os.path.exists(abs_main_file), f"Main file does not exist at {abs_main_file}"
+        assert abs_main_file.endswith(".lean"), "Main file must be a '.lean' file"
+        temp_file = os.path.join(self.project_root, self.temp_filename_suffix)
+        abs_temp_file = os.path.abspath(temp_file)
+        # Copy the file to a temporary file
+        shutil.copyfile(abs_main_file, abs_temp_file)
+        try:
+            abs_main_file = abs_temp_file
+            # Remove all the comments from the file
+            line_by_line_reader = LeanLineByLineReader(abs_main_file, remove_comments=True, no_strip=True)
+            all_stmts = list(line_by_line_reader.instruction_step_generator())
+            new_content = "\n".join(all_stmts)
+            with open(abs_main_file, "w") as f:
+                f.write(new_content)
+            # Run the file on the lean server
+            self.process_interace.send_command({"path": abs_main_file, "allTactics": True})
+            response = self.process_interace.read_response(self.timeout_in_sec*20)
+            tactics_resp = response.get('tactics', [])
+            # Parse all goals in these tactics
+            goals = [self._parse_proof_context([t['goals']]) for t in tactics_resp]
+            tactics = [t['tactic'] for t in tactics_resp]
+            line_nums = [t['pos']['line'] for t in tactics_resp]
+            line_num_dx = 0
+            result = {}
+            thm_id = uuid.uuid4().hex
+            thm_cnt = 0
+            all_theorems = get_all_theorems_in_file(abs_main_file, use_cache = True)
+            line_to_thm_map : typing.Dict[int, TheoremDetails] = {}
+            for thm_detail in all_theorems:
+                line_num = thm_detail.theorem_pos['line_start']
+                line_to_thm_map[line_num] = thm_detail
+            with open(abs_main_file, "r") as f:
+                lines = f.readlines()
+                for idx, line in enumerate(lines):
+                    if Lean4SyncExecutor.theorem_start_match.match(line):
+                        thm_detail = line_to_thm_map.get(idx + 1, None)
+                        if thm_detail is not None:
+                            thm_id = get_fully_qualified_theorem_name(thm_detail)
+                        else:
+                            thm_id = uuid.uuid4().hex + f"_{thm_cnt}"
+                        thm_cnt += 1
+                    while line_num_dx < len(line_nums) and line_nums[line_num_dx] == idx + 1:
+                        if thm_id not in result:
+                            result[thm_id] = [(goals[line_num_dx], tactics[line_num_dx])]
+                        else:
+                            result[thm_id].append((goals[line_num_dx], tactics[line_num_dx]))
+                        line_num_dx += 1
+            return result
+        finally:
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
 
     def _run_stmt_on_lean_server(self, idx : int, stmt: str, theorem_started: bool = False):
         if "sorry" in stmt and self._proof_running:
@@ -913,6 +935,10 @@ def get_all_theorems_in_file(file_path: str, use_cache: bool=False) -> List[Theo
         file_content = f.read()
     line_by_line_reader = LeanLineByLineReader(file_content=file_content, remove_comments=True, no_strip=True)
     all_stmts = list(line_by_line_reader.instruction_step_generator())
+    line_positions = [0] + [len(stmt) + 1 for stmt in all_stmts]
+    # Cumulative sum of the line positions
+    for i in range(1, len(line_positions)):
+        line_positions[i] += line_positions[i - 1]
     full_content = '\n'.join(all_stmts)
     # all_matches = Lean4SyncExecutor.theorem_match.findall(full_content)
     all_matches = list(Lean4SyncExecutor.theorem_match.finditer(full_content))
@@ -924,7 +950,21 @@ def get_all_theorems_in_file(file_path: str, use_cache: bool=False) -> List[Theo
         theorem_name = match.group(5)
         theorem_name = theorem_name if theorem_name is not None else f"\"{match.group(6).strip(': ')}\""
         theorem_namespace = '.'.join(open_namespaces) if len(open_namespaces) > 0 else ''
-        theorem_details = TheoremDetails(theorem_name=theorem_name, theorem_namespace=theorem_namespace, theorem_file_path=file_path)
+        line_number_start = bisect.bisect_left(line_positions, span_start)
+        line_number_end = bisect.bisect_left(line_positions, span_end)
+        theorem_pos = {
+            'line_start': line_number_start + 1,
+            'line_end': line_number_end + 1,
+            'global_pos_start': span_start,
+            'global_pos_end': span_end,
+            'line_pos_start': span_start - line_positions[line_number_start] if line_number_start < len(line_positions) else 0,
+            'line_pos_end': span_end - line_positions[line_number_end] if line_number_end < len(line_positions) else 0
+        }
+        theorem_details = TheoremDetails(
+            theorem_name=theorem_name, 
+            theorem_namespace=theorem_namespace, 
+            theorem_file_path=file_path, 
+            theorem_pos=theorem_pos)
         all_theorems.append(theorem_details)
         last_namespace_processed_idx = span_end
     if use_cache:
@@ -993,10 +1033,11 @@ if __name__ == "__main__":
     theorem_name = "Lean4Proj2.test"
     theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
     print("Theorem similar to ", "Lean4Proj2.test", " is ", theorems_similar_to_test)
-    # project_root = 'data/test/Mathlib/'
-    # theorem_name = 'tendsto_pow_const_mul_const_pow_of_abs_lt_one'
+    project_root = 'data/test/Mathlib/'
+    theorem_name = 'WeierstrassCurve.Jacobian.equiv_of_Z_eq_zero'
     # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Analysis/SpecificLimits/Normed.lean'
-    # theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
+    file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/AlgebraicGeometry/EllipticCurve/Jacobian.lean'
+    theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
     with Lean4SyncExecutor(main_file=file_path, project_root=project_root) as executor:
         all_proofs = executor.get_all_proofs_in_file()
         print(all_proofs)
