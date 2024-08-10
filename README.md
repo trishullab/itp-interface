@@ -29,7 +29,7 @@ export PATH="/home/$USER/.elan/bin:$PATH"
 ```
 python src/itp_interface/main/run_tool.py --config-name simple_lean_data_gen
 ```
-Check the `simple_lean_data_gen.yaml` configuration in the `src/itp_interface/configs` directory for more details. These config files are based on the `hydra` library (see (here)[https://hydra.cc/docs/intro/]).
+Check the `simple_lean_data_gen.yaml` configuration in the `src/itp_interface/configs` directory for more details. These config files are based on the `hydra` library (see [here](https://hydra.cc/docs/intro/)).
 
 8. You need to run the following command to generate sample proof step data for Coq:
 ```
