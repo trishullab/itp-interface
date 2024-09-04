@@ -56,15 +56,20 @@ def filter_dataset(dataset, metafilename, output, keywords, max_parallelism=8, l
     logger.info(f"Loaded {dataset}.")
     logger.info(f"Start filtering {dataset} ...")
     skipped_cnt = 0
+    total_data_points = 0
     for tdf in training_data:
-        if skipped_cnt % 100 == 0:
+        if total_data_points % 100 == 0 and total_data_points != 0:
             logger.info(f"Skipped {skipped_cnt} data points.")
         if filter_keyword(tdf, keywords):
             skipped_cnt += 1
-            continue
-        filtered_td.merge(tdf)
-    if skipped_cnt % 100 != 0:
-        logger.info(f"Skipped {skipped_cnt} data points.")
+        else:
+            filtered_td.merge(tdf)
+        total_data_points += 1
+    logger.info(f"In total, skipped {skipped_cnt} data points.")
+    logger.info(f"Total data points: {total_data_points}")
+    logger.info(f"Total proof steps: {metadata.total_proof_step_cnt}")
+    logger.info(f"Lenght of filtered dataset: {len(filtered_td)}")
+    logger.info(f"Length of training data: {len(training_data)}")
     logger.info("Finished filtering dataset.")
     logger.info(f"Start saving filtered dataset to {output} ...")
     filtered_td.save()
@@ -95,8 +100,8 @@ if __name__ == "__main__":
     os.environ["PYTHONPATH"] = f"{root_dir}:{os.environ.get('PYTHONPATH', '')}"
     os.makedirs(args.output, exist_ok=True)
     time_str = time.strftime("%Y-%m-%d_%H-%M-%S")
-    log_folder = os.path.join(".log", "merge_dataset", time_str)
+    log_folder = os.path.join(".log", "filter_dataset", time_str)
     os.makedirs(log_folder, exist_ok=True)
-    logger = setup_logger("dataset_merge", os.path.join(log_folder, "merge.log"))
+    logger = setup_logger("dataset_filter", os.path.join(log_folder, "filter.log"))
     filter_dataset(args.dataset, args.metafilename, args.output, args.filter_keywords, args.max_parallelism, logger)
     print(args)
