@@ -57,43 +57,24 @@ elan toolchain install $lean_repo:$lean_version
 elan override set $lean_repo:$lean_version
 echo "Installed $lean_type ($lean_repo:$lean_version) successfully!"
 export PATH=$PATH:$HOME/.elan/bin
-echo "Installing OCaml (opam)..."
-opam init -a --compiler=4.07.1
-eval `opam config env`
-opam update
-# # For Coq:
-echo "Installing Coq..."
-opam pin add coq 8.10.2
-opam pin -y add menhir 20190626
-# # For SerAPI:
-echo "Installing SerAPI (for interacting with Coq from Python)..."
-opam install -y coq-serapi
-echo "Installing Dpdgraph (for generating dependency graphs)..."
-opam repo add coq-released https://coq.inria.fr/opam/released
-opam install -y coq-dpdgraph
-# Python dependencies
-echo "Installing Python dependencies..."
-$pip_exe install --user -r requirements.txt
 echo "Clone all git submodules..."
 git submodule update --init --recursive
 echo "Cloned all git submodules successfully!"
-echo "Building Coq projects..."
-(
-    # Build CompCert
-    echo "Building CompCert..."
-    echo "This may take a while... (don't underestimate the time taken to build CompCert, meanwhile you can take a coffee break!)"
-    pushd ./src/data/benchmarks
-    set -euv
-    cd CompCert
-    if [[ ! -f "Makefile.config" ]]; then
-        ./configure x86_64-linux
-    fi
-    make -j `nproc`
-    popd
-    echo "CompCert built successfully!"
-    # Ignore some proofs in CompCert
-    # ./src/scripts/patch_compcert.sh
-) || exit 1
+echo "Building Coq's CompCert project..."
+pushd ./src/data/benchmarks
+echo "Installing Coq switch..."
+opam switch create CompCert 4.07.1
+eval $(opam env --switch=CompCert --set-switch)
+opam repo add coq-released https://coq.inria.fr/opam/released
+eval `opam config env`
+opam pin -yn add coq 8.10.2
+opam pin -yn add menhir 20190626
+opam install -y coq-serapi coq menhir
+if [[ ! -f "CompCert/Makefile.config" ]]; then
+     (cd CompCert && ./configure x86_64-linux)
+fi
+make -C CompCert -j `nproc`
+popd
 echo "Building Coq's Simple Benchmark..."
 pushd ./src/data/test/coq/custom_group_theory
 cd theories
@@ -102,6 +83,10 @@ cd ..
 popd
 echo "Building Coq's Simple Benchmark done!"
 echo "Coq's Setup complete!"
+
+# Python dependencies
+echo "Installing Python dependencies..."
+$pip_exe install --user -r requirements.txt
 
 # Only build Lean's Simple Benchmark if Lean 3 is selected
 if [[ $lean_type == "lean" ]]; then
@@ -168,76 +153,76 @@ fi
 
 # Download Isabelle
 # First check if Isabelle is already installed
-default_isabelle_dir="$HOME/Isabelle2022" # Don't change this, otherwise PISA will not work
-issabell_installed=false
-if [[ -d "$default_isabelle_dir" ]]; then
-    echo "Isabelle is already installed at $default_isabelle_dir"
-    echo "If you want to reinstall Isabelle, please delete the directory $default_isabelle_dir and run this script again"
-    issabell_installed=true
-fi
-# Else download Isabelle
-if [[ $issabell_installed == false ]]; then
-    echo "Installing SDKMAN..."
-    curl -s "https://get.sdkman.io" | bash
-    echo "Installed SDKMAN successfully!"
-    echo "Installing Java 11 and SBT..."
-    source $HOME/.sdkman/bin/sdkman-init.sh
-    sdk install java 11.0.11-open
-    echo "Installed Java 11 successfully!"
-    echo "Installing SBT..."
-    sdk install sbt
-    echo "Installed SBT successfully!"
-    echo "Downloading Isabelle..."
-    wget https://isabelle.in.tum.de/website-Isabelle2022/dist/Isabelle2022_linux.tar.gz
-    echo "Downloaded Isabelle successfully!"
-    echo "Extracting Isabelle..."
-    # Extract Isabelle in the $default_isabelle_dir
-    tar -xzf Isabelle2022_linux.tar.gz -C $HOME
-    echo "Installed Isabelle successfully!"
-    echo "Cleaning up..."
-    rm Isabelle2022_linux.tar.gz
-    echo "Cleaned up!"
-    echo "Adding Isabelle to PATH..."
-    export PATH=$PATH:$default_isabelle_dir/bin
-    echo "export PATH=$PATH:$default_isabelle_dir/bin" >> ~/.bashrc
-    isabelle build -b -D $default_isabelle_dir/src/HOL/ -j 20
-fi
-pushd src/itp_interface/pisa
-sbt compile
-sbt assembly
-popd
-echo "Isabelle Setup complete!"
+# default_isabelle_dir="$HOME/Isabelle2022" # Don't change this, otherwise PISA will not work
+# issabell_installed=false
+# if [[ -d "$default_isabelle_dir" ]]; then
+#     echo "Isabelle is already installed at $default_isabelle_dir"
+#     echo "If you want to reinstall Isabelle, please delete the directory $default_isabelle_dir and run this script again"
+#     issabell_installed=true
+# fi
+# # Else download Isabelle
+# if [[ $issabell_installed == false ]]; then
+#     echo "Installing SDKMAN..."
+#     curl -s "https://get.sdkman.io" | bash
+#     echo "Installed SDKMAN successfully!"
+#     echo "Installing Java 11 and SBT..."
+#     source $HOME/.sdkman/bin/sdkman-init.sh
+#     sdk install java 11.0.11-open
+#     echo "Installed Java 11 successfully!"
+#     echo "Installing SBT..."
+#     sdk install sbt
+#     echo "Installed SBT successfully!"
+#     echo "Downloading Isabelle..."
+#     wget https://isabelle.in.tum.de/website-Isabelle2022/dist/Isabelle2022_linux.tar.gz
+#     echo "Downloaded Isabelle successfully!"
+#     echo "Extracting Isabelle..."
+#     # Extract Isabelle in the $default_isabelle_dir
+#     tar -xzf Isabelle2022_linux.tar.gz -C $HOME
+#     echo "Installed Isabelle successfully!"
+#     echo "Cleaning up..."
+#     rm Isabelle2022_linux.tar.gz
+#     echo "Cleaned up!"
+#     echo "Adding Isabelle to PATH..."
+#     export PATH=$PATH:$default_isabelle_dir/bin
+#     echo "export PATH=$PATH:$default_isabelle_dir/bin" >> ~/.bashrc
+#     isabelle build -b -D $default_isabelle_dir/src/HOL/ -j 20
+# fi
+# pushd src/itp_interface/pisa
+# sbt compile
+# sbt assembly
+# popd
+# echo "Isabelle Setup complete!"
 
-echo "ITP Interface Setup complete!"
+# echo "ITP Interface Setup complete!"
 
-echo "Building AFP"
-afp_installed_built=false
-if [[ -d "$afp_folder" ]]; then
-    echo "AFP is already installed at $afp_folder"
-    echo "If you want to reinstall AFP, please delete the directory $afp_folder and run this script again"
-    afp_installed_built=true
-fi
+# echo "Building AFP"
+# afp_installed_built=false
+# if [[ -d "$afp_folder" ]]; then
+#     echo "AFP is already installed at $afp_folder"
+#     echo "If you want to reinstall AFP, please delete the directory $afp_folder and run this script again"
+#     afp_installed_built=true
+# fi
 
-afp_version="2022-12-06"
-if [[ $afp_installed_built == false ]]; then
-    mkdir -p $afp_folder
-    echo "Downloading AFP..."
-    wget https://www.isa-afp.org/release/afp-$afp_version.tar.gz
-    echo "Downloaded AFP successfully!"
-    echo "Extracting AFP..."
-    # Extract AFP in the $afp_folder
-    tar -xzf afp-$afp_version.tar.gz -C $afp_folder
-    echo "Extracted AFP successfully!"
-    echo "Cleaning up..."
-    afp_name=$(ls $afp_folder)
-    export AFP="$afp_folder/$afp_name/thys"
-    echo "$AFP"
-    rm afp-$afp_version.tar.gz
-    echo "Cleaned up!"
-    echo "Building AFP..."
-    export ISABELLE_BUILD_OPTIONS="timeout=3600"
-    export ML_OPTIONS="--maxheap 10000"
-    isabelle build -b -D $AFP -j 35
-fi
+# afp_version="2022-12-06"
+# if [[ $afp_installed_built == false ]]; then
+#     mkdir -p $afp_folder
+#     echo "Downloading AFP..."
+#     wget https://www.isa-afp.org/release/afp-$afp_version.tar.gz
+#     echo "Downloaded AFP successfully!"
+#     echo "Extracting AFP..."
+#     # Extract AFP in the $afp_folder
+#     tar -xzf afp-$afp_version.tar.gz -C $afp_folder
+#     echo "Extracted AFP successfully!"
+#     echo "Cleaning up..."
+#     afp_name=$(ls $afp_folder)
+#     export AFP="$afp_folder/$afp_name/thys"
+#     echo "$AFP"
+#     rm afp-$afp_version.tar.gz
+#     echo "Cleaned up!"
+#     echo "Building AFP..."
+#     export ISABELLE_BUILD_OPTIONS="timeout=3600"
+#     export ML_OPTIONS="--maxheap 10000"
+#     isabelle build -b -D $AFP -j 35
+# fi
 
-echo "AFP Setup complete!"
+# echo "AFP Setup complete!"
