@@ -104,7 +104,7 @@ def get_all_lemmas(
     logger.info(f"Discovered {len(lemmas_to_prove)} lemmas")
     return lemmas_to_prove
 
-def partition_data(project_to_theorems: typing.Dict[str, typing.Dict[str, typing.List[str]]], partition: typing.List[float], logger: logging.Logger):
+def partition_data(project_to_theorems: typing.Dict[str, typing.Dict[str, typing.List[str]]], partition: typing.List[float], logger: logging.Logger, seed: int = 0xf00, random_split: bool = False):
         train_project_to_theorems = {}
         eval_project_to_theorems = {}
         test_project_to_theorems = {}
@@ -135,26 +135,56 @@ def partition_data(project_to_theorems: typing.Dict[str, typing.Dict[str, typing
         logger.info(f"Total number of files: {len(item_sizes)}")
         logger.info(f"Total number of theorems: {sum(item_sizes)}")
         logger.info(f"Distribution:\n {item_sizes}")
-        bins = best_fit_packing([max_train_cnt, max_eval_cnt, max_test_cnt], item_sizes)
-        bin_item_sizes = [[item_sizes[i] for i in b] for b in bins]
-        bin_sizes = [sum(b) for b in bin_item_sizes]
-        logger.info(f"Expected bin sizes: {max_train_cnt}, {max_eval_cnt}, {max_test_cnt}")
-        logger.info(f"Actual bin sizes: {bin_sizes}")
-        logger.info(f"Bin distribution:\n {bin_item_sizes}")
-        for idx, _bin in enumerate(bins):
-            if idx == 0:
-                partition_project_to_theorems = train_project_to_theorems
-            elif idx == 1:
-                partition_project_to_theorems = eval_project_to_theorems
-            else:
-                partition_project_to_theorems = test_project_to_theorems
-            for item_idx in _bin:
-                proj_file_thms_tuple = proj_file_thms[item_idx]
+        if not random_split:
+            logger.info("Will perform file based partitioning")
+            bins = best_fit_packing([max_train_cnt, max_eval_cnt, max_test_cnt], item_sizes)
+            bin_item_sizes = [[item_sizes[i] for i in b] for b in bins]
+            bin_sizes = [sum(b) for b in bin_item_sizes]
+            logger.info(f"Expected bin sizes: {max_train_cnt}, {max_eval_cnt}, {max_test_cnt}")
+            logger.info(f"Actual bin sizes: {bin_sizes}")
+            logger.info(f"Bin distribution:\n {bin_item_sizes}")
+            for idx, _bin in enumerate(bins):
+                if idx == 0:
+                    partition_project_to_theorems = train_project_to_theorems
+                elif idx == 1:
+                    partition_project_to_theorems = eval_project_to_theorems
+                else:
+                    partition_project_to_theorems = test_project_to_theorems
+                for item_idx in _bin:
+                    proj_file_thms_tuple = proj_file_thms[item_idx]
+                    if proj_file_thms_tuple.project not in partition_project_to_theorems:
+                        partition_project_to_theorems[proj_file_thms_tuple.project] = {}
+                    if proj_file_thms_tuple.file not in partition_project_to_theorems[proj_file_thms_tuple.project]:
+                        partition_project_to_theorems[proj_file_thms_tuple.project][proj_file_thms_tuple.file] = []
+                    partition_project_to_theorems[proj_file_thms_tuple.project][proj_file_thms_tuple.file].extend(proj_file_thms_tuple.theorems)
+        else:
+            logger.info("Will perform random partitioning")
+            logger.info(f"Seed: {seed}")
+            logger.info(f"Total number of theorems: {total_thm_cnt}")
+            logger.info(f"Expected division Train: {max_train_cnt}, Eval: {max_eval_cnt}, Test: {max_test_cnt}")
+            # Convert proj_file_thms to a flat list with one theorem per entry
+            proj_file_thms_flat = [proj_file_to_theorems_named_tuple(p.project, p.file, [thm]) for p in proj_file_thms for thm in p.theorems]
+            np.random.seed(seed)
+            np.random.shuffle(proj_file_thms_flat)
+            train_cnt = 0
+            eval_cnt = 0
+            test_cnt = 0
+            for proj_file_thms_tuple in proj_file_thms_flat:
+                if train_cnt < max_train_cnt:
+                    partition_project_to_theorems = train_project_to_theorems
+                    train_cnt += 1
+                elif eval_cnt < max_eval_cnt:
+                    partition_project_to_theorems = eval_project_to_theorems
+                    eval_cnt += 1
+                else:
+                    partition_project_to_theorems = test_project_to_theorems
+                    test_cnt += 1
                 if proj_file_thms_tuple.project not in partition_project_to_theorems:
                     partition_project_to_theorems[proj_file_thms_tuple.project] = {}
                 if proj_file_thms_tuple.file not in partition_project_to_theorems[proj_file_thms_tuple.project]:
                     partition_project_to_theorems[proj_file_thms_tuple.project][proj_file_thms_tuple.file] = []
                 partition_project_to_theorems[proj_file_thms_tuple.project][proj_file_thms_tuple.file].extend(proj_file_thms_tuple.theorems)
+            logger.info(f"Actual division Train: {train_cnt}, Eval: {eval_cnt}, Test: {test_cnt}")
         return train_project_to_theorems, eval_project_to_theorems, test_project_to_theorems
 
 def create_yaml(project_to_theorems, name, language, output_file):
@@ -306,7 +336,7 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
                 experiment.run_settings.save_intermidiate_transforms, 
                 logger=logger)
         
-        partition_map = partition_data(project_to_theorems, experiment.run_settings.train_eval_test_split, logger)
+        partition_map = partition_data(project_to_theorems, experiment.run_settings.train_eval_test_split, logger, experiment.run_settings.random_seed, experiment.run_settings.random_split)
         for idx, dataset_partition in enumerate(['train', 'eval', 'test']):
             new_output_dir = os.path.join(experiment.run_settings.output_dir, str_time, dataset_partition)
             partition_project_to_theorems = partition_map[idx]

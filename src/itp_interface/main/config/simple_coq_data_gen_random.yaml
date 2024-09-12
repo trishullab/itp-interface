@@ -1,0 +1,17 @@
+defaults:
+  # - benchmark: simple_benchmark_lean_training_data
+  # - run_settings: default_lean_data_generation_transforms
+  # - benchmark: simple_benchmark_1
+  # - run_settings: default_lean4_data_generation_transforms
+  - benchmark: simple_benchmark_1
+  - run_settings: default_coq_data_generation_transforms
+  - env_settings: no_retrieval
+  - override hydra/job_logging: 'disabled'
+
+run_settings:
+  output_dir: .log/data_generation/benchmark/simple_benchmark_1
+  random_split: True
+  train_eval_test_split:
+    - 0.6
+    - 0.2
+    - 0.2

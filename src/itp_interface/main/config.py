@@ -64,6 +64,7 @@ class RunSettings(object):
     should_checkpoint: bool
     max_search_results: typing.Optional[int] = None
     random_seed: int = 42
+    random_split: bool = False
     train_eval_test_split: typing.List[float] = field(default_factory=lambda: [1.0, 0.0, 0.0])
 
 @dataclass_json
@@ -157,6 +158,7 @@ def parse_config(cfg):
         checkpoint_dir=run_settings_cfg["checkpoint_dir"],
         should_checkpoint=run_settings_cfg["should_checkpoint"],
         random_seed=run_settings_cfg["random_seed"],
+        random_split=run_settings_cfg["random_split"],
         train_eval_test_split=run_settings_cfg["train_eval_test_split"])
     benchmark_cfg = cfg["benchmark"]
     datasets_cfg = benchmark_cfg["datasets"]

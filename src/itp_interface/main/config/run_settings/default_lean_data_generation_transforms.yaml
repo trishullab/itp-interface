@@ -17,6 +17,7 @@ render: False
 checkpoint_dir: .log/checkpoints
 should_checkpoint: False
 random_seed: 42
+random_split: False
 train_eval_test_split:
   - 1.0
   - 0.0
