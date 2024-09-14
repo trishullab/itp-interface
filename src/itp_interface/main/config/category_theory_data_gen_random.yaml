@@ -1,0 +1,16 @@
+defaults:
+  # - benchmark: simple_benchmark_lean_training_data
+  # - run_settings: default_lean_data_generation_transforms
+  - benchmark: category-theory
+  - run_settings: default_coq_data_generation_transforms
+  - env_settings: no_retrieval
+  - override hydra/job_logging: 'disabled'
+
+run_settings:
+ output_dir: /mnt/amthakur/data/proofsteps/random/category-theory
+ random_split: True
+ random_seed: 0xf00
+ train_eval_test_split:
+   - 0.925
+   - 0.0375
+   - 0.0375  
