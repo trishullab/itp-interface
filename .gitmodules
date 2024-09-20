@@ -13,3 +13,6 @@
 [submodule "src/itp_interface/tools/repl"]
 	path = src/itp_interface/tools/repl
 	url = https://github.com/amit9oct/repl.git
+[submodule "src/itp_interface/tools/INT"]
+	path = src/itp_interface/tools/INT
+	url = https://github.com/GeorgeTsoukalas/INT
