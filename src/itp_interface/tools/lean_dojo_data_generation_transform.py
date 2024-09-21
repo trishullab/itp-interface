@@ -167,8 +167,8 @@ if __name__ == "__main__":
     import time
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input_json", type=str, default=f".log/benchmarks/leandojo_benchmark_4/leandojo_benchmark_4/random/test.json")
-    parser.add_argument("--output_dir", type=str, default=f"/mnt/amthakur/data/proofsteps/leandojo/random/test")
+    parser.add_argument("--input_json", type=str, default=f".log/benchmarks/leandojo_benchmark_4/leandojo_benchmark_4/random/val.json")
+    parser.add_argument("--output_dir", type=str, default=f"/mnt/amthakur/data/proofsteps/leandojo/random/val")
     args = parser.parse_args()
     os.chdir(root_dir)
     project_dir = "data/test/lean_proj"

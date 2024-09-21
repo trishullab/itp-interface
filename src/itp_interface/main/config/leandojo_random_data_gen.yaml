@@ -7,7 +7,9 @@ defaults:
   - override hydra/job_logging: 'disabled'
 
 run_settings:
- output_dir: /mnt/amthakur/data/proofsteps/leandojo
+ output_dir: /mnt/amthakur/data/proofsteps/leandojo/random
+ random_split: True
+ random_seed: 0xf00
  train_eval_test_split:
    - 0.925
    - 0.0375

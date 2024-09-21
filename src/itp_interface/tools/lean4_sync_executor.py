@@ -68,7 +68,7 @@ class Lean4SyncExecutor:
         assert main_file is None or proof_step_iter is None, \
             "Only one of main_file or proof_step_iter must be provided"
         assert main_file is None or (os.path.exists(main_file) and main_file.endswith(".lean")), \
-            "main_file must be a valid path to a '.lean' file"
+            f"main_file must be a valid path to a '.lean' file ({main_file})"
         assert project_root is None or (os.path.exists(project_root) and os.path.isdir(project_root)), \
             "project_root must be a valid path to a directory"
         assert not use_hammer, "Hammer is not supported for Lean4"

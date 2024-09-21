@@ -2,13 +2,13 @@ name: default_lean4_data_generation_transforms
 use_human_readable: True
 save_intermidiate_transforms: True
 buffer_size: 10000
-pool_size: 20
+pool_size: 8
 transform_type: LOCAL
 dep_depth: 0
 max_search_results:
 output_dir: .log/run_data_generation_transforms/data/train/lean4
 setting_type: Agent
-timeout_in_secs: 60 # coq tactic execution timeout
+timeout_in_secs: 200 # coq tactic execution timeout
 proof_retries: 1
 max_theorems_in_prompt: 7
 max_number_of_episodes: 1
