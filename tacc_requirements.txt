@@ -3,7 +3,7 @@ numpy==1.23.2
 pexpect==4.8.0
 sexpdata==1.0.0
 pampy==0.3.0
-ray==2.4.0
+ray==2.36.0
 pydantic==1.10.13 # Bug with ray 2.4.0 where it is not compatible with pydantic >= 2
 faiss-cpu>=1.6.1
 filelock==3.12.4
