@@ -4,7 +4,6 @@ requires = [
     "dataclasses-json==0.5.7",
     "numpy==1.23.2",
     "pexpect==4.8.0",
-    "sentence-transformers==2.2.2",
     "sexpdata==1.0.0",
     "pampy==0.3.0",
     "ray==2.4.0",
@@ -21,7 +20,7 @@ requires = [
     "editdistance==0.6.2",
     "rank_bm25==0.2.2",
     "parglare==0.16.1",
-    "psutil==6.0.0",
+    "psutil==5.9.8",
     "urllib3>=2.0.7",
     "mathlibtools==1.3.2"
 ]
@@ -34,7 +33,7 @@ authors = [
 ]
 description = "Generic interface for hooking up to any Interactive Theorem Prover (ITP) and collecting data for training ML models for AI in formal theorem proving."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
