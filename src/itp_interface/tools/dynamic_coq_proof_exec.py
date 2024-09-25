@@ -69,14 +69,14 @@ class DynamicProofExecutor(CoqExecutor):
         LocalContext = 1
         BestContext = 2
 
-    def goal_description_compare(description1: str, descripton2: str) -> int:
+    def goal_description_compare(description1: str, description2: str) -> int:
         """
         Returns 1 if description1 < description2, 0 if description1 == description2, -1 if description1 > description2
         """
         # In case of no description it is much more harder as we have to do a lot of work
         # So None will have same value as unfocussed goals
         order1 = DynamicProofExecutor.GoalDescriptionOrder.get(description1, 2) if description1 is not None else 2
-        order2 = DynamicProofExecutor.GoalDescriptionOrder.get(descripton2, 2) if descripton2 is not None else 2
+        order2 = DynamicProofExecutor.GoalDescriptionOrder.get(description2, 2) if description2 is not None else 2
         if order1 < order2:
             return 1
         elif order1 == order2:
