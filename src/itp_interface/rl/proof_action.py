@@ -22,6 +22,7 @@ class ProofAction(Action):
         LEAN = 'LEAN'
         LEAN4 = 'LEAN4'
         ISABELLE = 'ISABELLE'
+        INT = 'INT'
 
         def __str__(self):
             return self.name

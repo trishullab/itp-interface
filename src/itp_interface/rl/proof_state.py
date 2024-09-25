@@ -10,6 +10,7 @@ from itp_interface.tools.dynamic_coq_proof_exec import DynamicProofExecutor as D
 from itp_interface.tools.dynamic_lean_proof_exec import DynamicProofExecutor as DynamicLeanProofExecutor
 from itp_interface.tools.dynamic_lean4_proof_exec import DynamicProofExecutor as DynamicLean4ProofExecutor
 from itp_interface.tools.dynamic_isabelle_proof_exec import DynamicProofExecutor as DynamicIsabelleProofExecutor
+from itp_interface.tools.dynamic_int_proof_exec import DynamicProofExecutor as DynamicINTProofExecutor
 from itp_interface.rl.abstraction import State
 from itp_interface.rl.proof_action import ProofAction
 from itp_interface.tools.training_data_format import TrainingDataFormat
@@ -46,6 +47,8 @@ class ProofState(State):
             desc_cmp = DynamicLean4ProofExecutor.goal_description_compare(self.training_data_format.goal_description, other.training_data_format.goal_description)
         elif self.language == ProofAction.Language.ISABELLE:
             desc_cmp = DynamicIsabelleProofExecutor.goal_description_compare(self.training_data_format.goal_description, other.training_data_format.goal_description)
+        elif self.language == ProofAction.Language.INT:
+            desc_cmp = DynamicINTProofExecutor.goal_description_compare(self.training_data_format.goal_description, other.training_data_format.goal_description)
         else:
             raise NotImplementedError(f"language {self.language} not supported")
         if desc_cmp == 0:
@@ -71,6 +74,8 @@ class ProofState(State):
             FailedProofState = FailedLean4ProofState
         elif self.language == ProofAction.Language.ISABELLE:
             FailedProofState = FailedIsabelleProofState
+        elif self.language == ProofAction.Language.INT:
+            FailedProofState = FailedINTProofState
 
         if __o == FailedProofState: # FailedProofState is the hardest state to reach
             return self.training_data_format == __o.training_data_format
@@ -85,6 +90,9 @@ class ProofState(State):
             desc_cmp = DynamicLean4ProofExecutor.goal_description_compare(self.training_data_format.goal_description, __o.training_data_format.goal_description)
         elif self.language == ProofAction.Language.ISABELLE:
             desc_cmp = DynamicIsabelleProofExecutor.goal_description_compare(self.training_data_format.goal_description, __o.training_data_format.goal_description)
+        elif self.language == ProofAction.Language.INT:
+            raise NotImplementedError
+            desc_cmp = DynamicINTProofExecutor.goal_description_compare(self.training_data_format.goal_description, __o.training_data_format.goal_description)
         else:
             raise NotImplementedError(f"language {self.language} not supported")
         if desc_cmp == 0:
@@ -104,6 +112,8 @@ class ProofState(State):
             FailedProofState = FailedLean4ProofState
         elif self.language == ProofAction.Language.ISABELLE:
             FailedProofState = FailedIsabelleProofState
+        elif self.language == ProofAction.Language.INT:
+            FailedProofState = FailedINTProofState
 
         if self == FailedProofState: # FailedProofState is the hardest state to reach
             return self.training_data_format == __o.training_data_format
@@ -118,6 +128,9 @@ class ProofState(State):
             desc_cmp = DynamicLean4ProofExecutor.goal_description_compare(self.training_data_format.goal_description, __o.training_data_format.goal_description)
         elif self.language == ProofAction.Language.ISABELLE:
             desc_cmp = DynamicIsabelleProofExecutor.goal_description_compare(self.training_data_format.goal_description, __o.training_data_format.goal_description)
+        elif self.language == ProofAction.Language.INT:
+            raise NotImplementedError
+            desc_cmp = DynamicINTProofExecutor.goal_description_compare(self.training_data_format.goal_description, __o.training_data_format.goal_description)
         else:
             raise NotImplementedError(f"language {self.language} not supported")
         if desc_cmp == 0:
@@ -142,6 +155,7 @@ FailedCoqProofState = ProofState(training_data_format=None, language=ProofAction
 FailedLeanProofState = ProofState(training_data_format=None, language=ProofAction.Language.LEAN)
 FailedLean4ProofState = ProofState(training_data_format=None, language=ProofAction.Language.LEAN4)
 FailedIsabelleProofState = ProofState(training_data_format=None, language=ProofAction.Language.ISABELLE)
+FailedINTProofState = ProofState(training_data_format=None, language=ProofAction.Language.INT)
 
 if __name__ == "__main__":
     proof_state = ProofState(training_data_format=None)

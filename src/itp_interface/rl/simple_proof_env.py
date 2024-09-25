@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 
-import sys
+import sys, os
 
 root_dir = f"{__file__.split('itp_interface')[0]}"
 if root_dir not in sys.path:
     sys.path.append(root_dir)
+INT_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../tools/INT'))
+if INT_dir not in sys.path:
+    sys.path.append(INT_dir)
+
 import copy
 import typing
 import logging
 import time
-import os
 import ray
+import pickle
 from itp_interface.rl.proof_tree import ProofSearchResult, ProofTree
 from itp_interface.rl.proof_state import ProofState
 from itp_interface.rl.proof_action import ProofAction
@@ -22,9 +26,11 @@ from itp_interface.tools.dynamic_coq_proof_exec import DynamicProofExecutor as D
 from itp_interface.tools.dynamic_lean_proof_exec import DynamicProofExecutor as DynamicLeanProofExecutor
 from itp_interface.tools.dynamic_lean4_proof_exec import DynamicProofExecutor as DynamicLean4ProofExecutor
 from itp_interface.tools.dynamic_isabelle_proof_exec import DynamicProofExecutor as DynamicIsabelleProofExecutor
+from itp_interface.tools.dynamic_int_proof_exec import DynamicProofExecutor as DynamicINTProofExecutor
 from itp_interface.retrieval.coq_bm25_reranker import CoqBm25ReRanker
 from itp_interface.retrieval.lean3_bm25_reranker import Lean3Bm25ReRanker
 from itp_interface.retrieval.isabelle_bm25_reranker import IsabelleBm25ReRanker
+from typing import Optional, Dict, List, Any
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json
 from enum import Enum
@@ -70,22 +76,24 @@ class ProofEnv(Env):
     def __init__(self, 
         name: str, 
         dynamic_proof_executor_callback: ProofExecutorCallback,
-        lemma_name: str,
+        lemma_name: Optional[str],
+        lemma: Optional[Dict[str, List[Any]]],
         retrieval_strategy: ProofEnvReRankStrategy = ProofEnvReRankStrategy.BM25,
         max_proof_depth: int = 10,
         always_retrieve_thms: bool = False,
         logger : logging.Logger = None):
         assert isinstance(dynamic_proof_executor_callback, ProofExecutorCallback)
-        assert isinstance(lemma_name, str)
+        assert isinstance(lemma_name, str) or lemma is not None
         assert isinstance(max_proof_depth, int)
         assert isinstance(always_retrieve_thms, bool)
         self.dynamic_proof_executor_callback = dynamic_proof_executor_callback
-        self._dynamic_proof_executor : typing.Union[DynamicCoqProofExecutor, DynamicLeanProofExecutor, DynamicIsabelleProofExecutor] = None
+        self._dynamic_proof_executor : typing.Union[DynamicCoqProofExecutor, DynamicLeanProofExecutor, DynamicIsabelleProofExecutor, DynamicINTProofExecutor] = None
         self._loaded = False
         self._history : typing.List[typing.Tuple[ProofState, ProofAction, ProofState, float, bool, ProofEnvInfo]] = []
         self._name = name
         self.max_proof_depth = max_proof_depth
         self.lemma_name = lemma_name
+        self.lemma = lemma
         self.current_proof_depth = 0
         self._p_tree = ProofTree()
         self._possible_failure_paths = 0
@@ -111,6 +119,8 @@ class ProofEnv(Env):
                     ProofEnv._re_ranker = Lean3Bm25ReRanker(language=str(self.language))
                 elif self.language == ProofAction.Language.ISABELLE:
                     ProofEnv._re_ranker = IsabelleBm25ReRanker(language=str(self.language))
+                elif self.language == ProofAction.Language.INT:
+                    ProofEnv._re_ranker = None
                 else:
                     raise NotImplementedError(f"Language {self.language} not implemented")
             self._re_ranker = ProofEnv._re_ranker
@@ -542,6 +552,10 @@ class ProofEnv(Env):
                     _ = list(self._dynamic_proof_executor.run_to_finish_lemma_return_exec())
                     if self._dynamic_proof_executor.execution_complete:
                         break
+        elif isinstance(self._dynamic_proof_executor, DynamicINTProofExecutor):
+            assert self.lemma is not None, 'INT contains no lemma names, must pass theorem object directly.'
+            lemma_found = True
+            self._dynamic_proof_executor._update_proof_state(self.lemma)
         else:
             raise NotImplementedError(f"Proof executor {type(self._dynamic_proof_executor)} not implemented")
 
@@ -600,14 +614,15 @@ if __name__ == "__main__":
         else:
             raise Exception(f"Invalid action type {action_type}")
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    inp = input("Want to run coq, lean, or isabelle env? (Enter 'coq'/'lean'/'lean4'/'isabelle') ")
-    language = ProofAction.Language.COQ
+    inp = input("Want to run coq, lean, isabelle, or int env? (Enter 'coq'/'lean'/'lean4'/'isabelle'/'int') ")
+    language = ProofAction.Language.INT
     if inp == 'coq':
         proof_exec_callback = ProofExecutorCallback(
             project_folder=".",
             file_path="data/test/SimpleAlgebra.v"
         )
         theorem_name = "algb_add_comm"
+        theorem = None
         language = ProofAction.Language.COQ
         always_retrieve_thms = False
         retrieval_strategy = ProofEnvReRankStrategy.BM25
@@ -620,6 +635,7 @@ if __name__ == "__main__":
             keep_local_context=True
         )
         theorem_name = "a_plus_b_a_minus_a"
+        theorem = None
         language = ProofAction.Language.LEAN
         always_retrieve_thms = True
         retrieval_strategy = ProofEnvReRankStrategy.BM25
@@ -633,6 +649,7 @@ if __name__ == "__main__":
             keep_local_context=True
         )
         theorem_name = "test3"
+        theorem = None
         language = ProofAction.Language.LEAN4
         always_retrieve_thms = False
         retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
@@ -644,21 +661,35 @@ if __name__ == "__main__":
             use_hammer=HammerMode.AUTO
         )
         theorem_name = "sqrt_comp"
+        theorem = None
         language = ProofAction.Language.ISABELLE
         always_retrieve_thms = False
         retrieval_strategy = ProofEnvReRankStrategy.BM25
+    elif inp == 'int':
+        proof_exec_callback = ProofExecutorCallback(
+            project_folder="", #(George; 9/24/24): Not needed for INT, but a positional argument.
+            file_path="", #(George; 9/24/24): Not needed for INT, but a positional argument.
+            language=ProofAction.Language.INT,
+            always_use_retrieval=False
+        )
+        with open("/home/gtsoukal/Projects/ProofFusion/thrall/imports/itp-interface/src/itp_interface/tools/INT/data/test_rl/k5_l5_typeNone_20240923_20/problems.pkl", 'rb') as f:
+            problems = pickle.load(f) #(George; 9/24/24): of type List[List[Dict[str, Any]]] where the longer-formed statements are at the end of each entry.
+        theorem_name = None
+        theorem = problems[0][0]
+        retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
+        always_retrieve_thms = False
     else:
-        raise Exception(f"Invalid input {inp} for choosing coq/lean/lean4/isabelle env")
+        raise Exception(f"Invalid input {inp} for choosing coq/lean/lean4/isabelle/int env")
 
     if language == ProofAction.Language.ISABELLE:
         IsabelleExecutor.start_server(port=13000)
     
     try:
-        test_ray = True
+        test_ray = False
         if test_ray:
             logger = logging.getLogger(__name__)
             ray.init()
-            env_actor = ProofEnvActor.remote("test", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms, logger=logger)
+            env_actor = ProofEnvActor.remote("test", proof_exec_callback, lemma_name=theorem_name, lemma=theorem, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms, logger=logger)
             # with env:
             done_id = env_actor.get_done.remote()
             done = ray.get(done_id)
@@ -681,7 +712,7 @@ if __name__ == "__main__":
             # If you wish to explicitly kill the actor, do so after the cleanup
             ray.kill(env_actor)
         else:
-            with ProofEnv("test", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms) as env:
+            with ProofEnv("test", proof_exec_callback, lemma_name=theorem_name, lemma=theorem, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms) as env:
                 done = env.done
                 action = scan_action(language)
                 while action.action_type != ProofAction.ActionType.EXIT and not done:
