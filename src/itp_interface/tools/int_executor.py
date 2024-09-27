@@ -62,11 +62,7 @@ class INTExecutor:
             objectives = observation['observation']['objectives'],
             prove_direction = 'backward'
         )
-        self.proof_context = ProofContext.from_dict({
-            'fg_goals': [{
-                'hypotheses': [''],
-                'goal': self.parser.observation_to_source(observation['observation'])
-        }]})
+        self.proof_context = ProofContext.from_dict(self._modify_state_format(self.parser.observation_to_source(observation['observation'])))
         self._proof_running = True
 
     def run_next(self) -> bool:
@@ -82,11 +78,7 @@ class INTExecutor:
             if self.prover.is_proved():
                 self._proof_running = False
             else:
-                self.proof_context = ProofContext.from_dict({
-                    'fg_goals': [{
-                        'hypotheses': [''],
-                        'goal': self.parser.observation_to_source(self.prover.get_observation())
-                }]})
+                self.proof_context = ProofContext.from_dict(self._modify_state_format(self.parser.observation_to_source(self.prover.get_observation())))
         except:
             if not self.suppress_error_log:
                 logger.error(f"Got an exception while running '{stmt}' on INT.")
@@ -160,6 +152,16 @@ class INTExecutor:
     def get_current_lemma_name(self) -> Optional[str]:
         return ""
     
+    # (George; 9/27/24): While the "Premises" into "hypotheses", it is easier with the current training format
+    # to keep the entire state in 'goal'. 
+    def _modify_state_format(self, state: str) -> Dict[str, Any]:
+        return {
+            'fg_goals': [{
+                'hypotheses' : [],
+                'goal' : f"Premises {state.split('to ')[0]} Goal {state.split('to ')[1]}"
+            }]
+        }
+
     def _check_if_thm_read(self, idx: int, full_stmt: str) -> bool:
         raise NotImplementedError
     
