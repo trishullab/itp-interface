@@ -12,14 +12,17 @@ from itp_interface.tools.coq_context_helper import CoqContextHelper
 from itp_interface.tools.lean_context_helper import Lean3ContextHelper
 from itp_interface.tools.lean4_context_helper import Lean4ContextHelper
 from itp_interface.tools.isabelle_context_helper import IsabelleContextHelper
+from itp_interface.tools.int_context_helper import INTContextHelper
 from itp_interface.tools.coq_executor import CoqExecutor
 from itp_interface.tools.lean_cmd_executor import Lean3Executor
 from itp_interface.tools.lean4_sync_executor import Lean4SyncExecutor
 from itp_interface.tools.isabelle_executor import IsabelleExecutor
+from itp_interface.tools.int_executor import INTExecutor
 from itp_interface.tools.dynamic_coq_proof_exec import DynamicProofExecutor as DynamicCoqProofExecutor
 from itp_interface.tools.dynamic_lean_proof_exec import DynamicProofExecutor as DynamicLeanProofExecutor
 from itp_interface.tools.dynamic_lean4_proof_exec import DynamicProofExecutor as DynamicLean4ProofExecutor
 from itp_interface.tools.dynamic_isabelle_proof_exec import DynamicProofExecutor as DynamicIsabelleProofExecutor
+from itp_interface.tools.dynamic_int_proof_exec import DynamicProofExecutor as DynamicINTProofExecutor
 
 class ProofExecutorCallback(object):
     def __init__(self,
@@ -70,5 +73,9 @@ class ProofExecutorCallback(object):
             search_exec = IsabelleExecutor(self.project_folder, self.file_path, use_hammer=self.use_hammer, timeout_in_sec=self.timeout_in_secs, suppress_error_log=self.suppress_error_log, use_human_readable_proof_context=self.use_human_readable_proof_context, port=self.port)
             isabelle_context_helper = IsabelleContextHelper(search_exec, self.search_depth, logger=self.logger)
             return DynamicIsabelleProofExecutor(isabelle_context_helper, self.project_folder, self.file_path, context_type=DynamicIsabelleProofExecutor.ContextType.BestContext, use_hammer=self.use_hammer, timeout_in_seconds=self.timeout_in_secs, suppress_error_log=self.suppress_error_log, use_human_readable_proof_context=self.use_human_readable_proof_context, port=self.port)
-        else:
+        elif self.language == ProofAction.Language.INT:
+            search_exec = INTExecutor()
+            int_context_helper = INTContextHelper(search_exec, self.search_depth, logger=self.logger)
+            return DynamicINTProofExecutor(int_context_helper, suppress_error_log=self.suppress_error_log)
+        else: 
             raise Exception(f"Unknown context type: {self.context_type}")

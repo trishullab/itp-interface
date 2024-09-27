@@ -10,10 +10,9 @@ import os
 import copy
 import enum
 import logging
-from itp_interface.tools.lean4_sync_executor import Lean4SyncExecutor
-from itp_interface.tools.training_data_format import Goal, TrainingDataFormat
-from itp_interface.tools.lean_parse_utils import LeanLineByLineReader
-from itp_interface.tools.lean_context_helper import Lean3ContextHelper
+from itp_interface.tools.int_executor import INTExecutor
+from itp_interface.tools.training_data_format import Goal, LemmaRefWithScore, LemmaReferences, TrainingDataFormat
+from itp_interface.tools.int_context_helper import INTContextHelper
 
 class IntertwinedIterator(object):
     def __init__(self, iterator: typing.Optional[typing.Iterator[str]] = None):
@@ -51,7 +50,7 @@ class IntertwinedIterator(object):
             self.base_iterator.close()
         pass
 
-class DynamicProofExecutor(Lean4SyncExecutor):
+class DynamicProofExecutor(INTExecutor):
     class RunState(object):
         def __init__(self):
             self.tatics_ran = []
@@ -62,9 +61,9 @@ class DynamicProofExecutor(Lean4SyncExecutor):
     ProofFinishedDescription = "no goals"
     NotInProofModeDescription = "not in proof mode"
     GoalDescriptionOrder = {
-        UnfocussedGoalsDescription: 2, # This more hard
-        ProofFinishedDescription: 1, # This is easier coz proof is almost done
-        NotInProofModeDescription: 0 # This is the easiest as the proof is done
+        UnfocussedGoalsDescription: 2,
+        ProofFinishedDescription: 1,
+        NotInProofModeDescription: 0
     }
     class ContextType(enum.Enum):
         NoContext = 0
@@ -86,25 +85,25 @@ class DynamicProofExecutor(Lean4SyncExecutor):
         else:
             return -1
 
-
-    def __init__(self, coq_context_helper: Lean3ContextHelper, project_folder: str = None, proof_file: str = None, instruction_iter: typing.Optional[str] = None, use_hammer: bool = False, timeout_in_seconds: int = 60, use_human_readable_proof_context: bool = True, suppress_error_log: bool = True, context_type: ContextType = ContextType.NoContext, keep_local_context = False):
-        assert proof_file is None or os.path.exists(proof_file), f"Proof file {proof_file} does not exist"
+    def __init__(self, coq_context_helper: INTContextHelper, project_folder: str = None, proof_file: str = None, instruction_iter: typing.Optional[str] = None, use_hammer: bool = False, timeout_in_seconds: int = 60, use_human_readable_proof_context: bool = True, suppress_error_log: bool = True, context_type: ContextType = ContextType.NoContext, keep_local_context = False):
+        assert proof_file is None
         assert coq_context_helper is not None, "coq_context_helper must not be None"
         self.proof_file = proof_file
         self.context_type = context_type
-        self.lean_file_iter = LeanLineByLineReader(proof_file, remove_comments=True, no_strip=True).instruction_step_generator() if proof_file is not None else instruction_iter
-        self.tactic_switch_iterator = IntertwinedIterator(self.lean_file_iter)
+        self.int_file_iter = instruction_iter
+        self.tactic_switch_iterator = IntertwinedIterator(self.int_file_iter)
         self.run_state = DynamicProofExecutor.RunState()
         self.logger = None
-        self.lean_context_helper = coq_context_helper
-        super().__init__(project_root=project_folder, proof_step_iter=self.tactic_switch_iterator, use_hammer=use_hammer, timeout_in_sec=timeout_in_seconds, use_human_readable_proof_context=use_human_readable_proof_context, suppress_error_log=suppress_error_log, keep_local_context=keep_local_context)
+        self.int_context_helper = coq_context_helper
+        self.line_num = 0
+        super().__init__(proof_step_iter=self.tactic_switch_iterator, timeout_in_sec=timeout_in_seconds)
 
     def __enter__(self):
-        self.lean_context_helper.__enter__()
+        self.int_context_helper.__enter__()
         return super().__enter__()
     
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.lean_context_helper.__exit__(exc_type, exc_val, exc_tb)
+        self.int_context_helper.__exit__(exc_type, exc_val, exc_tb)
         super().__exit__(exc_type, exc_val, exc_tb)
 
     def set_logger(self, logger: logging.Logger):
@@ -116,14 +115,14 @@ class DynamicProofExecutor(Lean4SyncExecutor):
             return []
         if self.proof_context is None:
             return []
-        return self.lean_context_helper.get_focussed_goals(self)
+        return self.int_context_helper.get_focussed_goals(self)
     
     def get_unfocussed_goals(self) -> typing.List[Goal]:
         if not self.is_in_proof_mode():
             return []
         if self.proof_context is None:
             return []
-        return self.lean_context_helper.get_unfocussed_goals(self)
+        return self.int_context_helper.get_unfocussed_goals(self)
 
     def get_current_proof_state_as_training_data(self) -> TrainingDataFormat:
         # get the current goal
@@ -143,32 +142,29 @@ class DynamicProofExecutor(Lean4SyncExecutor):
         else:
             current_goals = self.get_focussed_goals()
             training_data_format = TrainingDataFormat(start_goals=current_goals)
-            if len(self.lean_error_messages) > 0:
-                training_data_format.goal_description = '\n'.join(self.lean_error_messages)
+            if len(self.int_error_messages) > 0:
+                training_data_format.goal_description = '\n'.join(self.int_error_messages)
             else:
                 training_data_format.goal_description = None
         return training_data_format
     
     def get_all_relevant_thms(self) -> TrainingDataFormat:
         training_data_format = self.get_current_proof_state_as_training_data()
-        # self.lean_context_helper.set_all_type_matched_query_result(training_data_format, self, self.logger)
+        # self.int_context_helper.set_all_type_matched_query_result(training_data_format, self, self.logger)
         return training_data_format
     
     def get_all_relevant_thms_within_local_context(self) -> TrainingDataFormat:
         training_data_format = self.get_current_proof_state_as_training_data()
-        self.lean_context_helper.set_local_thms_dfns(training_data_format, self, self.logger)
+        self.int_context_helper.set_local_thms_dfns(training_data_format, self, self.logger)
         return training_data_format
     
     def get_all_relevant_defns(self) -> TrainingDataFormat:
         training_data_format = self.get_current_proof_state_as_training_data()
-        self.lean_context_helper.set_relevant_defns_in_training_data_point(training_data_format, self, self.logger)
+        self.int_context.set_relevant_defns_in_training_data_point(training_data_format, self, self.logger)
         return training_data_format
     
     def get_all_relevant_defns_and_thms(self, should_print_symbol: bool = False, only_local: bool = False, only_proof_state: bool = False) -> TrainingDataFormat:
         training_data_format = self.get_current_proof_state_as_training_data()
-        # self.lean_context_helper.set_relevant_defns_in_training_data_point(training_data_format, self, self.logger)
-        # if not only_proof_state:
-        #     self.lean_context_helper.set_all_type_matched_query_result(training_data_format, self, self.logger)
         return training_data_format
 
     def run_cmds(self, cmds: typing.List[str], raise_exception=False) -> typing.Tuple[int, bool]:
@@ -189,20 +185,21 @@ class DynamicProofExecutor(Lean4SyncExecutor):
 
     def run_tactics(self, tactics: typing.List[str]) -> typing.Tuple[int, bool]:
         tactic_failed = False
-        start_line_num = self.line_num
-        self.run_state.line_tactic_map[self.line_num] = len(self.run_state.tatics_ran)
-        self.run_state.line_proof_context_map[self.line_num] = copy.deepcopy(self.proof_context)
+        # start_line_num = self.line_num
+        # self.run_state.line_tactic_map[self.line_num] = len(self.run_state.tatics_ran)
+        # self.run_state.line_proof_context_map[self.line_num] = copy.deepcopy(self.proof_context)
         for tactic in tactics:
             self.tactic_switch_iterator.set_next_instruction(tactic)
             self.run_next()
             self.run_state.tatics_ran.append(tactic)
-            self.run_state.line_proof_context_map[self.line_num] = copy.deepcopy(self.proof_context)
-        if len(self.lean_error_messages) > 0:
+            self.run_state.line_proof_context_map[self.line_num] = copy.deepcopy(self.proof_context.fg_goals)
+            self.line_num += 1
+        if len(self.int_error_messages) > 0:
             current_thm_name = self.get_lemma_name_if_running()
             assert current_thm_name is not None, "current_thm_name must not be None"
             tactic_failed = True
-            self.run_state.last_exception = '\n'.join(self.lean_error_messages)
-        return start_line_num, not tactic_failed
+            self.run_state.last_exception = '\n'.join(self.int_error_messages)
+        return 0, not tactic_failed
     
     def get_last_exception(self) -> typing.Optional[str]:
         last_exception = self.run_state.last_exception
@@ -212,25 +209,5 @@ class DynamicProofExecutor(Lean4SyncExecutor):
     def skip_to_theorem(self, theorem_name: str):
         self._skip_to_theorem(theorem_name)
 
-    # [TODO] change this for bactracking
     def cancel_tactic_till_line(self, tactic_line_num: int) -> bool:
-        assert tactic_line_num <= self.line_num, "tactic_line_num must be <= self.line_num"
-        assert tactic_line_num >= 0, "tactic_line_num must be >= 0"
-        cancelled_some_tactics = False
-        if tactic_line_num < self.line_num:
-            self._lines_executed = self._lines_executed[:tactic_line_num]
-            state_num = self.run_state.line_tactic_map[tactic_line_num]
-            self.run_state.tatics_ran = self.run_state.tatics_ran[:state_num]
-            self.proof_context = self.run_state.line_proof_context_map[tactic_line_num]
-            line_tactic_map_keys = list(self.run_state.line_tactic_map.keys())
-            for line_num in line_tactic_map_keys:
-                if line_num >= tactic_line_num:
-                    del self.run_state.line_tactic_map[line_num]
-            line_proof_context_map_keys = list(self.run_state.line_proof_context_map.keys())
-            for line_num in line_proof_context_map_keys:
-                if line_num >= tactic_line_num:
-                    del self.run_state.line_proof_context_map[line_num]
-            self.line_num = tactic_line_num
-            cancelled_some_tactics = self._backtrack_tactic_line(tactic_line_num)
-            self._proof_running = self.proof_context is not None
-        return cancelled_some_tactics
+        raise NotImplementedError
