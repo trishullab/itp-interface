@@ -486,8 +486,9 @@ class ProofEnv(Env):
                 self.reset() # To ensure that everything is fine we start again
                 # Run all the current steps in the proof tree
                 self.logger
-                for _, tactic in p_tree.tactics:
-                    self._run_tactics(tactic.proof_steps, self.state, ProofEnvInfo(progress=ProgressState.STARTING))
+                for _tactic_idx, (_, tactic) in enumerate(p_tree.tactics):
+                    _action = p_tree.actions[_tactic_idx]
+                    self._run_tactics(tactic.proof_steps, self.state, _action, ProofEnvInfo(progress=ProgressState.STARTING))
                     # No need to capture in history as the history is already captured
                 self._history = history
                 self.logger.warning("Backtracking failed, resetting the environment and running all the tactics again till two-steps before the backtracked step (hence effectively backtracking!)")
