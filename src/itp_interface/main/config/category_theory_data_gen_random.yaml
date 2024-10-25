@@ -7,10 +7,10 @@ defaults:
   - override hydra/job_logging: 'disabled'
 
 run_settings:
- output_dir: /mnt/amthakur/data/proofsteps/random/category-theory
+ output_dir: /mnt/amthakur/data/proofsteps/random-small-test/category-theory
  random_split: True
  random_seed: 0xf00
  train_eval_test_split:
-   - 0.925
-   - 0.0375
-   - 0.0375  
+   - 0.9625
+   - 0.01875
+   - 0.01875
