@@ -47,7 +47,7 @@ class ProcessInterface:
         json_command = json.dumps(command_dict, ensure_ascii=False) + '\n\n'
         normalized_command = json_command.replace('\r\n', '\n')  # Normalize newlines
         os.write(self.master, normalized_command.encode('utf-8'))  # Send command to process
-        self.logger.debug(f"Sent: {normalized_command}")
+        self.logger.debug(f"Sent:\n{normalized_command}")
         self.sent_commands += normalized_command  # Keep track of normalized sent commands
         time.sleep(0.3) # Wait for the process to process the command
     
@@ -107,7 +107,7 @@ class ProcessInterface:
         try:
             # Attempt to parse the clean buffer as JSON
             response = json.loads(self.buffer)
-            self.logger.debug(f"Received: {response}")
+            self.logger.debug(f"Received:\n{response}")
             self.buffer = ''  # Clear buffer after successful parse
             self._last_reboot += 1
             if self._last_reboot >= self.reboot_every_n_commands:
