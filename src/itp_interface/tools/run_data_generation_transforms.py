@@ -296,6 +296,7 @@ class RunDataGenerationTransforms(object):
             logger=self.logger)
         last_job_idx = 0
         tds = [None]*len(job_spec)
+        num_theorems = 0
         def _create_remotes(job_list):
             remotes = []
             for job in job_list:
@@ -310,8 +311,12 @@ class RunDataGenerationTransforms(object):
             return job_list
 
         def _transform_output(results):
+            nonlocal num_theorems
             for idx, training_data in results:
                 self.logger.info(f"[{transform.name}] Transform finished for [{idx}] {job_spec[idx]}")
+                num_theorems += training_data.meta.num_theorems
+                self.logger.info(f"Number of theorems processed: {training_data.meta.num_theorems}")
+                self.logger.info(f"Number of theorems processed so far: {num_theorems}")
                 tds[idx] = training_data
             process = psutil.Process()
             self.logger.info(f"[{transform.name}] Process Id = {process.pid}, Memory used: {process.memory_info().rss/2**30} GiB")

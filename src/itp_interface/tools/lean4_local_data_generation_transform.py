@@ -47,10 +47,12 @@ class Local4DataGenerationTransform(GenericTrainingDataGenerationTransform):
         proof_id = theorem_id
         theorems = set(theorems) if theorems is not None else None
         proofs = lean_executor.get_all_proofs_in_file()
+        theorem_count = 0
         for thm_id, proof_steps in proofs.items():
             if theorems is not None and thm_id not in theorems:
                 self.logger.info(f"Skipping lemma [{thm_id}] as it is not in the list of theorems to process")
                 continue
+            theorem_count += 1
             self.logger.info(f"Processing lemma [{thm_id}]")
             for idx, (goal, proof_step) in enumerate(proof_steps):
                 prev_goal : typing.List[Goal] = lean_context_helper.get_focussed_goals_from_proof_context(goal)
@@ -71,8 +73,9 @@ class Local4DataGenerationTransform(GenericTrainingDataGenerationTransform):
                     assert len(training_data_format.proof_steps) > 0, f"Proof steps cannot be empty for {proof_id}"
                     training_data.merge(training_data_format)
             prev_goal = []
-            
+        training_data.meta.num_theorems += theorem_count   
         self.logger.info(f"===============Finished processing {file_namespace}=====================")
+        self.logger.info(f"Total theorems processed in this transform: {theorem_count}")
         try:
             lean_context_helper.__exit__(None, None, None)
         except:

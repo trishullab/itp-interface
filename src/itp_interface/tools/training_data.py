@@ -142,6 +142,7 @@ class TrainingData(MergableCollection):
             new_lemma_ref_idx = self.lemma_ref_collection.merge(__o.lemma_ref_collection) # merge lemma references
             for idx in range(len(__o)):
                 self._merge_training_data_format(__o[idx], new_lemma_ref_idx) # merge training data
+            self.meta.num_theorems += __o.meta.num_theorems
             assert (len(__o) > 0 and len(self.training_data_collections[-1]) <= self.meta.training_data_buffer_size) or len(__o) == 0, "Training data buffer size is too large"
         else:
             self._merge_training_data_format(__o, new_lemma_ref_idx)

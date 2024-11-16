@@ -437,6 +437,7 @@ class TrainingDataMetadataFormat(MergableCollection):
     data_filename_suffix: str = ".json"
     lemma_ref_filename_prefix: str = "full_data_lemma_ref"
     lemma_ref_filename_suffix: str = ".json"
+    num_theorems: int = 0
 
     def merge(self, __o: object):
         if not isinstance(__o, TrainingDataMetadataFormat):
@@ -447,6 +448,7 @@ class TrainingDataMetadataFormat(MergableCollection):
         self.total_proof_step_cnt += __o.total_proof_step_cnt
         self.external_theorems_used_cnt += __o.external_theorems_used_cnt
         self.local_theorems_used_cnt += __o.local_theorems_used_cnt
+        self.num_theorems += __o.num_theorems
 
     
     def __len__(self) -> int:
