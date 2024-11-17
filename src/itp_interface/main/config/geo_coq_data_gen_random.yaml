@@ -11,6 +11,6 @@ run_settings:
  random_split: True
  random_seed: 0xf00
  train_eval_test_split:
-   - 0.9625
-   - 0.01875
-   - 0.01875
+   - 0.8500
+   - 0.0439
+   - 0.1061
