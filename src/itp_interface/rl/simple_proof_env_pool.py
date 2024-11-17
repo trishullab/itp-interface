@@ -99,8 +99,8 @@ class ProofEnvPool(object):
     
     def __exit__(self, exc_type, exc_value, traceback):
         self._is_initialized = False
-        cleanup_remotes = [proof_env_actor.cleanup.remote() for proof_env_actor in self._proof_env_pool]
         try:
+            cleanup_remotes = [proof_env_actor.cleanup.remote() for proof_env_actor in self._proof_env_pool]
             ray.get(cleanup_remotes, timeout=10)
         except Exception as e:
             self._logger.error(f"Error cleaning up proof environments: {e}")
