@@ -131,6 +131,49 @@ class Lean4SyncExecutor:
         if self._enable_search:
             pass
         pass
+    
+    def reset(self,
+        proof_step_iter: Optional[Iterator[str]] = None):
+        # Note: We CANNOT reset the main_file_iter as it is a generator
+        assert (proof_step_iter is not None and isinstance(proof_step_iter, Iterator)) or self.main_file is not None, \
+            "Either proof_step_iter must be provided or main_file must be set"
+        self.current_stmt = None
+        self.line_num = 0
+        self.main_file_iter = proof_step_iter if proof_step_iter is not None else self.main_file_iter
+        self.process_interace : ProcessInterface = None
+        self.execution_complete = False
+        self._lines_executed = []
+        self.proof_context : ProofContext = None
+        self.curr_lemma_name : Optional[str] = None
+        self.curr_lemma : Optional[str] = None
+        self.lean_error_messages : List[str] = []
+        self._proof_running = False
+        self._file_content = ""
+        self.local_file_lemmas: OrderedDict[str, str] = OrderedDict()
+        self.local_theorem_lemma_description: OrderedDict[str, str] = OrderedDict()
+        self._proof_start_idx: Optional[int] = None
+        self._import_end_idx: Optional[int] = None
+        self._theorem_started = False
+        self._content_till_last_theorem_stmt = None
+        self._last_theorem = None
+        self._last_env_idx = None
+        self._last_proof_state_idx = None
+        self._line_to_env_idx_map = {}
+        self._line_to_proof_state_idx_map = {}
+        self._anon_theorem_count = 0
+        self._namespaces = []
+        self._last_file_seek = 0
+        self._line_num_seek_map = {}
+        self._file_handle = None
+        self._in_tactic_mode = False
+        self._env_idx_last_thm = None
+        self._last_tactics = {}
+        self._last_tactic_line_idx = None
+        self._error_messages_so_far = set()
+        self._error_messages_since_last_thm = {}
+        if self._enable_search:
+            pass
+        pass
 
     def __enter__(self):
         tools_dir = os.path.dirname(__file__)
@@ -150,12 +193,13 @@ class Lean4SyncExecutor:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        assert self.process_interace is not None, "ProcessInterface is not initialized"
-        self.process_interace.close()
-        try:
-            self.main_file_iter.close() # Close the file handle
-        except:
-            pass
+        if self.process_interace is not None:
+            self.process_interace.close()
+        if self.main_file_iter is not None:
+            try:
+                self.main_file_iter.close() # Close the file handle
+            except:
+                pass
         # delete if the main file is a temporary file
         if self._file_handle is not None:
             self._file_handle.close()
@@ -164,6 +208,16 @@ class Lean4SyncExecutor:
 
     def is_in_proof_mode(self):
         return True if self.proof_context else (len(self.lean_error_messages) > 0) # It is still in proof mode if we encountered a wrong proof
+
+    def dry_run(self) -> bool:
+        try:
+            stmt = next(self.main_file_iter)
+        except StopIteration:
+            self.execution_complete = True
+            return False
+        self.current_stmt = stmt
+        self.line_num += 1
+        return True
 
     def run_next(self) -> bool:
         try:
@@ -460,6 +514,8 @@ class Lean4SyncExecutor:
             for ending in endings:
                 interesting_stmt = full_stmt[:ending] + ' := ' # We need to add ':=' to the end
                 interesting_span = (last_span_start, len(interesting_stmt))
+                # Make sure to remove the last tactic ran and add it again because we are changing the statement
+                self._backtrack_tactic_line(idx)
                 last_thm = self._parse_theorem_stmt(idx, interesting_stmt, do_full_check, interesting_span) 
                 if last_thm is not None:
                     self._content_till_last_theorem_stmt = full_stmt[:last_span_start] + last_thm[2] + ' by\n'
@@ -1037,17 +1093,18 @@ if __name__ == "__main__":
     print("Theorem similar to ", "Lean4Proj2.test", " is ", theorems_similar_to_test)
     project_root = 'data/test/Mathlib/'
     theorem_name = 'WeierstrassCurve.Jacobian.equiv_of_Z_eq_zero'
-    # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Analysis/SpecificLimits/Normed.lean'
     file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/AlgebraicGeometry/EllipticCurve/Jacobian.lean'
+    # theorem_name = 'LieSubmodule.coe_toSubmodule_mk'
+    # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Algebra/Lie/Submodule.lean'
     theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
     date_time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     lean_exec_log_folder = f'.log/lean4_sync_executor/{date_time}'
     os.makedirs(lean_exec_log_folder, exist_ok=True)
     lean_exec_log_file = os.path.join(lean_exec_log_folder, "lean4_sync_executor.log")
     logger = setup_logger("Lean4SyncExecutor", lean_exec_log_file, level=logging.DEBUG, format='')
-    with Lean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger) as executor:
-        all_proofs = executor.get_all_proofs_in_file()
-        print(all_proofs)
+    # with Lean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger) as executor:
+    #     all_proofs = executor.get_all_proofs_in_file()
+    #     print(all_proofs)
     with Lean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger) as executor:
         executor._skip_to_theorem(theorems_similar_to_test)
         proof_exec = False
