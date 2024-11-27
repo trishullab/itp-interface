@@ -534,12 +534,12 @@ class Lean4SyncExecutor:
                     remaining_stmt = None
                 interesting_span = (last_span_start, len(interesting_stmt))
                 # Make sure to remove the last tactic ran and add it again because we are changing the statement
-                if do_full_check:
+                if do_full_check and self.run_exactly():
                     self._backtrack_tactic_line(idx)
                 last_thm = self._parse_theorem_stmt(idx, interesting_stmt, do_full_check, interesting_span) 
                 if last_thm is not None:
                     self._content_till_last_theorem_stmt = full_stmt[:last_span_start] + last_thm[2] + ' by\n'
-                    if remaining_stmt is not None and do_full_check:
+                    if remaining_stmt is not None and do_full_check and self.run_exactly():
                         self._backtrack_tactic_line(idx)
                         self._content_till_last_theorem_stmt = full_stmt[:last_span_start] + last_thm[2] + remaining_stmt
                     break
