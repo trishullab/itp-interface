@@ -1111,23 +1111,23 @@ if __name__ == "__main__":
     print("Theorem similar to ", "Turing.TM1to1.tr_supports", " is ", theorems_similar_to_test)
     project_root = 'data/test/lean4_proj/'
     file_path = 'data/test/lean4_proj/Lean4Proj/Basic.lean'
-    theorem_name = "Lean4Proj2.test"
+    theorem_name = "Lean4Proj2.test3"
     theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
     print("Theorem similar to ", "Lean4Proj2.test", " is ", theorems_similar_to_test)
-    project_root = 'data/test/Mathlib/'
-    theorem_name = 'WeierstrassCurve.Jacobian.equiv_of_Z_eq_zero'
-    file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/AlgebraicGeometry/EllipticCurve/Jacobian.lean'
+    # project_root = 'data/test/Mathlib/'
+    # theorem_name = 'WeierstrassCurve.Jacobian.equiv_of_Z_eq_zero'
+    # theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
+    # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/AlgebraicGeometry/EllipticCurve/Jacobian.lean'
     # theorem_name = 'LieSubmodule.coe_toSubmodule_mk'
     # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Algebra/Lie/Submodule.lean'
-    theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
     date_time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     lean_exec_log_folder = f'.log/lean4_sync_executor/{date_time}'
     os.makedirs(lean_exec_log_folder, exist_ok=True)
     lean_exec_log_file = os.path.join(lean_exec_log_folder, "lean4_sync_executor.log")
     logger = setup_logger("Lean4SyncExecutor", lean_exec_log_file, level=logging.DEBUG, format='')
-    # with Lean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger) as executor:
-    #     all_proofs = executor.get_all_proofs_in_file()
-    #     print(all_proofs)
+    with Lean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger) as executor:
+        all_proofs = executor.get_all_proofs_in_file()
+        print(all_proofs)
     with Lean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger) as executor:
         executor._skip_to_theorem(theorems_similar_to_test)
         proof_exec = False
