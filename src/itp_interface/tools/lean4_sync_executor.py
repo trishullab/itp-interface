@@ -128,10 +128,21 @@ class Lean4SyncExecutor:
         self._last_tactic_line_idx = None
         self._error_messages_so_far = set()
         self._error_messages_since_last_thm = {}
+        self._run_exactly = False
+        self._lines_not_executed = []
         if self._enable_search:
             pass
         pass
     
+    def set_run_exactly(self):
+        self._run_exactly = True
+    
+    def unset_run_exactly(self):
+        self._run_exactly = False
+    
+    def run_exactly(self):
+        return self._run_exactly
+
     def reset(self,
         proof_step_iter: Optional[Iterator[str]] = None):
         # Note: We CANNOT reset the main_file_iter as it is a generator
@@ -221,7 +232,10 @@ class Lean4SyncExecutor:
 
     def run_next(self) -> bool:
         try:
-            stmt = next(self.main_file_iter)
+            if self.run_exactly() and len(self._lines_not_executed) > 0:
+                stmt = self._lines_not_executed.pop(0)
+            else:
+                stmt = next(self.main_file_iter)
         except StopIteration:
             self.execution_complete = True
             return False
@@ -513,12 +527,21 @@ class Lean4SyncExecutor:
             last_thm = None
             for ending in endings:
                 interesting_stmt = full_stmt[:ending] + ' := ' # We need to add ':=' to the end
+                if self.run_exactly():
+                    remaining_stmt = full_stmt[ending + len(':='):]
+                    self._lines_not_executed.append(remaining_stmt)
+                else:
+                    remaining_stmt = None
                 interesting_span = (last_span_start, len(interesting_stmt))
                 # Make sure to remove the last tactic ran and add it again because we are changing the statement
-                self._backtrack_tactic_line(idx)
+                if do_full_check:
+                    self._backtrack_tactic_line(idx)
                 last_thm = self._parse_theorem_stmt(idx, interesting_stmt, do_full_check, interesting_span) 
                 if last_thm is not None:
                     self._content_till_last_theorem_stmt = full_stmt[:last_span_start] + last_thm[2] + ' by\n'
+                    if remaining_stmt is not None and do_full_check:
+                        self._backtrack_tactic_line(idx)
+                        self._content_till_last_theorem_stmt = full_stmt[:last_span_start] + last_thm[2] + remaining_stmt
                     break
             if last_thm is None:
                 endings = [i for i in range(last_span_end, len(full_stmt)) if full_stmt.startswith('=> ', i)]
