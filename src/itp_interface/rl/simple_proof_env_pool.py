@@ -95,15 +95,15 @@ class ProofEnvPool(object):
                 catch_exception_actor = CaptureExceptionActor.remote(proof_env_actor.reset)
                 init_remotes.append(catch_exception_actor.try_capture_exception.remote())
         env_init_stats = ray.get(init_remotes)
-        timeouts = []
         for i, env_init_stat in enumerate(env_init_stats):
             if isinstance(env_init_stat, CapturedException):
                 self._errd_envs.add(i)
                 self._errd_envs_exceptions[i] = env_init_stat
                 self._logger.error(f"Error initializing proof environment {i}: {env_init_stat}")
-            else:
-                timeouts.append(ray.get(self._proof_env_pool[i].get_timeout.remote()))
-        self._timeout = max(timeouts)
+        try:
+            self._timeout = max([ray.get(self._proof_env_pool[i].get_timeout.remote()) for i in range(self.pool_size)])
+        except Exception as e:
+            self._timeout = 60
         return self
     
     def __exit__(self, exc_type, exc_value, traceback):

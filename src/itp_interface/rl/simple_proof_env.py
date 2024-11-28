@@ -581,7 +581,7 @@ class ProofEnvActor(ProofEnv):
         return self._should_load_env
     
     def get_timeout(self):
-        return self._dynamic_proof_executor.timeout_in_sec
+        return self.dynamic_proof_executor_callback.timeout_in_secs
 
 if __name__ == "__main__":
     import os
