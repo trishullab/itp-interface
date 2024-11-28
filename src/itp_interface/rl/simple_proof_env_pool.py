@@ -28,15 +28,19 @@ class CapturedException(Exception):
 
 @ray.remote
 class CaptureExceptionActor:
-    def __init__(self, func, args=None, kwargs=None):
+    def __init__(self, func, timeout:typing.Optional[float]=None, args=None, kwargs=None):
         self.func = func
         self.args = args if args else []
         self.kwargs = kwargs if kwargs else {}
+        self.timeout = timeout
 
     def try_capture_exception(self):
         try:
             ray_id = self.func.remote(*self.args, **self.kwargs)
-            return_typ = ray.get(ray_id)
+            if self.timeout is None:
+                return_typ = ray.get(ray_id)
+            else:
+                return_typ = ray.get(ray_id, timeout=self.timeout)
             return return_typ
         except Exception as e:
             return CapturedException(e)
@@ -76,6 +80,7 @@ class ProofEnvPool(object):
             self.pool_size = len(proof_env_actors)
             self._frozeen_env = None
             self._proof_env_pool : typing.List[ProofEnvActor] = proof_env_actors
+        self._timeout = None
         self._errd_envs = set()
         self._errd_envs_exceptions = {}
         self._is_initialized = False
@@ -90,11 +95,15 @@ class ProofEnvPool(object):
                 catch_exception_actor = CaptureExceptionActor.remote(proof_env_actor.reset)
                 init_remotes.append(catch_exception_actor.try_capture_exception.remote())
         env_init_stats = ray.get(init_remotes)
+        timeouts = []
         for i, env_init_stat in enumerate(env_init_stats):
             if isinstance(env_init_stat, CapturedException):
                 self._errd_envs.add(i)
                 self._errd_envs_exceptions[i] = env_init_stat
                 self._logger.error(f"Error initializing proof environment {i}: {env_init_stat}")
+            else:
+                timeouts.append(ray.get(self._proof_env_pool[i].get_timeout.remote()))
+        self._timeout = max(timeouts)
         return self
     
     def __exit__(self, exc_type, exc_value, traceback):
@@ -163,6 +172,9 @@ class ProofEnvPool(object):
     def get_errd_envs_exceptions(self):
         return copy.deepcopy(self._errd_envs_exceptions)
 
+    def get_timeout(self):
+        return self._timeout
+
     def step(self, actions: typing.List[ProofAction], idxs: typing.List[int] = None) -> typing.List[typing.Tuple[ProofState, ProofAction, ProofState, float, bool, ProofEnvInfo]]:
         assert self._is_initialized, "Pool must be initialized before stepping"
         assert len(actions) == len(self._proof_env_pool) or (idxs is not None and len(actions) == len(idxs)), \
@@ -173,9 +185,9 @@ class ProofEnvPool(object):
         assert len(set(idxs).intersection(self._errd_envs)) == 0, f"Cannot step errored environments: {set(idxs).intersection(self._errd_envs)}"
         remotes = []
         for i, idx in enumerate(idxs):
-            catch_exception_actor = CaptureExceptionActor.remote(self._proof_env_pool[idx].step, args=[actions[i]])
+            catch_exception_actor = CaptureExceptionActor.remote(self._proof_env_pool[idx].step, timeout=self._timeout, args=[actions[i]])
             remotes.append(catch_exception_actor.try_capture_exception.remote())
-        return_remotes = ray.get(remotes)
+        return_remotes = ray.get(remotes, timeout=self._timeout)
         actual_returns = []
         for i, return_remote in enumerate(return_remotes):
             if isinstance(return_remote, CapturedException):
