@@ -110,9 +110,15 @@ class ProofEnvPool(object):
         self._is_initialized = False
         try:
             cleanup_remotes = [proof_env_actor.cleanup.remote() for proof_env_actor in self._proof_env_pool]
-            ray.get(cleanup_remotes, timeout=10)
+            ray.get(cleanup_remotes, timeout=20)
         except Exception as e:
             self._logger.error(f"Error cleaning up proof environments: {e}")
+        # Kill all actors
+        for proof_env_actor in self._proof_env_pool:
+            try:
+                ray.kill(proof_env_actor)
+            except Exception as e:
+                self._logger.error(f"Error killing proof environment actor: {e}")
 
     def add_and_init_proof_envs(self, count: int = 1):
         count_before = len(self._proof_env_pool)
