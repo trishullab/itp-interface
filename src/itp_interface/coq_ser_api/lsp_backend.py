@@ -62,7 +62,7 @@ class CoqLSPyInstance(CoqBackend):
         self.concise = concise
         if isinstance(lsp_command, str):
             lsp_command = [lsp_command]
-        server_delay = 0.01
+        server_delay = 0.05
         full_command = lsp_command + (["-D", str(server_delay)] if self.concise else [])
         self.proc = subprocess.Popen(full_command,
                                      stdin=subprocess.PIPE,
@@ -183,6 +183,11 @@ class CoqLSPyInstance(CoqBackend):
         self.lsp_client.shutdown()
         self.lsp_client.exit()
         self.proc.terminate()
+        self.proc.wait()
+        try:
+            self.stderr_queue.join()
+        except:
+            pass
 
     def checkMessage(self, queue_name: str, message_text: str):
         message = self.messageQueues[queue_name].get()
