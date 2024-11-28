@@ -244,6 +244,12 @@ class ProofEnv(Env):
         return super().clone()
     
     def render(self):
+        if len(self._history) == 0:
+            current_state = self.state
+            s_goals = [f"Goal [{idx}]:\n {goal.goal} \n Hyps [{idx}]:\n {goal.hypotheses} \n Dfns [{idx}]:\n {goal.relevant_defns} \n Thms [{idx}]:\n {goal.possible_useful_theorems_local} \n------------------\n" for idx, goal in enumerate(current_state.training_data_format.start_goals)]
+            s_goal = '\n'.join(s_goals)
+            self.logger.info(f"Proof State (before action):\n {s_goal}")
+            return
         s1, a, s2, r, d, info = self._history[-1]
         visibility = 3
         self.logger.info("-"*50)
@@ -687,6 +693,7 @@ if __name__ == "__main__":
         else:
             with ProofEnv("test", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms) as env:
                 done = env.done
+                env.render()
                 action = scan_action(language)
                 while action.action_type != ProofAction.ActionType.EXIT and not done:
                     state, _, _, reward, done, info = env.step(action)
