@@ -429,7 +429,7 @@ class Lean4SyncExecutor:
         cmd = self._get_cmd_tactic_mode(idx, full_stmt)
         self.process_interace.send_command(cmd)
         timeout_in_secs = self.timeout_in_sec
-        response = self.process_interace.read_response(timeout_in_secs)
+        response = self.process_interace.read_response(timeout_in_secs * 5)
         messages = response.get('messages', [])
         has_cnt = 0
         has_unfocussed_goal = 0
@@ -499,7 +499,7 @@ class Lean4SyncExecutor:
     
     def _execute_till_last_theorem(self, idx: int, full_stmt: str):
         self._write_lean_file(idx, full_stmt)
-        self._run_file_on_lean_server(self.timeout_in_sec * 4)
+        self._run_file_on_lean_server(self.timeout_in_sec * 5)
 
     def _stmt_has_lemma(self, idx: int, stmt: str, do_full_check: bool = False) -> bool:
         # Match the theorem regex
@@ -787,7 +787,7 @@ class Lean4SyncExecutor:
             if self._env_idx_last_thm is None:
                 self._env_idx_last_thm = env_idx
             if self.process_interace.is_rebooted():
-                self._run_file_on_lean_server(self.timeout_in_sec * 4)
+                self._run_file_on_lean_server(self.timeout_in_sec * 5)
             cmd = self._get_cmd_tactic_mode(idx, stmt)
             if env_idx is not None and 'env' not in cmd:
                 cmd["env"] = env_idx
