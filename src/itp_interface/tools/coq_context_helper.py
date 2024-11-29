@@ -13,22 +13,25 @@ from typing import List
 
 class CoqContextHelper(object):
     max_relevance_score = 0.95
-    def __init__(self, search_executor: CoqExecutor, depth : typing.Optional[int] = None, logger: logging.Logger = None) -> None:
+    def __init__(self, search_executor: CoqExecutor, depth : typing.Optional[int] = None, logger: logging.Logger = None, enable_search: bool = True) -> None:
         assert search_executor is not None, "Search executor cannot be None"
         assert depth is None or depth >= 0, "Depth should be greater than 0"
         self.search_executor = search_executor
         self.depth = depth if depth is not None else -1
+        self._enable_search = enable_search
         self.logger = logger if logger is not None else logging.getLogger(__name__)
     
     def __enter__(self):
-        self.search_executor.__enter__()
-        self.search_executor.run_to_finish()
-        search_exec_local_lemmas_discovered_so_far = [lemma.split(':')[0].strip() if ':' in lemma else lemma.split()[0].strip() for lemma in self.search_executor.coq.local_lemmas]
-        self.search_exec_local_lemmas_discovered_so_far = set([l for l in search_exec_local_lemmas_discovered_so_far if len(l) > 0])
+        if self._enable_search:
+            self.search_executor.__enter__()
+            self.search_executor.run_to_finish()
+            search_exec_local_lemmas_discovered_so_far = [lemma.split(':')[0].strip() if ':' in lemma else lemma.split()[0].strip() for lemma in self.search_executor.coq.local_lemmas]
+            self.search_exec_local_lemmas_discovered_so_far = set([l for l in search_exec_local_lemmas_discovered_so_far if len(l) > 0])
         return self
     
     def __exit__(self, exc_type, exc_value, traceback):
-        self.search_executor.__exit__(exc_type, exc_value, traceback)
+        if self._enable_search:
+            self.search_executor.__exit__(exc_type, exc_value, traceback)
 
     def _get_local_lemma_names_discovered_so_far(self, coq_executor: CoqExecutor):
         local_lemmas_discovered_so_far = [lemma.split(':')[0].strip() if ':' in lemma else lemma.split()[0].strip() for lemma in coq_executor.coq.local_lemmas[:-1]]

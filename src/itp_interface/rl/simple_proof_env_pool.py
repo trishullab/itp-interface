@@ -275,7 +275,8 @@ if __name__ == "__main__":
     if inp == 'coq':
         proof_exec_callback = ProofExecutorCallback(
             project_folder=".",
-            file_path="data/test/SimpleAlgebra.v"
+            file_path="data/test/SimpleAlgebra.v",
+            enable_search=False
         )
         theorem_name = "algb_add_comm"
         language = ProofAction.Language.COQ
