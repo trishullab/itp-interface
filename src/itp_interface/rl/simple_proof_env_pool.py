@@ -72,7 +72,8 @@ class ProofEnvPool(object):
                     retrieval_strategy=self._frozeen_env.retrieve_strategy,
                     max_proof_depth=self._frozeen_env.max_proof_depth,
                     always_retrieve_thms=self._frozeen_env._always_retrieve_thms,
-                    logger=None
+                    logger=None,
+                    should_load_env=False
                 )
                 for _ in range(self.pool_size)
             ]
@@ -110,7 +111,7 @@ class ProofEnvPool(object):
         self._is_initialized = False
         try:
             cleanup_remotes = [proof_env_actor.cleanup.remote() for proof_env_actor in self._proof_env_pool]
-            ray.get(cleanup_remotes, timeout=20)
+            ray.get(cleanup_remotes, timeout=15)
         except Exception as e:
             self._logger.error(f"Error cleaning up proof environments: {e}")
         # Kill all actors
