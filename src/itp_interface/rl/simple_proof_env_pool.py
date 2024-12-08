@@ -81,7 +81,7 @@ class ProofEnvPool(object):
             self.pool_size = len(proof_env_actors)
             self._frozeen_env = None
             self._proof_env_pool : typing.List[ProofEnvActor] = proof_env_actors
-        self._timeout = None
+        self._timeout = 120
         self._errd_envs = set()
         self._errd_envs_exceptions = {}
         self._is_initialized = False
@@ -89,11 +89,11 @@ class ProofEnvPool(object):
     def __enter__(self):
         self._is_initialized = True
         # load all environments which are not loaded
-        should_load_envs = ray.get([proof_env_actor.should_load_env.remote() for proof_env_actor in self._proof_env_pool])
+        should_load_envs = [False for _ in range(len(self._proof_env_pool))]# ray.get([proof_env_actor.should_load_env.remote() for proof_env_actor in self._proof_env_pool])
         init_remotes = []
         for should_load_env, proof_env_actor in zip(should_load_envs, self._proof_env_pool):
             if not should_load_env:
-                catch_exception_actor = CaptureExceptionActor.remote(proof_env_actor.reset)
+                catch_exception_actor = CaptureExceptionActor.remote(proof_env_actor.reset, timeout=self._timeout)
                 init_remotes.append(catch_exception_actor.try_capture_exception.remote())
         env_init_stats = ray.get(init_remotes)
         for i, env_init_stat in enumerate(env_init_stats):
@@ -101,10 +101,6 @@ class ProofEnvPool(object):
                 self._errd_envs.add(i)
                 self._errd_envs_exceptions[i] = env_init_stat
                 self._logger.error(f"Error initializing proof environment {i}: {env_init_stat}")
-        try:
-            self._timeout = max([ray.get(self._proof_env_pool[i].get_timeout.remote()) for i in range(self.pool_size)])
-        except Exception as e:
-            self._timeout = 60
         return self
     
     def __exit__(self, exc_type, exc_value, traceback):
