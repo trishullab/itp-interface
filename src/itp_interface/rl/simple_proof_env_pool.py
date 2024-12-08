@@ -50,7 +50,8 @@ class ProofEnvPool(object):
             pool_size: int = 1,
             proof_env_actors: typing.List[ProofEnvActor] = None,
             proof_env: ProofEnv = None, 
-            logger: typing.Optional[logging.Logger] = None):
+            logger: typing.Optional[logging.Logger] = None,
+            timeout: float = 120):
         """
         Keeps a pool of proof environments to be used in parallel,
         and replenishes them as needed. It keeps extra environments
@@ -81,7 +82,7 @@ class ProofEnvPool(object):
             self.pool_size = len(proof_env_actors)
             self._frozeen_env = None
             self._proof_env_pool : typing.List[ProofEnvActor] = proof_env_actors
-        self._timeout = 120
+        self._timeout = timeout
         self._errd_envs = set()
         self._errd_envs_exceptions = {}
         self._is_initialized = False
