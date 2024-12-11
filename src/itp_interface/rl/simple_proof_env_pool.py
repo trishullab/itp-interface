@@ -129,7 +129,8 @@ class ProofEnvPool(object):
                 retrieval_strategy=self._frozeen_env.retrieve_strategy,
                 max_proof_depth=self._frozeen_env.max_proof_depth,
                 always_retrieve_thms=self._frozeen_env._always_retrieve_thms,
-                logger=None
+                logger=None,
+                should_load_env=False
             )
             for _ in range(count)
         ])
@@ -147,7 +148,8 @@ class ProofEnvPool(object):
                     retrieval_strategy=self._frozeen_env.retrieve_strategy,
                     max_proof_depth=self._frozeen_env.max_proof_depth,
                     always_retrieve_thms=self._frozeen_env._always_retrieve_thms,
-                    logger=None
+                    logger=None,
+                    should_load_env=False
                 )
             )
         else:
