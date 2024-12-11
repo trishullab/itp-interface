@@ -11,6 +11,7 @@ import ray
 from itp_interface.tools.isabelle_executor import IsabelleExecutor, HammerMode
 from itp_interface.rl.proof_action import ProofAction
 from itp_interface.rl.proof_state import ProofState
+from itp_interface.tools.cache import SimpleLruCache
 from itp_interface.rl.simple_proof_env import ProofEnv, ProofEnvActor, ProofEnvInfo, ProofEnvReRankStrategy, ProofExecutorCallback
 
 def replicate_proof_env(proof_env: ProofEnv, logger: typing.Optional[logging.Logger] = None) -> ProofEnv:
@@ -51,7 +52,8 @@ class ProofEnvPool(object):
             proof_env_actors: typing.List[ProofEnvActor] = None,
             proof_env: ProofEnv = None, 
             logger: typing.Optional[logging.Logger] = None,
-            timeout: float = 120):
+            timeout: float = 120,
+            max_parallel_envs: int = None):
         """
         Keeps a pool of proof environments to be used in parallel,
         and replenishes them as needed. It keeps extra environments
@@ -62,6 +64,11 @@ class ProofEnvPool(object):
         self._current_index = 0
         self._callback = None
         self._logger = logger if logger else logging.getLogger(__name__)
+        self._env_to_steps_map : typing.Dict[int, typing.List[ProofAction]] = {}
+        self._nonactive_env_to_state_map : typing.Dict[int, ProofState] = {}
+        self._nonactive_env_to_done_map : typing.Dict[int, bool] = {}
+        self._env_args_map : typing.Dict[int, typing.List] = {}
+        self._env_kwargs_map : typing.Dict[int, typing.Dict] = {}
         if proof_env_actors is None:
             self.pool_size = pool_size
             self._frozeen_env = replicate_proof_env(proof_env, self._logger) # This is like a frozen copy we never change it
@@ -82,41 +89,28 @@ class ProofEnvPool(object):
             self.pool_size = len(proof_env_actors)
             self._frozeen_env = None
             self._proof_env_pool : typing.List[ProofEnvActor] = proof_env_actors
+            all_args = ray.get([proof_env_actor.get_env_args.remote() for proof_env_actor in self._proof_env_pool])
+            all_kwargs = ray.get([proof_env_actor.get_env_kwargs.remote() for proof_env_actor in self._proof_env_pool])
+            for i, (args, kwargs) in enumerate(zip(all_args, all_kwargs)):
+                self._env_args_map[i] = args
+                self._env_kwargs_map[i] = kwargs
         self._timeout = timeout
         self._errd_envs = set()
         self._errd_envs_exceptions = {}
         self._is_initialized = False
+        self._active_envs = set(list(range(self.pool_size)))
+        self._max_parallel_envs = max_parallel_envs if max_parallel_envs is not None else self.pool_size
+        self._env_cache = SimpleLruCache(max_size_in_bytes=self._max_parallel_envs)
     
     def __enter__(self):
         self._is_initialized = True
         # load all environments which are not loaded
-        should_load_envs = [False for _ in range(len(self._proof_env_pool))]# ray.get([proof_env_actor.should_load_env.remote() for proof_env_actor in self._proof_env_pool])
-        init_remotes = []
-        for should_load_env, proof_env_actor in zip(should_load_envs, self._proof_env_pool):
-            if not should_load_env:
-                catch_exception_actor = CaptureExceptionActor.remote(proof_env_actor.reset, timeout=self._timeout)
-                init_remotes.append(catch_exception_actor.try_capture_exception.remote())
-        env_init_stats = ray.get(init_remotes)
-        for i, env_init_stat in enumerate(env_init_stats):
-            if isinstance(env_init_stat, CapturedException):
-                self._errd_envs.add(i)
-                self._errd_envs_exceptions[i] = env_init_stat
-                self._logger.error(f"Error initializing proof environment {i}: {env_init_stat}")
+        self.reset(list(range(self.pool_size)))
         return self
     
     def __exit__(self, exc_type, exc_value, traceback):
         self._is_initialized = False
-        try:
-            cleanup_remotes = [proof_env_actor.cleanup.remote() for proof_env_actor in self._proof_env_pool]
-            ray.get(cleanup_remotes, timeout=15)
-        except Exception as e:
-            self._logger.error(f"Error cleaning up proof environments: {e}")
-        # Kill all actors
-        for proof_env_actor in self._proof_env_pool:
-            try:
-                ray.kill(proof_env_actor)
-            except Exception as e:
-                self._logger.error(f"Error killing proof environment actor: {e}")
+        self._try_cleanup_envs(list(range(self.pool_size)))
 
     def add_and_init_proof_envs(self, count: int = 1):
         count_before = len(self._proof_env_pool)
@@ -169,6 +163,10 @@ class ProofEnvPool(object):
                 )
             )
         self.pool_size += 1
+        args = ray.get(self._proof_env_pool[-1].get_env_args.remote())
+        kwargs = ray.get(self._proof_env_pool[-1].get_env_kwargs.remote())
+        self._env_args_map[self.pool_size-1] = args
+        self._env_kwargs_map[self.pool_size-1] = kwargs
 
     def get_errd_envs(self):
         return copy.deepcopy(self._errd_envs)
@@ -187,21 +185,13 @@ class ProofEnvPool(object):
             idxs = range(len(actions))
         # Make sure we are not stepping an errored environment
         assert len(set(idxs).intersection(self._errd_envs)) == 0, f"Cannot step errored environments: {set(idxs).intersection(self._errd_envs)}"
-        remotes = []
-        for i, idx in enumerate(idxs):
-            catch_exception_actor = CaptureExceptionActor.remote(self._proof_env_pool[idx].step, timeout=self._timeout, args=[actions[i]])
-            remotes.append(catch_exception_actor.try_capture_exception.remote())
-        return_remotes = ray.get(remotes, timeout=self._timeout)
-        actual_returns = []
-        for i, return_remote in enumerate(return_remotes):
-            if isinstance(return_remote, CapturedException):
-                self._errd_envs.add(idxs[i])
-                self._errd_envs_exceptions[idxs[i]] = return_remote
-                actual_returns.append((None, None, None, 0.0, True, None))
-                self._logger.error(f"Error stepping proof environment {i}: {return_remote}")
-            else:
-                actual_returns.append(return_remote)
-        return actual_returns
+
+        # Step the active environments
+        max_parallel_chunks = [(i, i+self._max_parallel_envs) for i in range(0, len(idxs), self._max_parallel_envs)]
+        all_step_res = []
+        for chunk in max_parallel_chunks:
+            all_step_res.extend(self._step_chunk(actions[chunk[0]:chunk[1]], idxs[chunk[0]:chunk[1]]))
+        return all_step_res
 
     def get_pool(self, idxs: typing.List[int]) -> 'ProofEnvPool':
         assert self._is_initialized, "Pool must be initialized before getting"
@@ -210,23 +200,73 @@ class ProofEnvPool(object):
             proof_env_actors=[self._proof_env_pool[idx] for idx in idxs], 
             logger=self._logger)
     
-    def reset(self, idxs: typing.List[int]) -> typing.List[ProofState]:
+    def reset(self, idxs: typing.List[int]) -> typing.List[typing.Tuple[ProofState, ProofAction, ProofState, float, bool, ProofEnvInfo]]:
         assert self._is_initialized, "Pool must be initialized before resetting"
         assert len(idxs) > 0, "Must provide at least one index"
         assert len(set(idxs).intersection(self._errd_envs)) == 0, f"Cannot reset errored environments: {set(idxs).intersection(self._errd_envs)}"
-        return ray.get([self._proof_env_pool[idx].reset.remote() for idx in idxs])
+        reset_chunks = [idxs[i:i+self._max_parallel_envs] for i in range(0, len(idxs), self._max_parallel_envs)]
+        all_reset_res = []
+        for chunk in reset_chunks:
+            all_reset_res.extend(self._reset_chunk(chunk))
+        return all_reset_res
 
     def get_state(self, idxs: int) -> typing.List[ProofState]:
         assert self._is_initialized, "Pool must be initialized before getting"
         assert len(idxs) > 0, "Must provide at least one index"
         assert len(set(idxs).intersection(self._errd_envs)) == 0, f"Cannot get state of errored environments: {set(idxs).intersection(self._errd_envs)}"
-        return ray.get([self._proof_env_pool[idx].get_state.remote() for idx in idxs])
+        active_idxs = []
+        nonactive_idxs = []
+        list_used = []
+        for idx in idxs:
+            if idx in self._active_envs:
+                active_idxs.append(idx)
+                list_used.append(active_idxs)
+            else:
+                nonactive_idxs.append(idx)
+                list_used.append(nonactive_idxs)
+        active_states = ray.get([self._proof_env_pool[idx].get_state.remote() for idx in active_idxs])
+        nonactive_states = [self._nonactive_env_to_state_map.get(idx, None) for idx in nonactive_idxs]
+        results = []
+        active_idx = 0
+        nonactive_idx = 0
+        for i, idx in enumerate(idxs):
+            list_to_use = list_used[i]
+            if list_to_use == active_idxs:
+                results.append(active_states[active_idx])
+                active_idx += 1
+            else:
+                results.append(nonactive_states[nonactive_idx])
+                nonactive_idx += 1
+        return results
     
     def get_done(self, idxs: int) -> typing.List[bool]:
         assert self._is_initialized, "Pool must be initialized before getting"
         assert len(idxs) > 0, "Must provide at least one index"
         assert len(set(idxs).intersection(self._errd_envs)) == 0, f"Cannot get done of errored environments: {set(idxs).intersection(self._errd_envs)}"
-        return ray.get([self._proof_env_pool[idx].get_done.remote() for idx in idxs])
+        active_idxs = []
+        nonactive_idxs = []
+        list_used = []
+        for idx in idxs:
+            if idx in self._active_envs:
+                active_idxs.append(idx)
+                list_used.append(active_idxs)
+            else:
+                nonactive_idxs.append(idx)
+                list_used.append(nonactive_idxs)
+        active_dones = ray.get([self._proof_env_pool[idx].get_done.remote() for idx in active_idxs])
+        nonactive_dones = [self._nonactive_env_to_done_map.get(idx, None) for idx in nonactive_idxs]
+        results = []
+        active_idx = 0
+        nonactive_idx = 0
+        for i, idx in enumerate(idxs):
+            list_to_use = list_used[i]
+            if list_to_use == active_idxs:
+                results.append(active_dones[active_idx])
+                active_idx += 1
+            else:
+                results.append(nonactive_dones[nonactive_idx])
+                nonactive_idx += 1
+        return results
     
     def dump_proof(self, idxs: int):
         assert self._is_initialized, "Pool must be initialized before dumping"
@@ -246,6 +286,166 @@ class ProofEnvPool(object):
         assert len(set(idxs).intersection(self._errd_envs)) == 0, f"Cannot get proof search results of errored environments: {set(idxs).intersection(self._errd_envs)}"
         return self._get_attr("proof_search_res", idxs)
 
+    def _reset_chunk(self, idxs: typing.List[int]) -> typing.List[ProofState]:
+        self._logger.info(f"Resetting environments: {idxs}")
+        assert self._is_initialized, "Pool must be initialized before resetting"
+        assert len(idxs) > 0, "Must provide at least one index"
+        assert len(set(idxs).intersection(self._errd_envs)) == 0, f"Cannot reset errored environments: {set(idxs).intersection(self._errd_envs)}"
+        should_load_envs = [False for _ in range(len(idxs))]
+        init_remotes = []
+        for should_load_env, idx in zip(should_load_envs, idxs):
+            if not should_load_env:
+                catch_exception_actor = CaptureExceptionActor.remote(self._proof_env_pool[idx].reset, timeout=self._timeout)
+                init_remotes.append(catch_exception_actor.try_capture_exception.remote())
+        env_init_stats = ray.get(init_remotes)
+        results = []
+        envs_to_remove = []
+        for i, env_init_stat in enumerate(env_init_stats):
+            if isinstance(env_init_stat, CapturedException):
+                self._errd_envs.add(idxs[i])
+                self._errd_envs_exceptions[idxs[i]] = env_init_stat
+                envs_to_remove.append(idxs[i])
+                self._logger.error(f"Error initializing proof environment {i}: {env_init_stat}")
+                results.append((None, None, None, 0.0, True, None))
+            else:
+                envs_removed = self._env_cache.add_to_cache(str(idxs[i]), idxs[i], 1)
+                for env_removed in envs_removed:
+                    if int(env_removed) not in idxs:
+                        envs_to_remove.append(env_removed)
+                results.append(env_init_stat)
+        if len(envs_to_remove) > 0:
+            self._try_cleanup_envs(envs_to_remove)
+        self._logger.info(f"Reset environments: {idxs}")
+        return results
+
+    def _step_chunk(self, actions: typing.List[ProofAction], idxs: typing.List[int] = None) -> typing.List[typing.Tuple[ProofState, ProofAction, ProofState, float, bool, ProofEnvInfo]]:
+        assert self._is_initialized, "Pool must be initialized before stepping"
+        assert len(actions) == len(self._proof_env_pool) or (idxs is not None and len(actions) == len(idxs)), \
+            "Number of actions must match the number of proof environments"
+        assert len(idxs) <= self._max_parallel_envs, f"Number of environments to step must be less than or equal to {self._max_parallel_envs}"
+        if idxs is None:
+            idxs = range(len(actions))
+        # Make sure we are not stepping an errored environment
+        assert len(set(idxs).intersection(self._errd_envs)) == 0, f"Cannot step errored environments: {set(idxs).intersection(self._errd_envs)}"
+        removed_envs = []
+        non_active_envs = []
+        self._logger.info(f"Stepping environments: {idxs}")
+        for idx in idxs:
+            envs_removed = self._env_cache.add_to_cache(str(idx), idx, 1)
+            if idx not in self._active_envs:
+                non_active_envs.append(idx)
+            for env in envs_removed:
+                if int(env) not in idxs:
+                    removed_envs.append(env)
+        if len(removed_envs) > 0:
+            self._try_cleanup_envs(removed_envs)
+        if len(non_active_envs) > 0:
+            self._activate_envs(non_active_envs)
+        for i, idx in enumerate(idxs):
+            actions_so_far = self._env_to_steps_map.get(idx, [])
+            actions_so_far.append(actions[i])
+            self._env_to_steps_map[idx] = actions_so_far
+        return self._unsafe_step_chunk(actions, idxs)
+    
+    def _activate_envs(self, idxs: typing.List[int]):
+        self._logger.info(f"Activating environments: {idxs}")
+        for idx in idxs:
+            if idx in self._active_envs:
+                continue
+            if self._frozeen_env is not None:
+                self._proof_env_pool[idx] = ProofEnvActor.remote(
+                    name=self._frozeen_env.name,
+                    dynamic_proof_executor_callback=self._frozeen_env.dynamic_proof_executor_callback,
+                    lemma_name=self._frozeen_env.lemma_name,
+                    retrieval_strategy=self._frozeen_env.retrieve_strategy,
+                    max_proof_depth=self._frozeen_env.max_proof_depth,
+                    always_retrieve_thms=self._frozeen_env._always_retrieve_thms,
+                    logger=None,
+                    should_load_env=False
+                )
+            else:
+                self._proof_env_pool[idx] = ProofEnvActor.remote(*self._env_args_map[idx], **self._env_kwargs_map[idx])
+        self.reset(idxs)
+        self._active_envs.update(idxs)
+        # Rerun the steps again on all the environments that were not active
+        idxs_to_run = []
+        actions_to_run = []
+        last_action_idx = 0
+        actions_added = True
+        while actions_added:
+            actions_added = False
+            for idx in idxs:
+                actions = self._env_to_steps_map.get(idx, [])
+                if len(actions) > 0:
+                    if last_action_idx < len(actions):
+                        actions_added = True
+                        idxs_to_run.append(idx)
+                        actions_to_run.append(actions[last_action_idx])
+            if actions_added:
+                last_action_idx += 1
+                self._unsafe_step_chunk(actions_to_run, idxs_to_run)
+                idxs_to_run = []
+                actions_to_run = []
+        self._logger.info(f"Activated environments: {idxs}")
+
+    def _unsafe_step_chunk(self, actions: typing.List[ProofAction], idxs: typing.List[int] = None) -> typing.List[typing.Tuple[ProofState, ProofAction, ProofState, float, bool, ProofEnvInfo]]:
+        remotes = []
+        for i, idx in enumerate(idxs):
+            catch_exception_actor = CaptureExceptionActor.remote(self._proof_env_pool[idx].step, timeout=self._timeout, args=[actions[i]])
+            remotes.append(catch_exception_actor.try_capture_exception.remote())
+        return_remotes = ray.get(remotes, timeout=self._timeout)
+        actual_returns = []
+        for i, return_remote in enumerate(return_remotes):
+            if isinstance(return_remote, CapturedException):
+                self._errd_envs.add(idxs[i])
+                self._errd_envs_exceptions[idxs[i]] = return_remote
+                actual_returns.append((None, None, None, 0.0, True, None))
+                self._logger.error(f"Error stepping proof environment {i}: {return_remote}")
+            else:
+                actual_returns.append(return_remote)
+        return actual_returns
+
+    def _try_cleanup_envs(self, idxs: typing.Union[typing.List[int], typing.List[str]]):
+        self._logger.info(f"Cleaning up environments: {idxs}")
+        idxs = [int(idx) for idx in idxs]
+        try:
+            state_remotes = []
+            done_remotes = []
+            for env_idx in idxs:
+                proof_env_actor = self._proof_env_pool[env_idx]
+                if env_idx in self._active_envs:
+                    state_remotes.append(proof_env_actor.get_state.remote())
+                    done_remotes.append(proof_env_actor.get_done.remote())
+            states = ray.get(state_remotes)
+            dones = ray.get(done_remotes)
+            state_idx = 0
+            for env_idx in idxs:
+                if env_idx in self._active_envs:
+                    self._nonactive_env_to_state_map[env_idx] = states[state_idx]
+                    self._nonactive_env_to_done_map[env_idx] = dones[state_idx]
+                    state_idx += 1
+            cleanup_remotes = []
+            for env_idx in idxs:
+                proof_env_actor = self._proof_env_pool[env_idx]
+                if env_idx in self._active_envs:
+                    catch_exception_actor = CaptureExceptionActor.remote(proof_env_actor.cleanup, timeout=self._timeout)
+                    cleanup_remotes.append(catch_exception_actor.try_capture_exception.remote())
+            ray.get(cleanup_remotes, timeout=15)
+        except Exception as e:
+            self._logger.error(f"Error cleaning up proof environments: {e}")
+        # Kill all actors
+        for env_idx in idxs:
+            if env_idx in self._active_envs:
+                proof_env_actor = self._proof_env_pool[env_idx]
+                try:
+                    ray.kill(proof_env_actor)
+                except Exception as e:
+                    self._logger.error(f"Error killing proof environment actor: {e}")
+        for env_idx in idxs:
+            if env_idx in self._active_envs:
+                self._active_envs.remove(env_idx)
+        self._logger.info(f"Removed environments: {idxs}")
+    
 if __name__ == "__main__":
     import os
     os.chdir(root_dir)
@@ -329,7 +529,7 @@ if __name__ == "__main__":
             env_actors = [
             ProofEnvActor.remote("test", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms, logger=logger, should_load_env=False)
             for _ in range(4)]
-            pool = ProofEnvPool(proof_env_actors=env_actors, logger=logger)
+            pool = ProofEnvPool(proof_env_actors=env_actors, logger=logger, max_parallel_envs=3)
             with pool:
                 dones = pool.get_done(list(range(4)))
                 action = scan_action(language)
