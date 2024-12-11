@@ -20,19 +20,23 @@ class SimpleLruCache(object):
         self.cache_size_in_bytes = 0
         self.mutex = Lock()
     
-    def add_to_cache(self, key: str, value: typing.Any, size_in_bytes: int):
+    def add_to_cache(self, key: str, value: typing.Any, size_in_bytes: int) -> typing.List[str]:
         assert key is not None, "File path cannot be None"
         assert value is not None, "File contents cannot be None"
         self.mutex.acquire()
+        removed_items = []
         try:
             self._try_remove_from_cache(key)
             self.cache[key] = (value, size_in_bytes)
             self.cache_order.append(key)
             self.cache_size_in_bytes += size_in_bytes
             while self.cache_size_in_bytes > self.max_size_in_bytes:
-                self._try_remove_lru_key()
+                last_used_key = self.cache_order[0]
+                if self._try_remove_lru_key():
+                    removed_items.append(last_used_key)
         finally:
             self.mutex.release()
+        return removed_items
     
     def get_from_cache(self, key: str):
         assert key is not None, "File path cannot be None"
