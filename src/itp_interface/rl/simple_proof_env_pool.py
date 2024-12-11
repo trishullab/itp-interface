@@ -314,6 +314,7 @@ class ProofEnvPool(object):
                 for env_removed in envs_removed:
                     if int(env_removed) not in idxs:
                         envs_to_remove.append(env_removed)
+                self._active_envs.add(idxs[i])
                 results.append(env_init_stat)
         if len(envs_to_remove) > 0:
             self._try_cleanup_envs(envs_to_remove)
@@ -368,7 +369,6 @@ class ProofEnvPool(object):
             else:
                 self._proof_env_pool[idx] = ProofEnvActor.remote(*self._env_args_map[idx], **self._env_kwargs_map[idx])
         self.reset(idxs)
-        self._active_envs.update(idxs)
         # Rerun the steps again on all the environments that were not active
         idxs_to_run = []
         actions_to_run = []
