@@ -273,9 +273,16 @@ class RunDataGenerationTransforms(object):
                 os.makedirs(temp_file_dir, exist_ok=True)
                 log_file = os.path.join(self.logging_dir, f"{relative_file_path}.log")
                 theorems = projects[project][file_path]
-                job_spec.append((job_idx, log_file, temp_file_dir, project_path, full_file_path, use_human_readable, transform, log_error, save_transform, theorems, job_more_args))
+                if isinstance(transform, Lean4LocalDataGenerationTransform):
+                    # For every theorem we need to create a separate job
+                    for _idx, theorem in enumerate(theorems):
+                        log_file = os.path.join(self.logging_dir, f"{relative_file_path}-{_idx}.log")
+                        job_spec.append((job_idx, log_file, temp_file_dir, project_path, full_file_path, use_human_readable, transform, log_error, save_transform, [theorem], job_more_args))
+                        job_idx += 1
+                else:
+                    job_spec.append((job_idx, log_file, temp_file_dir, project_path, full_file_path, use_human_readable, transform, log_error, save_transform, theorems, job_more_args))
+                    job_idx += 1
                 temporary_files_found.append(temp_file_dir)
-                job_idx += 1
             if not some_files_processed:
                 self.logger.info(f"==============================>[{transform.name}] No files processed for project {project}<==============================")
             else:

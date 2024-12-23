@@ -121,9 +121,12 @@ class ProcessInterface:
             raise TimeoutError(f"Failed to parse JSON. Buffer: {self.buffer}", e)
 
     def close(self):
-        os.close(self.master)
-        self.process.terminate()
-        self.process.wait()
+        try:
+            os.close(self.master)
+            self.process.terminate()
+            self.process.wait()
+        except:
+            pass
 
 # Process interface test
 if __name__ == "__main__":

@@ -47,6 +47,7 @@ class Lean4SyncExecutor:
     proof_state_running_message = "tactic failed, there are unsolved goals\nstate:"
     unsolved_message = "unsolved goals"
     theorem_detection_message = "unexpected end of input; expected '{'"
+    extra_by = ' by\n'
     def __init__(self, 
         project_root: Optional[str] = None, 
         prefix: Optional[str] = None, 
@@ -130,6 +131,7 @@ class Lean4SyncExecutor:
         self._error_messages_since_last_thm = {}
         self._run_exactly = False
         self._lines_not_executed = []
+        self._extra_added: str = None
         if self._enable_search:
             pass
         pass
@@ -232,14 +234,31 @@ class Lean4SyncExecutor:
 
     def run_next(self) -> bool:
         try:
-            if self.run_exactly() and len(self._lines_not_executed) > 0:
-                stmt = self._lines_not_executed.pop(0)
+            lines = []
+            scanned_new_line = False
+            if self.run_exactly():
+                if len(self._lines_not_executed) > 0:
+                    lines = self._lines_not_executed
+                    next_line = lines[-1]
+                    self._lines_not_executed = []
+                else:
+                    next_line = next(self.main_file_iter)
+                    lines.append(next_line)
+                    scanned_new_line = True
+                if self._extra_added is not None:
+                    # Check if the nextline begines with extra added ignoring space and tabs
+                    if next_line.strip().startswith(self._extra_added.strip()):
+                        # Remove the extra added in the next line and replace it with spaces
+                        next_line = next_line.replace(self._extra_added, " " * len(self._extra_added), 1)
+                    self._extra_added = None
             else:
-                stmt = next(self.main_file_iter)
+                next_line = next(self.main_file_iter)
+                lines.append(next_line)
+            stmt = "\n".join(lines)
         except StopIteration:
             self.execution_complete = True
             return False
-        self.current_stmt = stmt
+        self.current_stmt = next_line
         self.line_num += 1
         try:
             idx = len(self._lines_executed)
@@ -249,7 +268,10 @@ class Lean4SyncExecutor:
                 self.logger.error(f"Got an exception while running '{stmt}' on lean. File name: {self.main_file}")
                 self.logger.exception(f"Exception Log")
             raise
-        self._lines_executed.append(stmt)
+        if scanned_new_line:
+            self._lines_executed.append(next_line)
+        else:
+            self._lines_executed.append("") # Add an empty line to keep the line numbers in sync
         return True
 
     def needs_qed(self):
@@ -430,31 +452,11 @@ class Lean4SyncExecutor:
         self.process_interace.send_command(cmd)
         timeout_in_secs = self.timeout_in_sec
         response = self.process_interace.read_response(timeout_in_secs * 5)
-        messages = response.get('messages', [])
-        has_cnt = 0
-        has_unfocussed_goal = 0
-        has_new_errors = 0
-        for msg_idx, msg in enumerate(messages):
-            if msg['severity'] == 'error' and 'pos' in msg and 'endPos' in msg and \
-            ((msg['endPos'] is not None and 'line' in msg['endPos']) or \
-                (msg['pos'] is not None and 'line' in msg['pos'])):
-                if msg['data'].startswith(Lean4SyncExecutor.theorem_detection_message) and msg['endPos'] is None:
-                    has_cnt += 1
-                elif msg['data'].startswith(Lean4SyncExecutor.unsolved_message):
-                    has_unfocussed_goal += 1
-                else:
-                    full_error_msg = self._get_error_msg(msg_idx, msg)
-                    if full_error_msg in self._error_messages_so_far:
-                        continue
-                    has_new_errors += 1
-                    self._errors_since_last_thm(idx, full_error_msg)
-            elif msg['severity'] == 'warning' and 'pos' in msg and 'endPos' in msg and 'sorry' in msg['data']:
-                full_error_msg = self._get_error_msg(msg_idx, msg)
-                if full_error_msg in self._error_messages_so_far:
-                    continue
-                self._error_messages_so_far.add(full_error_msg)
-                self._errors_since_last_thm(idx, full_error_msg)
-        return has_cnt == 1 and has_unfocussed_goal == 1 and has_new_errors == 0
+        relevant_msgs = []
+        parse_success = self._parse_response(idx, response, relevant_msgs)
+        if parse_success:
+            self._update_proof_context(idx, response, relevant_msgs)
+        return parse_success
     
     def _parse_theorem_stmt(self, idx: int, stmt: str, do_full_check: bool = False, interesting_span: typing.Tuple[int, int] = None) -> str:
         if interesting_span is not None:
@@ -492,7 +494,9 @@ class Lean4SyncExecutor:
             else:
                 theorem_stmt = theorem_stmt[:thm_end_idx]
         if do_full_check:
-            check_stmt = stmt[:span_start] + full_stmt + ' by\n'
+            check_stmt = stmt[:span_start] + full_stmt + Lean4SyncExecutor.extra_by
+            if self.run_exactly():
+                self._extra_added = Lean4SyncExecutor.extra_by
             if not self._check_if_thm_read(idx, check_stmt):
                 return None
         return theorem_name, theorem_stmt, full_stmt
@@ -527,21 +531,25 @@ class Lean4SyncExecutor:
             last_thm = None
             for ending in endings:
                 interesting_stmt = full_stmt[:ending] + ' := ' # We need to add ':=' to the end
-                if self.run_exactly():
+                if do_full_check and self.run_exactly():
                     remaining_stmt = full_stmt[ending + len(':='):]
-                    self._lines_not_executed.append(remaining_stmt)
                 else:
-                    remaining_stmt = None
+                    remaining_stmt = ''
                 interesting_span = (last_span_start, len(interesting_stmt))
                 # Make sure to remove the last tactic ran and add it again because we are changing the statement
                 if do_full_check:
                     self._backtrack_tactic_line(idx)
                 last_thm = self._parse_theorem_stmt(idx, interesting_stmt, do_full_check, interesting_span) 
                 if last_thm is not None:
-                    self._content_till_last_theorem_stmt = full_stmt[:last_span_start] + last_thm[2] + ' by\n'
-                    if remaining_stmt is not None and do_full_check and self.run_exactly():
+                    if do_full_check and self.run_exactly():
                         self._backtrack_tactic_line(idx)
+                        # Remove the extra added
+                        self._extra_added: str = None
+                        self._lines_not_executed.append(full_stmt[:last_span_start] + last_thm[2])
+                        self._lines_not_executed.append(remaining_stmt)
                         self._content_till_last_theorem_stmt = full_stmt[:last_span_start] + last_thm[2] + remaining_stmt
+                    else:
+                        self._content_till_last_theorem_stmt = full_stmt[:last_span_start] + last_thm[2] + Lean4SyncExecutor.extra_by
                     break
             if last_thm is None:
                 endings = [i for i in range(last_span_end, len(full_stmt)) if full_stmt.startswith('=> ', i)]
@@ -624,29 +632,13 @@ class Lean4SyncExecutor:
         full_error_msg = str(msg_idx) + ' ' + str(line_start) + " - " + str(line_end) + ": " + str(msg['data'])
         return full_error_msg
 
-    def _run_file_on_lean_server(self, timeout_in_sec: int):
+    def _run_file_on_lean_server(self, timeout_in_sec: int, only_env_update: bool = False):
         cmd = {"path": self.temp_file_full_path}
         self.process_interace.send_command(cmd)
         response = self.process_interace.read_response(timeout_in_sec)
-        if 'messages' in response:
-            messages = response['messages']
-            # Go over all sev after the line number and check if there is an error
-            for msg_idx, msg in enumerate(messages):
-                if msg['severity'] == 'error' and 'pos' in msg and 'endPos' in msg and \
-                ((msg['endPos'] is not None and 'line' in msg['endPos']) or \
-                    (msg['pos'] is not None and 'line' in msg['pos'])):
-                    if msg['data'].startswith(Lean4SyncExecutor.theorem_detection_message) and msg['endPos'] is None:
-                        continue # Ignore this error
-                    full_error_msg = self._get_error_msg(msg_idx, msg)
-                    self._error_messages_so_far.add(full_error_msg)
-                elif msg['severity'] == 'warning' and 'pos' in msg and 'endPos' in msg and 'sorry' in msg['data']:
-                    full_error_msg = self._get_error_msg(msg_idx, msg)
-                    if full_error_msg in self._error_messages_so_far:
-                        continue
-                    self._error_messages_so_far.add(full_error_msg)
-        if 'env' in response:
-            self._update_env(response['env'])
-        self._env_idx_last_thm = response.get('env', None)
+        relevant_msgs = []
+        self._parse_response(0, response, relevant_msgs)
+        self._update_proof_context(0, response, relevant_msgs, only_env_update)
         return response
     
     def _add_last_tactic(self, idx: int, stmt: str):
@@ -756,6 +748,147 @@ class Lean4SyncExecutor:
             if os.path.exists(temp_file):
                 os.remove(temp_file)
 
+    def _theorem_started_init(self):
+        if self._theorem_started:
+            theorem_name, theorem_stmt, full_stmt = self._last_theorem
+            self.curr_lemma_name = theorem_name
+            self.curr_lemma = theorem_stmt
+            if len(theorem_name) == 0:
+                self._anon_theorem_count += 1
+                theorem_name = f"anon_theorem____{self._anon_theorem_count}"
+            self.local_file_lemmas[theorem_name] = theorem_stmt
+            self.local_theorem_lemma_description[theorem_name] = full_stmt
+
+    def _parse_response(self, idx, response, relevant_messages = [], dont_update_error_since_last_thm = True) -> bool:
+        has_cnt = 0
+        has_at_least_one_unfocussed_goal = 0
+        has_new_errors = 0
+        if 'messages' in response:
+            messages = response['messages']
+            # Go over all sev after the line number and check if there is an error
+            for msg_idx, msg in enumerate(messages):
+                full_error_msg = self._get_error_msg(msg_idx, msg)
+                unsolved_goal_never_seen_before = not (full_error_msg in self._error_messages_since_last_thm.values())
+                if msg['severity'] == 'error' and 'pos' in msg and 'endPos' in msg and \
+                ((msg['endPos'] is not None and 'line' in msg['endPos']) or \
+                    (msg['pos'] is not None and 'line' in msg['pos'])):
+                    if msg['data'].startswith(Lean4SyncExecutor.theorem_detection_message) and msg['endPos'] is None:
+                        has_cnt += 1
+                        continue # Ignore this error
+                    saw_unsolved_goal = False
+                    if msg['data'].startswith(Lean4SyncExecutor.unsolved_message):
+                        has_at_least_one_unfocussed_goal += 1
+                        saw_unsolved_goal = True
+                    if full_error_msg in self._error_messages_so_far and (dont_update_error_since_last_thm or unsolved_goal_never_seen_before):
+                        continue
+                    else:
+                        if not saw_unsolved_goal:
+                            has_new_errors += 1
+                    self._error_messages_so_far.add(full_error_msg)
+                    if not dont_update_error_since_last_thm:
+                        self._errors_since_last_thm(idx, full_error_msg)
+                        if not unsolved_goal_never_seen_before:
+                            msg['data'] = 'error: ' + msg['data']
+                    relevant_messages.append(msg)
+                elif msg['severity'] == 'warning' and 'pos' in msg and 'endPos' in msg and 'sorry' in msg['data']:
+                    full_error_msg = self._get_error_msg(msg_idx, msg)
+                    if full_error_msg in self._error_messages_so_far and (dont_update_error_since_last_thm or unsolved_goal_never_seen_before):
+                        continue
+                    self._error_messages_so_far.add(full_error_msg)
+                    if not dont_update_error_since_last_thm:
+                        self._errors_since_last_thm(idx, full_error_msg)
+                        if not unsolved_goal_never_seen_before:
+                            msg['data'] = 'error: ' + msg['data']
+                    relevant_messages.append(msg)
+        elif 'message' in response and 'proofState' not in response and 'sorries' not in response:
+            self.lean_error_messages = [response['message']]
+            # There is an irrecoverable error
+            if not self.process_interace.process_is_running():
+                raise Exception("Lean server got killed, probably due to an error in the line executed.\n" + 
+                f"Check the error message: {self.lean_error_messages}")
+        return has_cnt == 1 and has_at_least_one_unfocussed_goal > 0 and has_new_errors == 0
+
+    def _update_proof_context(self, idx, response, relevant_messages, only_env_update = False):
+        if response is None:
+            raise ValueError(f"Response is None cannot update proof context for line number {idx}")
+        if 'env' in response:
+            env_idx = response['env']
+        else:
+            env_idx = None
+        if self._env_idx_last_thm is None and not self._proof_running:
+            self._env_idx_last_thm = self._last_env_idx
+        self._update_env(env_idx)
+        if self._env_idx_last_thm is None and not self._proof_running:
+            # This should run for the first time to set the env correctly
+            self._env_idx_last_thm = self._last_env_idx
+        if only_env_update:
+            self._env_idx_last_thm = self._last_env_idx
+            return
+        proof_running = 'sorries' in response or 'proofState' in response
+        error_messages = response.get('message', None)
+        goal_text = None
+        if error_messages is None and 'proofState' in response:
+            error_messages = response.get('messages', None)
+        elif error_messages is None:
+            # Go over all the relevant messages and see if there are messages other than unproved goals
+            error_messages = []
+            for msg in relevant_messages:
+                text_msg = msg.get('data', None)
+                if text_msg is not None and text_msg.startswith(Lean4SyncExecutor.unsolved_message):
+                    goal_text = text_msg[len(Lean4SyncExecutor.unsolved_message):]
+                else:
+                    error_messages.append(msg)
+            if len(error_messages) == 0:
+                error_messages = None
+            if len(relevant_messages) == 0:
+                goal_text = ''
+        elif error_messages is not None:
+            error_messages = [error_messages]
+        if error_messages is not None:
+            self.lean_error_messages = []
+            for error_message in error_messages:
+                if isinstance(error_message, dict):
+                    error_message = error_message['severity'] + ": " + error_message['data']
+                else:
+                    error_message = str(error_message)
+                self.lean_error_messages.append(error_message)
+        else:
+            self.lean_error_messages = []
+            proof_running = proof_running or goal_text is not None
+        if error_messages is None:
+            assert proof_running, f"Proof is not running but no error message is present, response:\n{response}, \nstmt: \n{stmt}, \nlemma: \n{self.curr_lemma_name}, \nlemma_stmt: \n{self.curr_lemma}, \nline_num: \n{self.line_num}"
+            self._proof_running = proof_running
+            if self._proof_running:
+                proof_state_idx = None
+                proof_goals = []
+                if goal_text is not None:
+                    if len(goal_text) == 0:
+                        proof_goals = []
+                    else:
+                        proof_goals = [goal_text]
+                elif 'sorries' in response:
+                    sorries = response['sorries']
+                    # TODO: Go over all the sorries and find the one which matches the line number with idx + 1
+                    # Now we are only supporting the last sorry
+                    proof_state = sorries[-1]
+                    proof_state_idx = proof_state['proofState']
+                    proof_goals = [proof_state['goal']]
+                elif 'proofState' in response:
+                    proof_state = response
+                    proof_state_idx = response['proofState']
+                    proof_goals = response['goals']
+                self._update_proof_state_idx(proof_state_idx)
+                self.proof_context = self._parse_proof_context(proof_goals)
+                if self.proof_context == ProofContext.empty():
+                    self._proof_running = False
+                    self.proof_context = None
+                    self.curr_lemma = None
+                    self.curr_lemma_name = None
+                    self._clear_tacitcs()
+                    self._env_idx_last_thm = self._last_env_idx
+            else:
+                self.proof_context = None
+
     def _run_stmt_on_lean_server(self, idx : int, stmt: str, theorem_started: bool = False):
         if "sorry" in stmt and self._proof_running:
             # We don't need to run the sorry statements. This should be treated as a failed proof step
@@ -767,16 +900,8 @@ class Lean4SyncExecutor:
             return
         proof_should_run = False
         if theorem_started or (not self._proof_running and self._stmt_has_lemma(idx, stmt, do_full_check = True)):
-            proof_should_run = self._should_start_proof(stmt)
-            if proof_should_run:
-                theorem_name, theorem_stmt, full_stmt = self._last_theorem
-                self.curr_lemma_name = theorem_name
-                self.curr_lemma = theorem_stmt
-                if len(theorem_name) == 0:
-                    self._anon_theorem_count += 1
-                    theorem_name = f"anon_theorem____{self._anon_theorem_count}"
-                self.local_file_lemmas[theorem_name] = theorem_stmt
-                self.local_theorem_lemma_description[theorem_name] = full_stmt
+            proof_should_run = self._theorem_started
+            self._theorem_started_init()
         if not self._proof_running and not proof_should_run:
             return
         env_idx = self._get_env(idx)
@@ -787,7 +912,7 @@ class Lean4SyncExecutor:
             if self._env_idx_last_thm is None:
                 self._env_idx_last_thm = env_idx
             if self.process_interace.is_rebooted():
-                self._run_file_on_lean_server(self.timeout_in_sec * 5)
+                self._run_file_on_lean_server(self.timeout_in_sec * 5, only_env_update=True)
             cmd = self._get_cmd_tactic_mode(idx, stmt)
             if env_idx is not None and 'env' not in cmd:
                 cmd["env"] = env_idx
@@ -798,42 +923,8 @@ class Lean4SyncExecutor:
                 timed_out_in_secs = self.timeout_in_sec
                 response = self.process_interace.read_response(timed_out_in_secs)
                 relevant_messages = []
-                if 'messages' in response:
-                    messages = response['messages']
-                    # Go over all sev after the line number and check if there is an error
-                    for msg_idx, msg in enumerate(messages):
-                        full_error_msg = self._get_error_msg(msg_idx, msg)
-                        unsolved_goal_never_seen_before = not (full_error_msg in self._error_messages_since_last_thm.values())
-                        if msg['severity'] == 'error' and 'pos' in msg and 'endPos' in msg and \
-                        ((msg['endPos'] is not None and 'line' in msg['endPos']) or \
-                         (msg['pos'] is not None and 'line' in msg['pos'])):
-                            if msg['data'].startswith(Lean4SyncExecutor.theorem_detection_message) and msg['endPos'] is None:
-                                continue # Ignore this error
-                            if full_error_msg in self._error_messages_so_far and unsolved_goal_never_seen_before:
-                                continue
-                            self._error_messages_so_far.add(full_error_msg)
-                            self._errors_since_last_thm(idx, full_error_msg)
-                            if not unsolved_goal_never_seen_before:
-                                msg['data'] = 'error: ' + msg['data']
-                            relevant_messages.append(msg)
-                        elif msg['severity'] == 'warning' and 'pos' in msg and 'endPos' in msg and 'sorry' in msg['data']:
-                            full_error_msg = self._get_error_msg(msg_idx, msg)
-                            if full_error_msg in self._error_messages_so_far and unsolved_goal_never_seen_before:
-                                continue
-                            self._error_messages_so_far.add(full_error_msg)
-                            self._errors_since_last_thm(idx, full_error_msg)
-                            if not unsolved_goal_never_seen_before:
-                                msg['data'] = 'error: ' + msg['data']
-                            relevant_messages.append(msg)
-                    cmd_was_executed = True
-                elif 'message' in response and 'proofState' not in response and 'sorries' not in response:
-                    self.lean_error_messages = [response['message']]
-                    cmd_was_executed = True # There is an irrecoverable error
-                    if not self.process_interace.process_is_running():
-                        raise Exception("Lean server got killed, probably due to an error in the line executed.\n" + 
-                        f"Check the error message: {self.lean_error_messages}")
-                else:
-                    cmd_was_executed = True
+                self._parse_response(idx, response, relevant_messages, dont_update_error_since_last_thm=False)
+                cmd_was_executed = True
             except TimeoutError:
                 if not self.suppress_error_log:
                     self.logger.error(f"Timeout error while running '{stmt}' on lean. File name: {self.main_file}")
@@ -849,80 +940,7 @@ class Lean4SyncExecutor:
         if timed_out:
             self.lean_error_messages = ["The tactic timed out, probably because of repeated application of a tactic which created a very big goal."]
         else:
-            if response is None:
-                raise ValueError(f"Response is None for the statement: {stmt}")
-            if 'env' in response:
-                env_idx = response['env']
-            else:
-                env_idx = None
-            self._update_env(env_idx)
-            if self._env_idx_last_thm is None and not self._proof_running:
-                # self._add_last_tactic(idx, last_content)
-                self._env_idx_last_thm = env_idx
-            proof_running = 'sorries' in response or 'proofState' in response
-            error_messages = response.get('message', None)
-            goal_text = None
-            if error_messages is None and 'proofState' in response:
-                error_messages = response.get('messages', None)
-            elif error_messages is None:
-                # Go over all the relevant messages and see if there are messages other than unproved goals
-                error_messages = []
-                for msg in relevant_messages:
-                    text_msg = msg.get('data', None)
-                    if text_msg is not None and text_msg.startswith(Lean4SyncExecutor.unsolved_message):
-                        goal_text = text_msg[len(Lean4SyncExecutor.unsolved_message):]
-                    else:
-                        error_messages.append(msg)
-                if len(error_messages) == 0:
-                    error_messages = None
-                if len(relevant_messages) == 0:
-                    goal_text = ''
-            elif error_messages is not None:
-                error_messages = [error_messages]
-            if error_messages is not None:
-                self.lean_error_messages = []
-                for error_message in error_messages:
-                    if isinstance(error_message, dict):
-                        error_message = error_message['severity'] + ": " + error_message['data']
-                    else:
-                        error_message = str(error_message)
-                    self.lean_error_messages.append(error_message)
-            else:
-                self.lean_error_messages = []
-                proof_running = proof_running or goal_text is not None
-            if error_messages is None:
-                assert proof_running, f"Proof is not running but no error message is present, response:\n{response}, \nstmt: \n{stmt}, \nlemma: \n{self.curr_lemma_name}, \nlemma_stmt: \n{self.curr_lemma}, \nline_num: \n{self.line_num}"
-                self._proof_running = proof_running
-                if self._proof_running:
-                    proof_state_idx = None
-                    proof_goals = []
-                    if goal_text is not None:
-                        if len(goal_text) == 0:
-                            proof_goals = []
-                        else:
-                            proof_goals = [goal_text]
-                    elif 'sorries' in response:
-                        sorries = response['sorries']
-                        # TODO: Go over all the sorries and find the one which matches the line number with idx + 1
-                        # Now we are only supporting the last sorry
-                        proof_state = sorries[-1]
-                        proof_state_idx = proof_state['proofState']
-                        proof_goals = [proof_state['goal']]
-                    elif 'proofState' in response:
-                        proof_state = response
-                        proof_state_idx = response['proofState']
-                        proof_goals = response['goals']
-                    self._update_proof_state_idx(proof_state_idx)
-                    self.proof_context = self._parse_proof_context(proof_goals)
-                    if self.proof_context == ProofContext.empty():
-                        self._proof_running = False
-                        self.proof_context = None
-                        self.curr_lemma = None
-                        self.curr_lemma_name = None
-                        self._clear_tacitcs()
-                        self._env_idx_last_thm = None
-                else:
-                    self.proof_context = None
+            self._update_proof_context(idx, response, relevant_messages)
         pass
 
     def _skip_to_theorem(self, theorem: str):
@@ -948,7 +966,7 @@ class Lean4SyncExecutor:
                         self._theorem_started = True
                         self._content_till_last_theorem_stmt = '\n'.join(self._lines_executed)
                         if self._stmt_has_lemma(self.line_num - 1, stmt, do_full_check=True):
-                            self._run_stmt_on_lean_server(len(self._lines_executed), stmt, theorem_started=True)
+                            self._theorem_started_init()
                         else:
                             found_theorem = False
                             self._theorem_started = orig_thm_started
@@ -1114,22 +1132,24 @@ if __name__ == "__main__":
     theorem_name = "Lean4Proj2.test3"
     theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
     print("Theorem similar to ", "Lean4Proj2.test", " is ", theorems_similar_to_test)
-    # project_root = 'data/test/Mathlib/'
+    project_root = 'data/test/Mathlib/'
     # theorem_name = 'WeierstrassCurve.Jacobian.equiv_of_Z_eq_zero'
-    # theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
     # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/AlgebraicGeometry/EllipticCurve/Jacobian.lean'
-    # theorem_name = 'LieSubmodule.coe_toSubmodule_mk'
-    # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Algebra/Lie/Submodule.lean'
+    theorem_name = 'LieSubmodule.coe_toSubmodule_mk'
+    file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Algebra/Lie/Submodule.lean'
+    theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
     date_time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     lean_exec_log_folder = f'.log/lean4_sync_executor/{date_time}'
     os.makedirs(lean_exec_log_folder, exist_ok=True)
     lean_exec_log_file = os.path.join(lean_exec_log_folder, "lean4_sync_executor.log")
     logger = setup_logger("Lean4SyncExecutor", lean_exec_log_file, level=logging.DEBUG, format='')
+    # with Lean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger) as executor:
+    #     all_proofs = executor.get_all_proofs_in_file()
+    #     print(all_proofs)
     with Lean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger) as executor:
-        all_proofs = executor.get_all_proofs_in_file()
-        print(all_proofs)
-    with Lean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger) as executor:
+        executor.set_run_exactly()
         executor._skip_to_theorem(theorems_similar_to_test)
+        assert executor.proof_context is not None, "Proof context should be present"
         proof_exec = False
         while not executor.execution_complete:
             if executor.proof_context is not None:
@@ -1145,6 +1165,7 @@ if __name__ == "__main__":
             if executor.proof_context is None and proof_exec:
                 proof_exec = False
                 print("Proof finished")
+                break
             if executor.lean_error_messages:
                 print("Error messages:\n", executor.lean_error_messages)
 
