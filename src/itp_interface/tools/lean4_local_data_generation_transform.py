@@ -80,22 +80,8 @@ class Local4DataGenerationTransform(GenericTrainingDataGenerationTransform):
                     ran_next = lean_executor.run_next()
                     cmd_ran = lean_executor.current_stmt
                 else:
-                    end_goals = []
                     ran_next = False
-                    if len(start_goals) > 0:
-                        tdf = TrainingDataFormat(
-                            proof_id=proof_id,
-                            all_useful_defns_theorems=[],
-                            start_goals=start_goals,
-                            end_goals=end_goals,
-                            proof_steps=[cmd_ran],
-                            simplified_goals=[],
-                            addition_state_info={},
-                            file_path=lean_executor.main_file,
-                            theorem_name=proof_id,
-                            project_id=project_id)
-                        training_data.merge(tdf)
-                    break
+        training_data.meta.num_theorems += 1
         self.logger.info(f"===============Finished processing {file_namespace}=====================")
         self.logger.info(f"Total theorems processed in this transform: 1")
         try:
