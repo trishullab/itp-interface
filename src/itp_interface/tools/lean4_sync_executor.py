@@ -47,6 +47,7 @@ class Lean4SyncExecutor:
     proof_state_running_message = "tactic failed, there are unsolved goals\nstate:"
     unsolved_message = "unsolved goals"
     theorem_detection_message = "unexpected end of input; expected '{'"
+    extra_by = ' by\n'
     def __init__(self, 
         project_root: Optional[str] = None, 
         prefix: Optional[str] = None, 
@@ -130,6 +131,7 @@ class Lean4SyncExecutor:
         self._error_messages_since_last_thm = {}
         self._run_exactly = False
         self._lines_not_executed = []
+        self._extra_added: str = None
         if self._enable_search:
             pass
         pass
@@ -232,14 +234,31 @@ class Lean4SyncExecutor:
 
     def run_next(self) -> bool:
         try:
-            if self.run_exactly() and len(self._lines_not_executed) > 0:
-                stmt = self._lines_not_executed.pop(0)
+            lines = []
+            scanned_new_line = False
+            if self.run_exactly():
+                if len(self._lines_not_executed) > 0:
+                    lines = self._lines_not_executed
+                    next_line = lines[-1]
+                    self._lines_not_executed = []
+                else:
+                    next_line = next(self.main_file_iter)
+                    lines.append(next_line)
+                    scanned_new_line = True
+                if self._extra_added is not None:
+                    # Check if the nextline begines with extra added ignoring space and tabs
+                    if next_line.strip().startswith(self._extra_added.strip()):
+                        # Remove the extra added in the next line and replace it with spaces
+                        next_line = next_line.replace(self._extra_added, " " * len(self._extra_added), 1)
+                    self._extra_added = None
             else:
-                stmt = next(self.main_file_iter)
+                next_line = next(self.main_file_iter)
+                lines.append(next_line)
+            stmt = "\n".join(lines)
         except StopIteration:
             self.execution_complete = True
             return False
-        self.current_stmt = stmt
+        self.current_stmt = next_line
         self.line_num += 1
         try:
             idx = len(self._lines_executed)
@@ -249,7 +268,10 @@ class Lean4SyncExecutor:
                 self.logger.error(f"Got an exception while running '{stmt}' on lean. File name: {self.main_file}")
                 self.logger.exception(f"Exception Log")
             raise
-        self._lines_executed.append(stmt)
+        if scanned_new_line:
+            self._lines_executed.append(next_line)
+        else:
+            self._lines_executed.append("") # Add an empty line to keep the line numbers in sync
         return True
 
     def needs_qed(self):
@@ -472,7 +494,9 @@ class Lean4SyncExecutor:
             else:
                 theorem_stmt = theorem_stmt[:thm_end_idx]
         if do_full_check:
-            check_stmt = stmt[:span_start] + full_stmt + ' by\n'
+            check_stmt = stmt[:span_start] + full_stmt + Lean4SyncExecutor.extra_by
+            if self.run_exactly():
+                self._extra_added = Lean4SyncExecutor.extra_by
             if not self._check_if_thm_read(idx, check_stmt):
                 return None
         return theorem_name, theorem_stmt, full_stmt
@@ -517,12 +541,15 @@ class Lean4SyncExecutor:
                     self._backtrack_tactic_line(idx)
                 last_thm = self._parse_theorem_stmt(idx, interesting_stmt, do_full_check, interesting_span) 
                 if last_thm is not None:
-                    self._content_till_last_theorem_stmt = full_stmt[:last_span_start] + last_thm[2] + ' by\n'
                     if do_full_check and self.run_exactly():
                         self._backtrack_tactic_line(idx)
-                        self._lines_not_executed.append(remaining_stmt)
+                        # Remove the extra added
+                        self._extra_added: str = None
                         self._lines_not_executed.append(full_stmt[:last_span_start] + last_thm[2])
+                        self._lines_not_executed.append(remaining_stmt)
                         self._content_till_last_theorem_stmt = full_stmt[:last_span_start] + last_thm[2] + remaining_stmt
+                    else:
+                        self._content_till_last_theorem_stmt = full_stmt[:last_span_start] + last_thm[2] + Lean4SyncExecutor.extra_by
                     break
             if last_thm is None:
                 endings = [i for i in range(last_span_end, len(full_stmt)) if full_stmt.startswith('=> ', i)]
@@ -1105,21 +1132,22 @@ if __name__ == "__main__":
     theorem_name = "Lean4Proj2.test3"
     theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
     print("Theorem similar to ", "Lean4Proj2.test", " is ", theorems_similar_to_test)
-    # project_root = 'data/test/Mathlib/'
+    project_root = 'data/test/Mathlib/'
     # theorem_name = 'WeierstrassCurve.Jacobian.equiv_of_Z_eq_zero'
     # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/AlgebraicGeometry/EllipticCurve/Jacobian.lean'
-    # theorem_name = 'LieSubmodule.coe_toSubmodule_mk'
-    # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Algebra/Lie/Submodule.lean'
-    # theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
+    theorem_name = 'LieSubmodule.coe_toSubmodule_mk'
+    file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Algebra/Lie/Submodule.lean'
+    theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
     date_time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     lean_exec_log_folder = f'.log/lean4_sync_executor/{date_time}'
     os.makedirs(lean_exec_log_folder, exist_ok=True)
     lean_exec_log_file = os.path.join(lean_exec_log_folder, "lean4_sync_executor.log")
     logger = setup_logger("Lean4SyncExecutor", lean_exec_log_file, level=logging.DEBUG, format='')
+    # with Lean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger) as executor:
+    #     all_proofs = executor.get_all_proofs_in_file()
+    #     print(all_proofs)
     with Lean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger) as executor:
-        all_proofs = executor.get_all_proofs_in_file()
-        print(all_proofs)
-    with Lean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger) as executor:
+        executor.set_run_exactly()
         executor._skip_to_theorem(theorems_similar_to_test)
         assert executor.proof_context is not None, "Proof context should be present"
         proof_exec = False
