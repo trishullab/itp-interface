@@ -9,7 +9,7 @@ import uuid
 from itp_interface.tools.lean4_sync_executor import Lean4SyncExecutor
 from itp_interface.tools.lean4_context_helper import Lean4ContextHelper
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
-from itp_interface.tools.training_data_format import Goal, MergableCollection, TrainingDataMetadataFormat, TrainingDataCollection, TrainingDataFormat
+from itp_interface.tools.training_data_format import MergableCollection, TrainingDataMetadataFormat, TrainingDataCollection, TrainingDataFormat
 from itp_interface.tools.training_data import TrainingData
 
 class Local4DataGenerationTransform(GenericTrainingDataGenerationTransform):
@@ -42,40 +42,62 @@ class Local4DataGenerationTransform(GenericTrainingDataGenerationTransform):
         lean_context_helper.__enter__()
         file_namespace = lean_executor.main_file.replace('/', '.')
         self.logger.info(f"=========================Processing {file_namespace}=========================")
-        prev_goal : typing.List[Goal] = lean_context_helper.get_focussed_goals(lean_executor) if lean_executor.is_in_proof_mode() else []
         theorem_id = str(uuid.uuid4())
-        proof_id = theorem_id
         theorems = set(theorems) if theorems is not None else None
-        proofs = lean_executor.get_all_proofs_in_file()
-        theorem_count = 0
-        for thm_id, proof_steps in proofs.items():
-            if theorems is not None and thm_id not in theorems:
-                self.logger.info(f"Skipping lemma [{thm_id}] as it is not in the list of theorems to process")
-                continue
-            theorem_count += 1
-            self.logger.info(f"Processing lemma [{thm_id}]")
-            for idx, (goal, proof_step) in enumerate(proof_steps):
-                prev_goal : typing.List[Goal] = lean_context_helper.get_focussed_goals_from_proof_context(goal)
-                next_g = proof_steps[idx+1][0] if idx+1 < len(proof_steps) else None
-                next_goal : typing.List[Goal] = lean_context_helper.get_focussed_goals_from_proof_context(next_g) if next_g is not None else []
-                if len(prev_goal) > 0:
-                    training_data_format = TrainingDataFormat(
-                        proof_id=thm_id,
+        assert len(theorems) == 1, "Only one theorem can be processed at a time"
+        with lean_executor:
+            lean_executor.set_run_exactly()
+            lean_executor._skip_to_theorem(theorems.pop())
+            start_goals = lean_context_helper.get_focussed_goals_from_proof_context(lean_executor.proof_context)
+            ran_next = lean_executor.run_next()
+            cmd_ran = lean_executor.current_stmt
+            try:
+                theorem_id = theorem_id + "/" + lean_executor.get_current_lemma_name()
+            except:
+                pass
+            proof_id = theorem_id
+            while not lean_executor.execution_complete and ran_next:
+                if lean_executor.is_in_proof_mode():
+                    end_goals = lean_context_helper.get_focussed_goals_from_proof_context(lean_executor.proof_context)
+                else:
+                    end_goals = []
+                if len(start_goals) > 0 and \
+                    (len(start_goals) != len(end_goals) or not all(s_g == e_g for s_g, e_g in zip(start_goals, end_goals))):
+                    tdf = TrainingDataFormat(
+                        proof_id=proof_id,
                         all_useful_defns_theorems=[],
-                        start_goals=prev_goal,
-                        end_goals=next_goal,
-                        proof_steps=[proof_step],
-                        simplified_goals=[], 
+                        start_goals=start_goals,
+                        end_goals=end_goals,
+                        proof_steps=[cmd_ran],
+                        simplified_goals=[],
                         addition_state_info={},
                         file_path=lean_executor.main_file,
-                        theorem_name=thm_id,
+                        theorem_name=proof_id,
                         project_id=project_id)
-                    assert len(training_data_format.proof_steps) > 0, f"Proof steps cannot be empty for {proof_id}"
-                    training_data.merge(training_data_format)
-            prev_goal = []
-        training_data.meta.num_theorems += theorem_count   
+                    training_data.merge(tdf)
+                if lean_executor.is_in_proof_mode():
+                    start_goals = end_goals
+                    ran_next = lean_executor.run_next()
+                    cmd_ran = lean_executor.current_stmt
+                else:
+                    end_goals = []
+                    ran_next = False
+                    if len(start_goals) > 0:
+                        tdf = TrainingDataFormat(
+                            proof_id=proof_id,
+                            all_useful_defns_theorems=[],
+                            start_goals=start_goals,
+                            end_goals=end_goals,
+                            proof_steps=[cmd_ran],
+                            simplified_goals=[],
+                            addition_state_info={},
+                            file_path=lean_executor.main_file,
+                            theorem_name=proof_id,
+                            project_id=project_id)
+                        training_data.merge(tdf)
+                    break
         self.logger.info(f"===============Finished processing {file_namespace}=====================")
-        self.logger.info(f"Total theorems processed in this transform: {theorem_count}")
+        self.logger.info(f"Total theorems processed in this transform: 1")
         try:
             lean_context_helper.__exit__(None, None, None)
         except:
@@ -109,6 +131,6 @@ if __name__ == "__main__":
         training_meta=transform.get_meta_object(), 
         logger=logger)
     with Lean4SyncExecutor(project_root=project_dir, main_file=file_name, use_human_readable_proof_context=True, suppress_error_log=True) as coq_exec:
-        transform(training_data, project_id, coq_exec, _print_lean_executor_callback)
+        transform(training_data, project_id, coq_exec, _print_lean_executor_callback, theorems=['{"namespace": "Lean4Proj1", "name": "test2"}'])
     save_info = training_data.save()
     logger.info(f"Saved training data to {save_info}")
