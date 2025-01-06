@@ -46,6 +46,10 @@ class CaptureExceptionActor:
         except Exception as e:
             return CapturedException(e)
 
+def run_safely_on_actor(func, timeout, *args, **kwargs):
+    capture_exception_actor = CaptureExceptionActor.remote(func, timeout=timeout, args=args, kwargs=kwargs)
+    return capture_exception_actor.try_capture_exception.remote() 
+
 class ProofEnvPool(object):
     def __init__(self, 
             pool_size: int = 1,
@@ -89,9 +93,13 @@ class ProofEnvPool(object):
             self.pool_size = len(proof_env_actors)
             self._frozeen_env = None
             self._proof_env_pool : typing.List[ProofEnvActor] = proof_env_actors
-            all_args = ray.get([proof_env_actor.get_env_args.remote() for proof_env_actor in self._proof_env_pool])
-            all_kwargs = ray.get([proof_env_actor.get_env_kwargs.remote() for proof_env_actor in self._proof_env_pool])
+            all_args = ray.get([run_safely_on_actor(proof_env_actor.get_env_args, self._timeout) for proof_env_actor in self._proof_env_pool])
+            all_kwargs = ray.get([run_safely_on_actor(proof_env_actor.get_env_kwargs, self._timeout) for proof_env_actor in self._proof_env_pool])
             for i, (args, kwargs) in enumerate(zip(all_args, all_kwargs)):
+                if isinstance(args, CapturedException) or isinstance(kwargs, CapturedException):
+                    self._logger.error(f"Error getting arguments for proof environment {i}: {args}")
+                    self._logger.error(f"Error getting keyword arguments for proof environment {i}: {kwargs}")
+                    raise Exception(f"Error getting arguments for proof environment {i}: {args}")
                 self._env_args_map[i] = args
                 self._env_kwargs_map[i] = kwargs
         self._timeout = timeout
@@ -110,7 +118,10 @@ class ProofEnvPool(object):
     
     def __exit__(self, exc_type, exc_value, traceback):
         self._is_initialized = False
-        self._try_cleanup_envs(list(range(self.pool_size)))
+        try:
+            self._try_cleanup_envs(list(range(self.pool_size)))
+        except Exception as e:
+            self._logger.error(f"Error cleaning up environments: {e}")
 
     def add_and_init_proof_envs(self, count: int = 1):
         count_before = len(self._proof_env_pool)
@@ -165,8 +176,12 @@ class ProofEnvPool(object):
                 )
             )
         self.pool_size += 1
-        args = ray.get(self._proof_env_pool[-1].get_env_args.remote())
-        kwargs = ray.get(self._proof_env_pool[-1].get_env_kwargs.remote())
+        args = ray.get(run_safely_on_actor(self._proof_env_pool[-1].get_env_args, self._timeout))
+        kwargs = ray.get(run_safely_on_actor(self._proof_env_pool[-1].get_env_kwargs, self._timeout))
+        if isinstance(args, CapturedException) or isinstance(kwargs, CapturedException):
+            self._logger.error(f"Error getting arguments for proof environment {self.pool_size-1}: {args}")
+            self._logger.error(f"Error getting keyword arguments for proof environment {self.pool_size-1}: {kwargs}")
+            raise Exception(f"Error getting arguments for proof environment {self.pool_size-1}: {args}")
         self._env_args_map[self.pool_size-1] = args
         self._env_kwargs_map[self.pool_size-1] = kwargs
 
@@ -226,7 +241,10 @@ class ProofEnvPool(object):
             else:
                 nonactive_idxs.append(idx)
                 list_used.append(nonactive_idxs)
-        active_states = ray.get([self._proof_env_pool[idx].get_state.remote() for idx in active_idxs])
+        active_states = ray.get([run_safely_on_actor(self._proof_env_pool[idx].get_state, self._timeout) for idx in active_idxs])
+        for i, state in enumerate(active_states):
+            if isinstance(state, CapturedException):
+                raise Exception(f"Error getting state for proof environment {i}: {state}")
         nonactive_states = [self._nonactive_env_to_state_map.get(idx, None) for idx in nonactive_idxs]
         results = []
         active_idx = 0
@@ -255,7 +273,10 @@ class ProofEnvPool(object):
             else:
                 nonactive_idxs.append(idx)
                 list_used.append(nonactive_idxs)
-        active_dones = ray.get([self._proof_env_pool[idx].get_done.remote() for idx in active_idxs])
+        active_dones = ray.get([run_safely_on_actor(self._proof_env_pool[idx].get_done, self._timeout) for idx in active_idxs])
+        for i, done in enumerate(active_dones):
+            if isinstance(done, CapturedException):
+                raise Exception(f"Error getting done for proof environment {i}: {done}")
         nonactive_dones = [self._nonactive_env_to_done_map.get(idx, None) for idx in nonactive_idxs]
         results = []
         active_idx = 0
@@ -274,13 +295,19 @@ class ProofEnvPool(object):
         assert self._is_initialized, "Pool must be initialized before dumping"
         assert len(idxs) > 0, "Must provide at least one index"
         assert len(set(idxs).intersection(self._errd_envs)) == 0, f"Cannot dump proof of errored environments: {set(idxs).intersection(self._errd_envs)}"
-        return ray.get([self._proof_env_pool[idx].dump_proof.remote() for idx in idxs])
+        proofs = ray.get([run_safely_on_actor(self._proof_env_pool[idx].dump_proof, self._timeout) for idx in idxs])
+        for i, proof in enumerate(proofs):
+            if isinstance(proof, CapturedException):
+                raise Exception(f"Error dumping proof for proof environment {i}: {proof}")
     
     def _get_attr(self, attr_name: str, idxs: typing.List[int]):
         assert self._is_initialized, "Pool must be initialized before getting"
         assert len(idxs) > 0, "Must provide at least one index"
         assert len(set(idxs).intersection(self._errd_envs)) == 0, f"Cannot get attribute {attr_name} of errored environments: {set(idxs).intersection(self._errd_envs)}"
-        return ray.get([self._proof_env_pool[idx].getattr.remote(attr_name) for idx in idxs])
+        attrs = ray.get([run_safely_on_actor(self._proof_env_pool[idx].getattr, self._timeout, args = [attr_name]) for idx in idxs])
+        for i, attr in enumerate(attrs):
+            if isinstance(attr, CapturedException):
+                raise Exception(f"Error getting attribute {attr_name} for proof environment {i}: {attr}")
     
     def get_proof_search_res(self, idxs: typing.List[int]) -> typing.List[typing.Tuple[typing.List[ProofAction], float]]:
         assert self._is_initialized, "Pool must be initialized before getting"
@@ -297,8 +324,7 @@ class ProofEnvPool(object):
         init_remotes = []
         for should_load_env, idx in zip(should_load_envs, idxs):
             if not should_load_env:
-                catch_exception_actor = CaptureExceptionActor.remote(self._proof_env_pool[idx].reset, timeout=self._timeout)
-                init_remotes.append(catch_exception_actor.try_capture_exception.remote())
+                init_remotes.append(run_safely_on_actor(self._proof_env_pool[idx].reset, self._timeout))
         env_init_stats = ray.get(init_remotes)
         results = []
         envs_to_remove = []
@@ -393,8 +419,7 @@ class ProofEnvPool(object):
     def _unsafe_step_chunk(self, actions: typing.List[ProofAction], idxs: typing.List[int] = None) -> typing.List[typing.Tuple[ProofState, ProofAction, ProofState, float, bool, ProofEnvInfo]]:
         remotes = []
         for i, idx in enumerate(idxs):
-            catch_exception_actor = CaptureExceptionActor.remote(self._proof_env_pool[idx].step, timeout=self._timeout, args=[actions[i]])
-            remotes.append(catch_exception_actor.try_capture_exception.remote())
+            remotes.append(run_safely_on_actor(self._proof_env_pool[idx].step, self._timeout, args=[actions[i]]))
         return_remotes = ray.get(remotes, timeout=self._timeout)
         actual_returns = []
         for i, return_remote in enumerate(return_remotes):
@@ -416,23 +441,29 @@ class ProofEnvPool(object):
             for env_idx in idxs:
                 proof_env_actor = self._proof_env_pool[env_idx]
                 if env_idx in self._active_envs:
-                    state_remotes.append(proof_env_actor.get_state.remote())
-                    done_remotes.append(proof_env_actor.get_done.remote())
+                    state_remotes.append(run_safely_on_actor(proof_env_actor.get_state, self._timeout))
+                    done_remotes.append(run_safely_on_actor(proof_env_actor.get_done, self._timeout))
             states = ray.get(state_remotes)
             dones = ray.get(done_remotes)
             state_idx = 0
             for env_idx in idxs:
                 if env_idx in self._active_envs:
-                    self._nonactive_env_to_state_map[env_idx] = states[state_idx]
-                    self._nonactive_env_to_done_map[env_idx] = dones[state_idx]
+                    if isinstance(states[state_idx], CapturedException) or isinstance(dones[state_idx], CapturedException):
+                        self._logger.error(f"Error getting state/done for proof environment {env_idx}: {states[state_idx]}")
+                        ex = Exception(f"Error getting state/done for proof environment {env_idx}: {states[state_idx]}")
+                        raise CapturedException(ex)
+                    else:
+                        self._nonactive_env_to_state_map[env_idx] = states[state_idx]
+                        self._nonactive_env_to_done_map[env_idx] = dones[state_idx]
                     state_idx += 1
             cleanup_remotes = []
             for env_idx in idxs:
                 proof_env_actor = self._proof_env_pool[env_idx]
                 if env_idx in self._active_envs:
-                    catch_exception_actor = CaptureExceptionActor.remote(proof_env_actor.cleanup, timeout=self._timeout)
-                    cleanup_remotes.append(catch_exception_actor.try_capture_exception.remote())
+                    cleanup_remotes.append(run_safely_on_actor(proof_env_actor.cleanup, self._timeout))
             ray.get(cleanup_remotes, timeout=15)
+        except CapturedException as e:
+            raise
         except Exception as e:
             self._logger.error(f"Error cleaning up proof environments: {e}")
         # Kill all actors
