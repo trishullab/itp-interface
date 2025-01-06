@@ -47,7 +47,7 @@ class CaptureExceptionActor:
             return CapturedException(e)
 
 def run_safely_on_actor(func, timeout, *args, **kwargs):
-    capture_exception_actor = CaptureExceptionActor.remote(func, timeout=timeout, args=args, kwargs=kwargs)
+    capture_exception_actor = CaptureExceptionActor.remote(func, timeout=timeout, *args, **kwargs)
     return capture_exception_actor.try_capture_exception.remote() 
 
 class ProofEnvPool(object):
@@ -73,6 +73,7 @@ class ProofEnvPool(object):
         self._nonactive_env_to_done_map : typing.Dict[int, bool] = {}
         self._env_args_map : typing.Dict[int, typing.List] = {}
         self._env_kwargs_map : typing.Dict[int, typing.Dict] = {}
+        self._timeout = timeout
         if proof_env_actors is None:
             self.pool_size = pool_size
             self._frozeen_env = replicate_proof_env(proof_env, self._logger) # This is like a frozen copy we never change it
@@ -102,7 +103,6 @@ class ProofEnvPool(object):
                     raise Exception(f"Error getting arguments for proof environment {i}: {args}")
                 self._env_args_map[i] = args
                 self._env_kwargs_map[i] = kwargs
-        self._timeout = timeout
         self._errd_envs = set()
         self._errd_envs_exceptions = {}
         self._is_initialized = False
