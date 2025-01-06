@@ -308,6 +308,7 @@ class ProofEnvPool(object):
         for i, attr in enumerate(attrs):
             if isinstance(attr, CapturedException):
                 raise Exception(f"Error getting attribute {attr_name} for proof environment {i}: {attr}")
+        return attrs
     
     def get_proof_search_res(self, idxs: typing.List[int]) -> typing.List[typing.Tuple[typing.List[ProofAction], float]]:
         assert self._is_initialized, "Pool must be initialized before getting"
