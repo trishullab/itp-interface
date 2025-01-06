@@ -421,7 +421,7 @@ class ProofEnvPool(object):
         remotes = []
         for i, idx in enumerate(idxs):
             remotes.append(run_safely_on_actor(self._proof_env_pool[idx].step, self._timeout, args=[actions[i]]))
-        return_remotes = ray.get(remotes, timeout=self._timeout)
+        return_remotes = ray.get(remotes)
         actual_returns = []
         for i, return_remote in enumerate(return_remotes):
             if isinstance(return_remote, CapturedException):
@@ -461,8 +461,8 @@ class ProofEnvPool(object):
             for env_idx in idxs:
                 proof_env_actor = self._proof_env_pool[env_idx]
                 if env_idx in self._active_envs:
-                    cleanup_remotes.append(run_safely_on_actor(proof_env_actor.cleanup, self._timeout))
-            ray.get(cleanup_remotes, timeout=15)
+                    cleanup_remotes.append(run_safely_on_actor(proof_env_actor.cleanup, timeout=15))
+            ray.get(cleanup_remotes)
         except CapturedException as e:
             raise
         except Exception as e:
