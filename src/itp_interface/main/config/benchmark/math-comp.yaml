@@ -8,7 +8,7 @@ dfs_metadata_filename_for_retrieval: local.meta.json
 setup_cmds:
   - opam env --switch=MathComp --set-switch
 datasets:
-  - project: /mnt/amthakur/data/repos/math-comp/
+  - project: <root>/data/repos/math-comp/
     files:
     - path: mathcomp/solvable/primitive_action.v
       theorems: '*'

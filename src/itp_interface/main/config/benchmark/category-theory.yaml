@@ -8,7 +8,7 @@ dfs_metadata_filename_for_retrieval: local.meta.json
 setup_cmds:
   - opam env --switch=category-theory --set-switch
 datasets:
-  - project: /mnt/amthakur/data/repos/category-theory/
+  - project: <root>/data/repos/category-theory/
     files:
     - path: Lib.v
       theorems: '*'

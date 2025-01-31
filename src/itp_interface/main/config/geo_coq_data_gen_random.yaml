@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: 'disabled'
 
 run_settings:
- output_dir: /mnt/amthakur/data/proofsteps/random-small-test/GeoCoq
+ output_dir: <root>/data/proofsteps/random-small-test/GeoCoq
  random_split: True
  random_seed: 0xf00
  train_eval_test_split:

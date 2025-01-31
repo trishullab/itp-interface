@@ -8,7 +8,7 @@ dfs_metadata_filename_for_retrieval: local.meta.json
 setup_cmds:
   - opam env --switch=UniMath --set-switch
 datasets:
-  - project: /mnt/amthakur/data/repos/UniMath
+  - project: <root>/data/repos/UniMath
     files:
     - path: UniMath/All.v
       theorems: '*'

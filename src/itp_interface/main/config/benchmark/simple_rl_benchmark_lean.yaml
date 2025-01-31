@@ -1,0 +1,14 @@
+name: simple_rl_benchmark_lean
+num_files: 1
+language: LEAN4
+few_shot_data_path_for_retrieval: null
+few_shot_metadata_filename_for_retrieval: null
+dfs_data_path_for_retrieval: null
+dfs_metadata_filename_for_retrieval: local.meta.json
+theorem_cnt: 13
+timeout_per_theorem_in_secs: 620
+datasets:
+- project: <root>/Project/thrall/src/thrall_lib/data/proofs/lean/lean4_proj
+  files:
+  - path: Lean4Proj/Train.lean
+    theorems: "*"

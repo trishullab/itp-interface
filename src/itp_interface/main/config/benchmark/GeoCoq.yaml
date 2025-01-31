@@ -8,7 +8,7 @@ dfs_metadata_filename_for_retrieval: local.meta.json
 setup_cmds:
   - opam env --switch=GeoCoq --set-switch
 datasets:
-  - project: /mnt/amthakur/data/repos/GeoCoq
+  - project: <root>/data/repos/GeoCoq
     files:
     - path: theories/Algebraic/tcp_ndc.v
       theorems: '*'
