@@ -1,16 +1,12 @@
 defaults:
   # - benchmark: simple_benchmark_lean_training_data
   # - run_settings: default_lean_data_generation_transforms
-  - benchmark: leandojo_random
+  # - benchmark: simple_benchmark_1
+  # - run_settings: default_lean4_data_generation_transforms
+  - benchmark: simple_rl_benchmark_lean
   - run_settings: default_lean4_data_generation_transforms
   - env_settings: no_retrieval
   - override hydra/job_logging: 'disabled'
 
 run_settings:
- output_dir: <root>/data/proofsteps/leandojo/random
- random_split: True
- random_seed: 0xf00
- train_eval_test_split:
-   - 0.925
-   - 0.0375
-   - 0.0375
+ output_dir: .log/data_generation/benchmark/simple_rl_benchmark_lean

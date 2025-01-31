@@ -8,7 +8,7 @@ dfs_metadata_filename_for_retrieval: local.meta.json
 setup_cmds:
   - opam env --switch=CompCert --set-switch
 datasets:
-  - project: /mnt/amthakur/data/repos/CompCert
+  - project: <root>/data/repos/CompCert
     files:
     - path: flocq/IEEE754/Bits.v
       theorems: '*'

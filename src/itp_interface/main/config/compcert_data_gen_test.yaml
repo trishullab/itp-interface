@@ -7,4 +7,4 @@ defaults:
   - override hydra/job_logging: 'disabled'
 
 run_settings:
- output_dir: /mnt/amthakur/data/proofsteps/CompCert/
+ output_dir: <root>/data/proofsteps/CompCert/
