@@ -12,4 +12,4 @@
 	ignore = dirty
 [submodule "src/itp_interface/tools/repl"]
 	path = src/itp_interface/tools/repl
-	url = https://github.com/amit9oct/repl.git
+	url = https://github.com/leanprover-community/repl.git
