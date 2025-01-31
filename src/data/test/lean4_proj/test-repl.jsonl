@@ -12,9 +12,6 @@
 {"cmd": "theorem test2 (p q : Prop) (hp : p) (hq : q) : q := by sorry"}
 {"tactic": "exact hp", "proofState": 10, "env": 3}
 {"tactic": "exact hq", "proofState": 10, "env": 3}
-{"path": "/home/amthakur/Project/itp-interface/src/data/test/lean4_proj/Lean4Proj/Basic.lean", "allTactics": true}
-{"path": "/home/amthakur/Project/itp-interface/src/data/test/lean4_proj/Lean4Proj/Basic.lean"}
-{"path": "/home/amthakur/Project/itp-interface/imports/repl/test/Mathlib/.lake/packages/mathlib/Mathlib/Data/Nat/Bits123.lean"}
 {"cmd": "lemma bit0_le_bit1_iff : bit0 m ≤ bit1 n ↔ m ≤ n := by sorry", "env": 0}
 {"cmd": "theorem test (p q : Prop) (hp : p) (hq : q) : p ∧ q ∧ p := by sorry", "env":0}
 {"cmd":"def hello := \"world\"", "env": 2}
