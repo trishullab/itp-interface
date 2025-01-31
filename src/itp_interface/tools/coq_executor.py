@@ -499,7 +499,9 @@ if __name__ == "__main__":
     os.chdir(root_dir)
     # with CoqCustomFileExec(".", "data/test/SimpleAlgebra.v") as coq_exec:
     #     coq_exec.run_in_loop()
-    project_path = "/mnt/amthakur/data/repos/math-comp/"
+    project_path = "<root>/data/repos/math-comp/"
+    # Get <root> from os.environ
+    project_path = project_path.replace("<root>/", os.environ.get("ROOT", "").trim('/') + "/")
     file_path = os.path.join(project_path, "mathcomp/solvable/primitive_action.v")
     setup_cmds = ['opam env --switch=MathComp --set-switch']
     with CoqCustomFileExec(project_path, file_path, setup_cmds) as coq_exec:

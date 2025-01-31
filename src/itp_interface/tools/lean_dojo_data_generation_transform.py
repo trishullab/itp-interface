@@ -168,8 +168,11 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_json", type=str, default=f".log/benchmarks/leandojo_benchmark_4/leandojo_benchmark_4/random/val.json")
-    parser.add_argument("--output_dir", type=str, default=f"/mnt/amthakur/data/proofsteps/leandojo/random/val")
+    parser.add_argument("--output_dir", type=str, default=f"<root>/data/proofsteps/leandojo/random/val")
     args = parser.parse_args()
+    if "<root>" in args.output_dir:
+        # Get root from os.environ
+        args.output_dir = args.output_dir.replace("<root>/", os.environ.get("ROOT", "").trim('/') + "/")
     os.chdir(root_dir)
     project_dir = "data/test/lean_proj"
     file_name = "data/test/lean_proj/src/simple_solved.lean"
