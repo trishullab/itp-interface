@@ -29,7 +29,7 @@ build-backend = "hatchling.build"
 name = "itp_interface"
 version = "0.1.5"
 authors = [
-  { name="Amitayush Thakur", email="amitayush@utexas.edu" },
+  { name="Anonymous", email="Anonymous@anonymous.edu" },
 ]
 description = "Generic interface for hooking up to any Interactive Theorem Prover (ITP) and collecting data for training ML models for AI in formal theorem proving."
 readme = "README.md"
