@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: coqorg/coq:8.18.0-ocaml-4.14.2-flambda  # or use coqcommunity/docker-coq:latest
+      options: --user 0  # Run as root to install dependencies
 
     steps:
       - name: Checkout repository
