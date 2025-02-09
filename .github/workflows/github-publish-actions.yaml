@@ -1,0 +1,38 @@
+name: Publish to PyPI
+
+on:
+  push:
+    # This example triggers on any branch named "release"
+    branches:
+      - release
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC authentication
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true  # This ensures that all submodules are also checked out
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'  # Adjust your Python version as needed
+
+      - name: Upgrade pip and install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build package
+        run: python -m build
+
+      - name: Publish package to PyPI via OIDC
+        uses: pypa/gh-action-pypi-publish@v1.5.0
+        # Do not specify the `pypi-token` input so that the action uses OIDC authentication.
+        # If you need to debug, you can set a token via secrets, but for OIDC leave it out.
