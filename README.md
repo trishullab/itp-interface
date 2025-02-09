@@ -137,7 +137,7 @@ file_path = "src/data/test/coq/custom_group_theory/theories/grpthm.v"
 # Create a switch for building the Coq project
 if os.system("opam switch simple_grp_theory") != 0:
     cmds = [
-        'opam switch create simple_grp_theory 4.14.1',
+        'opam switch create simple_grp_theory 4.14.2',
         'opam switch simple_grp_theory', 
         'eval $(opam env)',
         'opam repo add coq-released https://coq.inria.fr/opam/released',
