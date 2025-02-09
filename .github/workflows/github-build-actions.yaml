@@ -37,7 +37,7 @@ jobs:
         run: python -m build
 
       - name: Install package
-        run: pip install dist/*.whl
+        run: pip install dist/*.whl --break-system-packages
 
       - name: Verify Coq and opam versions
         run: |
