@@ -28,7 +28,6 @@ class Helper():
                 'opam switch simple_grp_theory', 
                 'eval $(opam env)',
                 'opam repo add coq-released https://coq.inria.fr/opam/released',
-                'opam pin add -y coq 8.18.0',
                 'opam pin add -y coq-lsp 0.1.8+8.18'
             ]
             final_cmd = ' && '.join(cmds)

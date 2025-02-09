@@ -10,14 +10,14 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
     container:
-      image: coqorg/coq:8.18.0-ocaml-4.14.2-flambda  # or use coqcommunity/docker-coq:latest
-      options: --user 0  # Run as root to install dependencies
+      image: coqorg/coq:8.18.0-ocaml-4.14.2-flambda
+      options: --user 0  # Running as root; no sudo needed
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          submodules: true  # This ensures that all submodules are also checked out
+          submodules: true  # Ensure submodules are checked out
 
       - name: Install Python and pip
         run: |
@@ -53,29 +53,30 @@ jobs:
           opam pin add -y coq-lsp 0.1.8+8.18
 
       - name: Install Lean (elan)
+        shell: bash
         run: |
-          # Install elan, the Lean version manager
+          export HOME=/root
           curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y
-          # Source the Lean environment so that lean is on the PATH
-          source $HOME/.elan/env
+          source /root/.elan/env
 
       - name: Prepare Lean REPL
+        shell: bash
         run: |
-          source $HOME/.elan/env
-          # Run the project script to prepare the Lean REPL
+          source /root/.elan/env
           install-lean-repl
 
       - name: Build Lean REPL for itp-interface
+        shell: bash
         run: |
-          source $HOME/.elan/env
+          source /root/.elan/env
           install-itp-interface
 
       - name: List repository files (debug step)
         run: find . -type f
 
       - name: Run tests
+        shell: bash
         run: |
-          # Load environments before running tests
           eval $(opam env)
-          source $HOME/.elan/env
+          source /root/.elan/env
           python src/test/simple_env_test.py
