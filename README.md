@@ -39,12 +39,154 @@ export PATH="/home/$USER/.opam/default/bin:$PATH"
 
 5. Run the commands for installing the Lean 4 interface as mentioned in [Quick Setup for Lean 4](#quick-setup-for-lean-4).
 
-6. Change to the project root directory, and run the setup script i.e. `./src/scripts/setup.sh` from the root directory.
-
-7. Add the following to your `.bashrc` file for Lean:
+6. Add the following to your `.bashrc` file for Lean:
 ```
 export PATH="/home/$USER/.elan/bin:$PATH"
 ```
+
+## Running Simple Interactions:
+1. Simple example for Lean 4 interaction:
+```python
+import os
+from itp_interface.rl.proof_state import ProofState
+from itp_interface.rl.proof_action import ProofAction
+from itp_interface.rl.simple_proof_env import ProofEnv
+from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
+from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
+
+project_folder = "src/data/test/lean4_proj"
+file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
+# Code for building the Lean project
+# cd src/data/test/lean4_proj && lake build
+with os.popen(f"cd {project_folder} && lake build") as proc:
+    print("Building Lean4 project...")
+    print('-'*15 + 'Build Logs' + '-'*15)
+    print(proc.read())
+    print('-'*15 + 'End Build Logs' + '-'*15)
+# Skip the above code if the project is already built
+language = ProofAction.Language.LEAN4
+theorem_name = "test3"
+# theorem test3 (p q : Prop) (hp : p) (hq : q)
+# : p ∧ q ∧ p :=
+proof_exec_callback = ProofExecutorCallback(
+    project_folder=project_folder,
+    file_path=file_path,
+    language=language,
+    always_use_retrieval=False,
+    keep_local_context=True
+)
+always_retrieve_thms = False
+retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
+env = ProofEnv("test_lean4", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms)
+proof_steps = [
+    'apply And.intro',
+    'exact hp',
+    'apply And.intro',
+    'exact hq',
+    'exact hp'
+]
+with env:
+    for proof_step in proof_steps:
+        action = ProofAction(
+            ProofAction.ActionType.RUN_TACTIC, 
+            language, 
+            tactics=[proof_step])
+        state, _, next_state, _, done, info = env.step(action)
+        if info.error_message is not None:
+            print(f"Error: {info.error_message}")
+        # This prints StateChanged, StateUnchanged, Failed, or Done
+        print(info.progress)
+        print('-'*30)
+        if done:
+            print("Proof Finished!!")
+        else:
+            s1 : ProofState = state
+            s2 : ProofState = next_state
+            print(f"Current Goal:")
+            print('-'*30)
+            for goal in s1.training_data_format.start_goals:
+                hyps = '\n'.join([hyp for hyp in goal.hypotheses])
+                print(hyps)
+                print('|- ', end='')
+                print(goal.goal)
+            print(f"="*30)
+            print(f"Action: {proof_step}")
+            print(f"="*30)
+            print(f"Next Goal:")
+            print('-'*30)
+            for goal in s2.training_data_format.start_goals:
+                hyps = '\n'.join([hyp for hyp in goal.hypotheses])
+                print(hyps)
+                print('|- ', end='')
+                print(goal.goal)
+            print(f"="*30)
+```
+
+2. One can also backtrack the last proof action using the following code:
+```python
+action = ProofAction(ProofAction.ActionType.BACKTRACK, language)
+state, _, next_state, _, done, info = env.step(action)
+```
+
+3. The code for Coq interaction is similar to the Lean 4 interaction. The only difference is the language used in the `ProofAction` object. The language for Coq is `ProofAction.Language.COQ`. We also need to make sure that the Coq project is **built** before running the code. Please note that it is important to install the **correct version of Coq and Coq LSP** for the Coq project. The following code snippet shows how to interact with Coq:
+```python
+project_folder = "src/data/test/coq/custom_group_theory/theories"
+file_path = "src/data/test/coq/custom_group_theory/theories/grpthm.v"
+
+# IMPORTANT NOTE: The Coq project must be built before running the code.
+# Create a switch for building the Coq project
+if os.system("opam switch simple_grp_theory") != 0:
+    cmds = [
+        'opam switch create simple_grp_theory 4.14.1',
+        'opam switch simple_grp_theory', 
+        'eval $(opam env)',
+        'opam repo add coq-released https://coq.inria.fr/opam/released',
+        'opam pin add -y coq 8.18.0',
+        'opam pin add -y coq-lsp 0.1.8+8.18'
+    ]
+    final_cmd = ' && '.join(cmds)
+    os.system(final_cmd)
+# IMPORTANT NOTE: Make sure to switch to the correct switch before running the code.
+os.system("opam switch simple_grp_theory && eval $(opam env)")
+# Clean the project
+os.system(f"cd {project_folder} && make clean")
+# Build the project
+with os.popen(f"cd {project_folder} && make") as proc:
+    print("Building Coq project...")
+    print('-'*15 + 'Build Logs' + '-'*15)
+    print(proc.read())
+    print('-'*15 + 'End Build Logs' + '-'*15)
+# Skip the above code if the project is already built
+language = ProofAction.Language.COQ # IMPORTANT NOTE: The language will change here to COQ
+theorem_name = "algb_identity_sum"
+# ....
+
+# IMPORTANT NOTE: As a result of language change, the `ProofExecutorCallback` object will also change.
+proof_exec_callback = ProofExecutorCallback(
+    project_folder=project_folder,
+    file_path=file_path,
+    language=language, # The language will change here to COQ
+    always_use_retrieval=False,
+    keep_local_context=True
+)
+
+# IMPORTANT NOTE: The proof steps will also change for Coq.
+proof_steps = [
+    'intros.',
+    'destruct a.',
+    '- reflexivity.',
+    '- reflexivity.'
+]
+
+# IMPORTANT NOTE: As a result of language change, the `action` object will also change.
+action = ProofAction(
+    ProofAction.ActionType.RUN_TACTIC, 
+    language, # The language will change here to COQ
+    tactics=[proof_step]
+)
+```
+
+4. See the file [src/test/simple_env_test.py](src/test/simple_env_test.py) for more examples for Lean 4 interaction and Coq interaction.
 
 ## Generating Proof Step Data:
 
