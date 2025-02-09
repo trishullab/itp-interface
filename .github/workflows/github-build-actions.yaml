@@ -39,8 +39,10 @@ jobs:
       - name: Install package
         run: pip install dist/*.whl --break-system-packages
 
-      - name: Check opam version
-        run: opam --version
+      - name: Check and Init opam version
+        run: |
+          opam --version
+          opam init
       
       - name: Install Coq
         run: |
