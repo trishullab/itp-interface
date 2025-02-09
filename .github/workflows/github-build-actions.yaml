@@ -12,6 +12,8 @@ jobs:
     container:
       image: coqorg/coq:8.18.0-ocaml-4.14.2-flambda
       options: --user 0  # Running as root; no sudo needed
+    env:
+      HOME: /root
 
     steps:
       - name: Checkout repository
@@ -55,20 +57,19 @@ jobs:
       - name: Install Lean (elan)
         shell: bash
         run: |
-          export HOME=/root
           curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y
-          source /root/.elan/env
+          source $HOME/.elan/env
 
       - name: Prepare Lean REPL
         shell: bash
         run: |
-          source /root/.elan/env
+          source $HOME/.elan/env
           install-lean-repl
 
       - name: Build Lean REPL for itp-interface
         shell: bash
         run: |
-          source /root/.elan/env
+          source $HOME/.elan/env
           install-itp-interface
 
       - name: List repository files (debug step)
@@ -78,5 +79,5 @@ jobs:
         shell: bash
         run: |
           eval $(opam env)
-          source /root/.elan/env
+          source $HOME/.elan/env
           python src/test/simple_env_test.py
