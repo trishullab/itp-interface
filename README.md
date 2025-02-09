@@ -1,3 +1,7 @@
+[![Build Status](https://github.com/trishullab/itp-interface/actions/workflows/github-build-actions.yaml/badge.svg)](https://github.com/trishullab/itp-interface/actions/workflows/github-build-actions.yaml)
+[![PyPI version](https://img.shields.io/pypi/v/itp-interface.svg)](https://pypi.org/project/itp-interface/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/itp-interface.svg)](https://pypi.org/project/itp-interface/)
+
 # itp-interface
 Generic interface for hooking up to any Interactive Theorem Prover (ITP) and collecting data for training ML models for AI in formal theorem proving. 
 
