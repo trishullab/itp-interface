@@ -1,10 +1,7 @@
 name: Publish to PyPI
 
 on:
-  push:
-    # This example triggers on any branch named "release"
-    branches:
-      - release
+  workflow_dispatch:
 
 jobs:
   publish:
