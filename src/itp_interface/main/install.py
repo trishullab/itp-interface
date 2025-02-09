@@ -57,7 +57,7 @@ def install_lean_repl():
                         break
     # Make sure that .elan is installed
     print("Checking if .elan is installed")
-    if os.path.exists(os.path.expanduser("~/.elan")):
+    if os.system("elan --version") == 0:
         print("[OK] .elan is installed")
     else:
         print("Installing .elan")
