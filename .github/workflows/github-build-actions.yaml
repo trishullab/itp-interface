@@ -50,32 +50,7 @@ jobs:
           opam switch simple_grp_theory
           eval $(opam env)
           opam repo add coq-released https://coq.inria.fr/opam/released
-          opam pin add -y coq 8.18.0
           opam pin add -y coq-lsp 0.1.8+8.18
-
-      - name: Verify Coq and opam versions
-        run: |
-          echo "opam version:"
-          opam --version
-          echo "Coq version:"
-          coqc --version
-
-      # - name: Install opam and OCaml
-      #   run: |
-      #     sudo apt-get update
-      #     sudo apt-get install -y build-essential unzip bubblewrap
-      #     # Install opam non-interactively by piping the default answer
-      #     printf "/usr/local/bin\n" | sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
-      #     # Initialize opam (disable sandboxing for CI)
-      #     opam init --disable-sandboxing --yes
-      #     # Check if the "default" switch exists; if not, create it.
-      #     if opam switch list --short | grep -q "^default$"; then
-      #       echo "Switch 'default' already exists, using it."
-      #     else
-      #       opam switch create default ocaml-base-compiler.4.14.0 --yes
-      #     fi
-      #     # Update the current shell's environment with the default switch
-      #     eval $(opam env --switch=default)
 
       - name: Install Lean (elan)
         run: |
