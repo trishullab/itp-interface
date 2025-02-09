@@ -42,7 +42,7 @@ jobs:
       - name: Check and Init opam version
         run: |
           opam --version
-          opam init
+          opam init --disable-sandboxing --yes
       
       - name: Install Coq
         run: |
