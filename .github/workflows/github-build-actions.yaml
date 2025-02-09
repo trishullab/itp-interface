@@ -19,11 +19,10 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Upgrade pip
-        run: python -m pip install --upgrade pip
-
-      - name: Install build tool
-        run: pip install build
+      - name: Upgrade pip and install build tool
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
 
       - name: Build package
         run: python -m build
@@ -31,5 +30,43 @@ jobs:
       - name: Install package
         run: pip install dist/*.whl
 
+      - name: Install opam and OCaml
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential unzip bubblewrap
+          # Install opam via the official script
+          sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
+          # Initialize opam without sandboxing (suitable for CI)
+          opam init --disable-sandboxing --yes
+          # Create a switch with OCaml 4.14.0 (adjust as needed)
+          opam switch create default ocaml-base-compiler.4.14.0 --yes
+          # Make sure the current shell knows about the opam environment
+          eval $(opam env)
+
+      - name: Install Lean (elan)
+        run: |
+          # Install elan, the Lean version manager
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y
+          # Source the Lean environment so that lean is on the PATH
+          source $HOME/.elan/env
+
+      - name: Prepare Lean REPL
+        run: |
+          source $HOME/.elan/env
+          # Run the project script to prepare the Lean REPL
+          install-lean-repl
+
+      - name: Build Lean REPL for itp-interface
+        run: |
+          source $HOME/.elan/env
+          install-itp-interface
+
+      - name: List repository files (debug step)
+        run: find . -type f
+
       - name: Run tests
-        run: python src/test/simple_env_test.py
+        run: |
+          # Load environments before running tests
+          eval $(opam env)
+          source $HOME/.elan/env
+          python src/test/simple_env_test.py
