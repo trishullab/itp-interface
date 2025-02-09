@@ -38,10 +38,14 @@ jobs:
           printf "/usr/local/bin\n" | sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
           # Initialize opam (disable sandboxing for CI)
           opam init --disable-sandboxing --yes
-          # Create an OCaml switch with the desired compiler version (adjust as needed)
-          opam switch create default ocaml-base-compiler.4.14.0 --yes
-          # Update the shell environment for opam
-          eval $(opam env)
+          # Check if the "default" switch exists; if not, create it.
+          if opam switch list --short | grep -q "^default$"; then
+            echo "Switch 'default' already exists, using it."
+          else
+            opam switch create default ocaml-base-compiler.4.14.0 --yes
+          fi
+          # Update the current shell's environment with the default switch
+          eval $(opam env --switch=default)
 
       - name: Install Lean (elan)
         run: |
