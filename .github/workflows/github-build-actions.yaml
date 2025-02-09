@@ -19,7 +19,12 @@ jobs:
         with:
           submodules: true  # This ensures that all submodules are also checked out
 
-      # Omit the setup-python step to use the container's Python
+      - name: Install Python and pip
+        run: |
+          apt-get update
+          apt-get install -y python3 python3-pip
+          ln -sf /usr/bin/python3 /usr/bin/python
+
       - name: Check system Python version
         run: python --version
 
