@@ -39,12 +39,24 @@ jobs:
       - name: Install package
         run: pip install dist/*.whl --break-system-packages
 
+      - name: Check opam version
+        run: opam --version
+      
+      - name: Install Coq
+        run: |
+          opam switch create simple_grp_theory 4.14.2
+          opam switch simple_grp_theory
+          eval $(opam env)
+          opam repo add coq-released https://coq.inria.fr/opam/released
+          opam pin add -y coq 8.18.0
+          opam pin add -y coq-lsp 0.1.8+8.18
+
       - name: Verify Coq and opam versions
         run: |
-          echo "Coq version:"
-          coqc --version
           echo "opam version:"
           opam --version
+          echo "Coq version:"
+          coqc --version
 
       # - name: Install opam and OCaml
       #   run: |
