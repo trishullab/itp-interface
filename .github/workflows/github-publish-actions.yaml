@@ -32,7 +32,8 @@ jobs:
       - name: Build package
         run: python -m build
 
-      - name: Publish package to PyPI via OIDC
+      - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.5.0
-        # Do not specify the `pypi-token` input so that the action uses OIDC authentication.
-        # If you need to debug, you can set a token via secrets, but for OIDC leave it out.
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
