@@ -1,0 +1,19 @@
+name: Enforce Main-to-Release Merges
+
+on:
+  pull_request:
+    # This workflow will run for any PR whose base branch is "release"
+    branches: [release]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-source-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check that PR comes from main branch
+        run: |
+          echo "PR head branch: ${{ github.event.pull_request.head.ref }}"
+          if [ "${{ github.event.pull_request.head.ref }}" != "main" ]; then
+            echo "Error: Only PRs originating from the 'main' branch can be merged into 'release'."
+            exit 1
+          fi
