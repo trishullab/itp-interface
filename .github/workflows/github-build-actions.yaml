@@ -34,13 +34,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential unzip bubblewrap
-          # Install opam via the official script
-          sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
-          # Initialize opam without sandboxing (suitable for CI)
+          # Install opam non-interactively by piping the default answer
+          printf "/usr/local/bin\n" | sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
+          # Initialize opam (disable sandboxing for CI)
           opam init --disable-sandboxing --yes
-          # Create a switch with OCaml 4.14.0 (adjust as needed)
+          # Create an OCaml switch with the desired compiler version (adjust as needed)
           opam switch create default ocaml-base-compiler.4.14.0 --yes
-          # Make sure the current shell knows about the opam environment
+          # Update the shell environment for opam
           eval $(opam env)
 
       - name: Install Lean (elan)
