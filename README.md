@@ -207,3 +207,19 @@ Check the `simple_coq_data_gen.yaml` configuration in the `src/itp_interface/mai
 
 ## Important Note:
 The ITP projects must be built before running proof step data generation. Make sure that the switch is set correctly while generating data for Coq projects because the Coq projects can be using different versions of Coq. Instructions for Coq project setup are listed in `src/itp_interface/main/config/repo/coq_repos.yaml` file.
+
+## Our Paper:
+
+For more details, please refer to our paper: [ProofWala: Multilingual Proof Data Synthesis and Theorem-Proving](https://arxiv.org/abs/2502.04671).
+
+```bibtex
+@misc{thakur2025proofwala,
+      title={${\rm P{\small ROOF}W{\small ALA}}$: Multilingual Proof Data Synthesis and Theorem-Proving}, 
+      author={Amitayush Thakur and George Tsoukalas and Greg Durrett and Swarat Chaudhuri},
+      year={2025},
+      eprint={2502.04671},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2502.04671}, 
+}
+```
