@@ -195,18 +195,18 @@ action = ProofAction(
 
 1.a. You need to run the following command to generate sample proof step data for Lean 4:
 ```
-python run-itp-data-gen --config-dir src/itp_interface/main/config  --config-name simple_lean_data_gen
+run-itp-data-gen --config-dir src/itp_interface/main/configs  --config-name simple_lean_data_gen
 ```
-Check the `simple_lean_data_gen.yaml` configuration in the `src/itp_interface/main/config` directory for more details. These config files are based on the `hydra` library (see [here](https://hydra.cc/docs/intro/)).
+Check the `simple_lean_data_gen.yaml` configuration in the `src/itp_interface/main/configs` directory for more details. These config files are based on the `hydra` library (see [here](https://hydra.cc/docs/intro/)).
 
 1.b. You need to run the following command to generate sample proof step data for Coq:
 ```
-python run-itp-data-gen --config-dir src/itp_interface/main/config --config-name simple_coq_data_gen
+run-itp-data-gen --config-dir src/itp_interface/main/configs --config-name simple_coq_data_gen
 ```
-Check the `simple_coq_data_gen.yaml` configuration in the `src/itp_interface/main/config` directory for more details about where the generated data is stored and where the different ITP (Coq and Lean) projects are located in the file system.
+Check the `simple_coq_data_gen.yaml` configuration in the `src/itp_interface/main/configs` directory for more details about where the generated data is stored and where the different ITP (Coq and Lean) projects are located in the file system.
 
 ## Important Note:
-The ITP projects must be built before running proof step data generation. Make sure that the switch is set correctly while generating data for Coq projects because the Coq projects can be using different versions of Coq. Instructions for Coq project setup are listed in `src/itp_interface/main/config/repo/coq_repos.yaml` file.
+The ITP projects must be built before running proof step data generation. Make sure that the switch is set correctly while generating data for Coq projects because the Coq projects can be using different versions of Coq. Instructions for Coq project setup are listed in `src/itp_interface/main/configs/repo/coq_repos.yaml` file.
 
 ## Our Paper:
 
