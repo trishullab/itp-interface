@@ -9,11 +9,6 @@ import typing
 import logging
 import enum
 from itp_interface.tools.training_data_format import MergableCollection, TrainingDataFormat
-from torch.multiprocessing import set_start_method
-try:
-     set_start_method('spawn')
-except RuntimeError:
-    pass
 logger = logging.getLogger("CoqTrainingGenerator")
 
 class TrainingDataGenerationType(enum.Enum):

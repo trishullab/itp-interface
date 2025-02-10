@@ -420,7 +420,7 @@ def run_data_generation(experiment: Experiments, log_dir: str, logger: logging.L
             time.sleep(10)
     logger.info(f"Finished running experiment: \n{experiment.to_json(indent=4)}")
 
-@hydra.main(config_path="config", config_name="experiments", version_base="1.2")
+@hydra.main(config_path="configs", config_name="experiments", version_base="1.2")
 def main(cfg):
     os.environ["PYTHONPATH"] = f"{root_dir}:{os.environ.get('PYTHONPATH', '')}"
     # RayUtils.init_ray(num_of_cpus=cfg.run_settings.pool_size, object_store_memory_in_gb=100)
