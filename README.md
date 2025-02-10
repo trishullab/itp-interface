@@ -26,9 +26,9 @@ install-itp-interface
 >NOTE: These steps are only tested on Linux. For Windows, you can use WSL. These steps will not setup the Coq interface.
 
 # Full Setup for Coq and Lean:
-1. Install OCaml first. Use the instructions here: https://opam.ocaml.org/doc/Install.html . The opam version used in this project is 2.1.3 (OCaml 4.14.0). Note that OCaml officially only supports Linux installations. One can use WSL on Windows machines.
+1. Install OCaml first. Use the instructions here: https://opam.ocaml.org/doc/Install.html. Note that OCaml officially only supports Linux installations. One can use WSL on Windows machines.
 
-2. Run the following to install Coq on Linux. The Coq version used in this project is <= 8.15. 
+2. Run the following to install Coq on Linux.
 ```
 sudo apt install build-essential unzip bubblewrap
 sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
@@ -195,15 +195,31 @@ action = ProofAction(
 
 1.a. You need to run the following command to generate sample proof step data for Lean 4:
 ```
-python src/itp_interface/main/run_tool.py --config-name simple_lean_data_gen
+python run-itp-data-gen --config-dir src/itp_interface/main/config  --config-name simple_lean_data_gen
 ```
-Check the `simple_lean_data_gen.yaml` configuration in the `src/itp_interface/configs` directory for more details. These config files are based on the `hydra` library (see [here](https://hydra.cc/docs/intro/)).
+Check the `simple_lean_data_gen.yaml` configuration in the `src/itp_interface/main/config` directory for more details. These config files are based on the `hydra` library (see [here](https://hydra.cc/docs/intro/)).
 
 1.b. You need to run the following command to generate sample proof step data for Coq:
 ```
-python src/itp_interface/main/run_tool.py --config-name simple_coq_data_gen
+python run-itp-data-gen --config-dir src/itp_interface/main/config --config-name simple_coq_data_gen
 ```
-Check the `simple_coq_data_gen.yaml` configuration in the `src/itp_interface/configs` directory for more details about where the generated data is stored and where the different ITP (Coq and Lean) projects are located in the file system.
+Check the `simple_coq_data_gen.yaml` configuration in the `src/itp_interface/main/config` directory for more details about where the generated data is stored and where the different ITP (Coq and Lean) projects are located in the file system.
 
 ## Important Note:
 The ITP projects must be built before running proof step data generation. Make sure that the switch is set correctly while generating data for Coq projects because the Coq projects can be using different versions of Coq. Instructions for Coq project setup are listed in `src/itp_interface/main/config/repo/coq_repos.yaml` file.
+
+## Our Paper:
+
+For more details, please refer to our paper: [ProofWala: Multilingual Proof Data Synthesis and Theorem-Proving](https://arxiv.org/abs/2502.04671).
+
+```bibtex
+@misc{thakur2025proofwala,
+      title={${\rm P{\small ROOF}W{\small ALA}}$: Multilingual Proof Data Synthesis and Theorem-Proving}, 
+      author={Amitayush Thakur and George Tsoukalas and Greg Durrett and Swarat Chaudhuri},
+      year={2025},
+      eprint={2502.04671},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2502.04671}, 
+}
+```
