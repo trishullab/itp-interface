@@ -14,7 +14,6 @@ import psutil
 import gc
 from itp_interface.tools.ray_utils import RayUtils
 from itp_interface.tools.training_data import TrainingData
-from itp_interface.tools.coq_build_tool import CoqRepoBuilder
 from itp_interface.tools.coq_executor import CoqExecutor
 from itp_interface.tools.lean_cmd_executor import Lean3Executor
 from itp_interface.tools.lean4_sync_executor import Lean4SyncExecutor
