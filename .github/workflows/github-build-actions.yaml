@@ -75,9 +75,16 @@ jobs:
       - name: List repository files (debug step)
         run: find . -type f
 
-      - name: Run tests
+      - name: Run Simple Env Test
         shell: bash
         run: |
           eval $(opam env)
           source $HOME/.elan/env
           python src/test/simple_env_test.py
+
+      - name: Run Data Gen Test
+        shell: bash
+        run: |
+          eval $(opam env)
+          source $HOME/.elan/env
+          python src/test/simple_data_gen_test.py
