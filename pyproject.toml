@@ -5,7 +5,7 @@ requires = [
 build-backend = "hatchling.build"
 [project]
 name = "itp_interface"
-version = "1.1.0"
+version = "1.1.1"
 authors = [
   { name="Amitayush Thakur", email="amitayush@utexas.edu" },
 ]
@@ -53,3 +53,4 @@ Issues = "https://github.com/trishullab/itp-interface/issues"
 [project.scripts]
 install-itp-interface = "itp_interface.main.install:install_itp_interface"
 install-lean-repl = "itp_interface.main.install:install_lean_repl"
+run-itp-data-gen = "itp_interface.main.run_tool:main"
