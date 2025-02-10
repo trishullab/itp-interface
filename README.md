@@ -193,6 +193,8 @@ action = ProofAction(
 
 ## Generating Proof Step Data:
 
+>NOTE: Make sure that you have installed the `itp-interface` package before running the following commands.
+
 1.a. You need to run the following command to generate sample proof step data for Lean 4:
 ```
 run-itp-data-gen --config-dir src/itp_interface/main/configs  --config-name simple_lean_data_gen

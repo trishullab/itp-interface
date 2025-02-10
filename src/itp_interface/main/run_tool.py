@@ -420,17 +420,19 @@ def run_data_generation(experiment: Experiments, log_dir: str, logger: logging.L
             time.sleep(10)
     logger.info(f"Finished running experiment: \n{experiment.to_json(indent=4)}")
 
-@hydra.main(config_path="configs", config_name="experiments", version_base="1.2")
+@hydra.main(config_path="configs", config_name="simple_lean_data_gen", version_base="1.2")
 def main(cfg):
     os.environ["PYTHONPATH"] = f"{root_dir}:{os.environ.get('PYTHONPATH', '')}"
     # RayUtils.init_ray(num_of_cpus=cfg.run_settings.pool_size, object_store_memory_in_gb=100)
     experiment = parse_config(cfg)
-    os.chdir(root_dir)
+    # os.chdir(root_dir)
     # top_level_dir = os.path.dirname(root_dir)
     # top_level_dir = os.path.dirname(top_level_dir)
     # os.chdir(top_level_dir)
     log_dir = ".log/data_generation/benchmark/{}/{}".format(experiment.benchmark.name, time.strftime("%Y%m%d-%H%M%S"))
     os.makedirs(log_dir, exist_ok=True)
+    abs_path = os.path.abspath(log_dir)
+    print(f"Log Dir: {abs_path}")
     log_path = os.path.join(log_dir, "eval.log")
     logger = setup_logger(__name__, log_path, logging.INFO, '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logger.info(f"Pid: {os.getpid()}")
