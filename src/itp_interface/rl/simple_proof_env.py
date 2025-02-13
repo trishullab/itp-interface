@@ -221,7 +221,7 @@ class ProofEnv(Env):
         info = ProofEnvInfo(progress=ProgressState.STARTING)
         if self.done:
             info.progress = ProgressState.DONE
-            return self.state, 0.0, True, info
+            return self.state, action, self.state, 0.0, True, info
         assert isinstance(action, ProofAction), f"action must be of type ProofAction, not {type(action)}"
         history_idx = len(self._history)
         state_before = self.state
