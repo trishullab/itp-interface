@@ -40,7 +40,7 @@ class TestDataGen(unittest.TestCase):
         print(dirs)
         last_dir = dirs[-1]
         train_data = os.path.join(".log/data_generation/benchmark/simple_benchmark_lean", last_dir, "train")
-        data_gen_file = os.path.join(train_data, "local_data_0000000016.json")
+        data_gen_file = os.path.join(train_data, "local_data_0000000025.json")
         print("Data Gen File:", data_gen_file)
         with open(data_gen_file, "r") as f:
             print(f.read())
