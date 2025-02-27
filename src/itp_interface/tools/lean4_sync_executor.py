@@ -61,6 +61,7 @@ class Lean4SyncExecutor:
         enable_search: bool = False, 
         namespaces: Optional[List[str]] = None, 
         keep_local_context: bool = False,
+        enforce_qed: bool = False,
         logger: Optional[logging.Logger] = None):
         assert proof_step_iter is None or isinstance(proof_step_iter, Iterator), \
             "proof_step_iter must be an iterator"
@@ -91,6 +92,8 @@ class Lean4SyncExecutor:
         self.suppress_error_log = suppress_error_log
         self.process_interace : ProcessInterface = None
         self.execution_complete = False
+        self._enforce_qed = enforce_qed
+        self._ready_to_accept_proof = not self._enforce_qed
         self._max_memory_in_mib = 40000 # 40 GiB is needed for mathlib to work seemlessly
         self._lines_executed = []
         self.proof_context : ProofContext = None
@@ -638,7 +641,7 @@ class Lean4SyncExecutor:
         response = self.process_interace.read_response(timeout_in_sec)
         relevant_msgs = []
         self._parse_response(0, response, relevant_msgs)
-        self._update_proof_context(0, response, relevant_msgs, only_env_update)
+        self._update_proof_context(0, response, relevant_msgs, only_env_update, force_ready_to_accept_proof = True)
         return response
     
     def _add_last_tactic(self, idx: int, stmt: str):
@@ -808,7 +811,7 @@ class Lean4SyncExecutor:
                 f"Check the error message: {self.lean_error_messages}")
         return has_cnt == 1 and has_at_least_one_unfocussed_goal > 0 and has_new_errors == 0
 
-    def _update_proof_context(self, idx, response, relevant_messages, only_env_update = False):
+    def _update_proof_context(self, idx, response, relevant_messages, only_env_update = False, force_ready_to_accept_proof = False):
         if response is None:
             raise ValueError(f"Response is None cannot update proof context for line number {idx}")
         if 'env' in response:
@@ -856,7 +859,7 @@ class Lean4SyncExecutor:
             self.lean_error_messages = []
             proof_running = proof_running or goal_text is not None
         if error_messages is None:
-            assert proof_running, f"Proof is not running but no error message is present, response:\n{response}, \nstmt: \n{stmt}, \nlemma: \n{self.curr_lemma_name}, \nlemma_stmt: \n{self.curr_lemma}, \nline_num: \n{self.line_num}"
+            assert proof_running, f"Proof is not running but no error message is present, response:\n{response}, \nlemma: \n{self.curr_lemma_name}, \nlemma_stmt: \n{self.curr_lemma}, \nline_num: \n{self.line_num}"
             self._proof_running = proof_running
             if self._proof_running:
                 proof_state_idx = None
@@ -880,12 +883,15 @@ class Lean4SyncExecutor:
                 self._update_proof_state_idx(proof_state_idx)
                 self.proof_context = self._parse_proof_context(proof_goals)
                 if self.proof_context == ProofContext.empty():
-                    self._proof_running = False
-                    self.proof_context = None
-                    self.curr_lemma = None
-                    self.curr_lemma_name = None
-                    self._clear_tacitcs()
-                    self._env_idx_last_thm = self._last_env_idx
+                    if self._ready_to_accept_proof or force_ready_to_accept_proof:
+                        self._proof_running = False
+                        self.proof_context = None
+                        self.curr_lemma = None
+                        self.curr_lemma_name = None
+                        self._clear_tacitcs()
+                        self._env_idx_last_thm = self._last_env_idx
+                    if self._enforce_qed and not force_ready_to_accept_proof:
+                        self._ready_to_accept_proof = True # Wait for another 'done' to enforce qed
             else:
                 self.proof_context = None
 
@@ -898,6 +904,19 @@ class Lean4SyncExecutor:
             # We don't need to run the empty statements. This should be treated as a failed proof step
             self.lean_error_messages = ["There is no tactic in the statement, it is just empty line or whitespace"]
             return
+        elif self.proof_context == ProofContext.empty() and \
+            self._proof_running and \
+            stmt != "done":
+            self.lean_error_messages = [
+            "The proof is about to finish, please use 'done' to finish the proof."]
+            return
+        elif stmt == "done" and \
+            self._proof_running and \
+            self.proof_context != ProofContext.empty():
+            self.lean_error_messages = [
+                "The proof is not finished, please complete the proof before using 'done'."]
+            return
+
         proof_should_run = False
         if theorem_started or (not self._proof_running and self._stmt_has_lemma(idx, stmt, do_full_check = True)):
             proof_should_run = self._theorem_started

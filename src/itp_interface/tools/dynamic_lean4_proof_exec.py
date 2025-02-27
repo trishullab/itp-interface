@@ -87,7 +87,7 @@ class DynamicProofExecutor(Lean4SyncExecutor):
             return -1
 
 
-    def __init__(self, coq_context_helper: Lean3ContextHelper, project_folder: str = None, proof_file: str = None, instruction_iter: typing.Optional[str] = None, use_hammer: bool = False, timeout_in_seconds: int = 60, use_human_readable_proof_context: bool = True, suppress_error_log: bool = True, context_type: ContextType = ContextType.NoContext, keep_local_context = False):
+    def __init__(self, coq_context_helper: Lean3ContextHelper, project_folder: str = None, proof_file: str = None, instruction_iter: typing.Optional[str] = None, use_hammer: bool = False, timeout_in_seconds: int = 60, use_human_readable_proof_context: bool = True, suppress_error_log: bool = True, context_type: ContextType = ContextType.NoContext, keep_local_context = False, enforce_qed: bool = False):
         assert proof_file is None or os.path.exists(proof_file), f"Proof file {proof_file} does not exist"
         assert coq_context_helper is not None, "coq_context_helper must not be None"
         self.proof_file = proof_file
@@ -97,7 +97,7 @@ class DynamicProofExecutor(Lean4SyncExecutor):
         self.run_state = DynamicProofExecutor.RunState()
         self.logger = None
         self.lean_context_helper = coq_context_helper
-        super().__init__(project_root=project_folder, proof_step_iter=self.tactic_switch_iterator, use_hammer=use_hammer, timeout_in_sec=timeout_in_seconds, use_human_readable_proof_context=use_human_readable_proof_context, suppress_error_log=suppress_error_log, keep_local_context=keep_local_context)
+        super().__init__(project_root=project_folder, proof_step_iter=self.tactic_switch_iterator, use_hammer=use_hammer, timeout_in_sec=timeout_in_seconds, use_human_readable_proof_context=use_human_readable_proof_context, suppress_error_log=suppress_error_log, keep_local_context=keep_local_context, enforce_qed=enforce_qed)
 
     def __enter__(self):
         self.lean_context_helper.__enter__()

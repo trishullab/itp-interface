@@ -320,7 +320,7 @@ class ProofEnv(Env):
         assert len(tactics) > 0
         assert all([isinstance(tactic, str) for tactic in tactics])
         # Remove unnecessary spaces, newlines, and tabs
-        tactics = [tactic.strip() for tactic in tactics]
+        tactics = [tactic for tactic in tactics]
         original_tactics = copy.deepcopy(tactics)
         try:
             state, next_state, reward, done, env_info = self._run_tactics(tactics, state, action, env_info)
