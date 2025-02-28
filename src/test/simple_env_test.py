@@ -248,6 +248,247 @@ class Lean4Test(unittest.TestCase):
                     print(f"="*30)
         helper.switch_to_current_switch()
 
+    def test_simple_lean_calc(self):
+        from itp_interface.rl.proof_state import ProofState
+        from itp_interface.rl.proof_action import ProofAction
+        from itp_interface.rl.simple_proof_env import ProofEnv
+        from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
+        from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
+        project_folder = "src/data/test/lean4_proj"
+        file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
+        # Build the project
+        # cd src/data/test/lean4_proj && lake build
+        helper = Helper()
+        helper.build_lean4_project(project_folder)
+        language = ProofAction.Language.LEAN4
+        theorem_name = "test_calc"
+        # theorem test_calc (n: Nat) : n^2 + 2*n + 1 = (n + 1)*(n + 1) := by
+        proof_exec_callback = ProofExecutorCallback(
+            project_folder=project_folder,
+            file_path=file_path,
+            language=language,
+            always_use_retrieval=False,
+            keep_local_context=True
+        )
+        always_retrieve_thms = False
+        retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
+        env = ProofEnv("test_lean4", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms)
+        proof_steps = [
+"""calc
+_ = n^2 + n*2 + 1 := by rw [Nat.mul_comm 2 n]
+_ = n^2 + (n + n) + 1 := by rw [Nat.mul_two]
+_ = n^2 + n + n + 1 := by rw [←Nat.add_assoc]
+_ = n*n + n + n + 1 := by rw [Nat.pow_two]
+_ = n*n + n*1 + n + 1 := by rw [Nat.mul_one n]
+_ = n*(n + 1) + n + 1 := by rw [Nat.left_distrib n n 1]
+_ = n*(n + 1) + (n + 1) := by rw [Nat.add_assoc]
+_ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_one (n + 1), Nat.mul_comm]""",
+"_ = (n + 1)*(n + 1) := by \n   rw [Nat.right_distrib n 1 (n + 1)]"
+]
+        with env:
+            for proof_step in proof_steps:
+                state, _, next_state, _, done, info = env.step(ProofAction(
+                    ProofAction.ActionType.RUN_TACTIC, 
+                    language, 
+                    tactics=[proof_step]))
+                if info.error_message is not None:
+                    print(f"Error: {info.error_message}")
+                # This prints StateChanged, StateUnchanged, Failed, or Done
+                print(f"DONE: {done}")
+                print(info.progress)
+                print('-'*30)
+                if done:
+                    s1 : ProofState = state
+                    print(f"Current Goal:")
+                    print('-'*30)
+                    for goal in s1.training_data_format.start_goals:
+                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
+                        print(hyps)
+                        print('|- ', end='')
+                        print(goal.goal)
+                    print(f"="*30)
+                    print(f"Action: {proof_step}")
+                    print(f"="*30)
+                    print("Proof Finished!!")
+                else:
+                    s1 : ProofState = state
+                    s2 : ProofState = next_state
+                    print(f"Current Goal:")
+                    print('-'*30)
+                    for goal in s1.training_data_format.start_goals:
+                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
+                        print(hyps)
+                        print('|- ', end='')
+                        print(goal.goal)
+                    print(f"="*30)
+                    print(f"Action: {proof_step}")
+                    print(f"="*30)
+                    print(f"Next Goal:")
+                    print('-'*30)
+                    for goal in s2.training_data_format.start_goals:
+                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
+                        print(hyps)
+                        print('|- ', end='')
+                        print(goal.goal)
+                    print(f"="*30)
+
+    def test_simple_lean_enforce_done_test(self):
+        from itp_interface.rl.proof_state import ProofState
+        from itp_interface.rl.proof_action import ProofAction
+        from itp_interface.rl.simple_proof_env import ProofEnv
+        from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
+        from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
+        project_folder = "src/data/test/lean4_proj"
+        file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
+        # Build the project
+        # cd src/data/test/lean4_proj && lake build
+        helper = Helper()
+        helper.build_lean4_project(project_folder)
+        language = ProofAction.Language.LEAN4
+        theorem_name = "test_calc"
+        # theorem test_calc (n: Nat) : n^2 + 2*n + 1 = (n + 1)*(n + 1) := by
+        proof_exec_callback = ProofExecutorCallback(
+            project_folder=project_folder,
+            file_path=file_path,
+            language=language,
+            always_use_retrieval=False,
+            keep_local_context=True,
+            enforce_qed=True
+        )
+        always_retrieve_thms = False
+        retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
+        env = ProofEnv("test_lean4", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms)
+        proof_steps = [
+"""calc
+    _ = n^2 + n*2 + 1 := by rw [Nat.mul_comm 2 n]
+    _ = n^2 + (n + n) + 1 := by rw [Nat.mul_two]
+    _ = n^2 + n + n + 1 := by rw [←Nat.add_assoc]
+    _ = n*n + n + n + 1 := by rw [Nat.pow_two]
+    _ = n*n + n*1 + n + 1 := by rw [Nat.mul_one n]
+    _ = n*(n + 1) + n + 1 := by rw [Nat.left_distrib n n 1]
+    _ = n*(n + 1) + (n + 1) := by rw [Nat.add_assoc]
+    _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_one (n + 1), Nat.mul_comm]""",
+"    _ = (n + 1)*(n + 1) := by rw [Nat.right_distrib n 1 (n + 1)]",
+"done"
+]
+        with env:
+            for proof_step in proof_steps:
+                state, _, next_state, _, done, info = env.step(ProofAction(
+                    ProofAction.ActionType.RUN_TACTIC, 
+                    language, 
+                    tactics=[proof_step]))
+                if info.error_message is not None:
+                    print(f"Error: {info.error_message}")
+                # This prints StateChanged, StateUnchanged, Failed, or Done
+                print(f"DONE: {done}")
+                print(info.progress)
+                print('-'*30)
+                if done:
+                    assert proof_step == "done", "Proof can only finish with done"
+                    s1 : ProofState = state
+                    print(f"Current Goal:")
+                    print('-'*30)
+                    for goal in s1.training_data_format.start_goals:
+                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
+                        print(hyps)
+                        print('|- ', end='')
+                        print(goal.goal)
+                    print(f"="*30)
+                    print(f"Action: {proof_step}")
+                    print(f"="*30)
+                    print("Proof Finished!!")
+                else:
+                    s1 : ProofState = state
+                    s2 : ProofState = next_state
+                    print(f"Current Goal:")
+                    print('-'*30)
+                    for goal in s1.training_data_format.start_goals:
+                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
+                        print(hyps)
+                        print('|- ', end='')
+                        print(goal.goal)
+                    print(f"="*30)
+                    print(f"Action: {proof_step}")
+                    print(f"="*30)
+                    print(f"Next Goal:")
+                    print('-'*30)
+                    for goal in s2.training_data_format.start_goals:
+                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
+                        print(hyps)
+                        print('|- ', end='')
+                        print(goal.goal)
+                    print(f"="*30)
+
+    def test_simple_lean4_done_test(self):
+        from itp_interface.rl.proof_state import ProofState
+        from itp_interface.rl.proof_action import ProofAction
+        from itp_interface.rl.simple_proof_env import ProofEnv
+        from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
+        from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
+        project_folder = "src/data/test/lean4_proj"
+        file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
+        # Build the project
+        # cd src/data/test/lean4_proj && lake build
+        helper = Helper()
+        helper.build_lean4_project(project_folder)
+        language = ProofAction.Language.LEAN4
+        theorem_name = "test3"
+        # theorem test3 (p q : Prop) (hp : p) (hq : q)
+        # : p ∧ q ∧ p :=
+        proof_exec_callback = ProofExecutorCallback(
+            project_folder=project_folder,
+            file_path=file_path,
+            language=language,
+            always_use_retrieval=False,
+            keep_local_context=True,
+            enforce_qed=True
+        )
+        always_retrieve_thms = False
+        retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
+        env = ProofEnv("test_lean4", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms)
+        proof_steps = [
+            'apply And.intro',
+            'exact hp',
+            'apply And.intro',
+            'exact hq',
+            'done'
+        ]
+        with env:
+            for proof_step in proof_steps:
+                state, _, next_state, _, done, info = env.step(ProofAction(
+                    ProofAction.ActionType.RUN_TACTIC, 
+                    language, 
+                    tactics=[proof_step]))
+                if info.error_message is not None:
+                    print(f"Error: {info.error_message}")
+                # This prints StateChanged, StateUnchanged, Failed, or Done
+                print(info.progress)
+                print('-'*30)
+                if done:
+                    raise Exception("Proof should not have finished")
+                else:
+                    s1 : ProofState = state
+                    s2 : ProofState = next_state
+                    print(f"Current Goal:")
+                    print('-'*30)
+                    for goal in s1.training_data_format.start_goals:
+                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
+                        print(hyps)
+                        print('|- ', end='')
+                        print(goal.goal)
+                    print(f"="*30)
+                    print(f"Action: {proof_step}")
+                    print(f"="*30)
+                    print(f"Next Goal:")
+                    print('-'*30)
+                    for goal in s2.training_data_format.start_goals:
+                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
+                        print(hyps)
+                        print('|- ', end='')
+                        print(goal.goal)
+                    print(f"="*30)
+
+
 def main():
     unittest.main()
 
