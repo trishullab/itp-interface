@@ -13,6 +13,7 @@ import re
 import subprocess
 from itp_interface.coq_ser_api import SerapiInstance, ProofContext, GetCoqAgent, CoqAgent
 from itp_interface.tools.coq_parse_utils import CoqLineByLineReader, CoqStepByStepStdInReader
+from itp_interface.tools.misc_defns import HammerMode
 logger = logging.getLogger()
 
 class CoqExecutor:
@@ -29,7 +30,7 @@ class CoqExecutor:
         "move", "move =>", "move ->", "move => ->", 
         ":", ".", "=>", "{", "}"
     }
-    def __init__(self, project_root: str = None, main_file: str = None, use_hammer: bool = False, timeout_in_sec: int = 60, use_human_readable_proof_context: bool = False, proof_step_iter: typing.Iterator[str] = None, suppress_error_log: bool = False, setup_cmds: typing.List[str] = []):
+    def __init__(self, project_root: str = None, main_file: str = None, use_hammer: typing.Union[bool, HammerMode] = False, timeout_in_sec: int = 60, use_human_readable_proof_context: bool = False, proof_step_iter: typing.Iterator[str] = None, suppress_error_log: bool = False, setup_cmds: typing.List[str] = []):
         assert proof_step_iter is None or isinstance(proof_step_iter, typing.Iterator), \
             "proof_step_iter must be an iterator"
         assert main_file is not None or proof_step_iter is not None, \
