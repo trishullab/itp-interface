@@ -20,6 +20,7 @@ from itp_interface.lean_server.lean_cmd_server import LeanCmdServer
 from itp_interface.lean_server.lean_context import Obligation, ProofContext
 from itp_interface.lean_server.lean_utils import Lean3Utils
 from itp_interface.lean_server.lean3_search_tool import Constants, Lean3Lemma, Lean3SearchTool
+from itp_interface.tools.misc_defns import HammerMode
 logger = logging.getLogger()
 
 class Lean3Executor(object):
@@ -66,7 +67,7 @@ class Lean3Executor(object):
     proof_context_generation_tactic_curlies = "\n}"
     proof_state_running_message = "tactic failed, there are unsolved goals\nstate:"
     search_tools: typing.Dict[str, typing.Any] = {}
-    def __init__(self, project_root: str = None, prefix: str = None, main_file: str = None, use_hammer: bool = False, timeout_in_sec: int = 60, use_human_readable_proof_context: bool = False, proof_step_iter: typing.Iterator[str] = None, suppress_error_log: bool = False, mathlib_root: typing.Optional[str] = None, enable_search: bool = False, namespaces: typing.List[str] = None, keep_local_context: bool = False):
+    def __init__(self, project_root: str = None, prefix: str = None, main_file: str = None, use_hammer: typing.Union[bool, HammerMode] = False, timeout_in_sec: int = 60, use_human_readable_proof_context: bool = False, proof_step_iter: typing.Iterator[str] = None, suppress_error_log: bool = False, mathlib_root: typing.Optional[str] = None, enable_search: bool = False, namespaces: typing.List[str] = None, keep_local_context: bool = False):
         assert proof_step_iter is None or isinstance(proof_step_iter, typing.Iterator), \
             "proof_step_iter must be an iterator"
         assert main_file is not None or proof_step_iter is not None, \

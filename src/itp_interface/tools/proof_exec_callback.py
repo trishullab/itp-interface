@@ -20,6 +20,7 @@ from itp_interface.tools.dynamic_coq_proof_exec import DynamicProofExecutor as D
 from itp_interface.tools.dynamic_lean_proof_exec import DynamicProofExecutor as DynamicLeanProofExecutor
 from itp_interface.tools.dynamic_lean4_proof_exec import DynamicProofExecutor as DynamicLean4ProofExecutor
 from itp_interface.tools.dynamic_isabelle_proof_exec import DynamicProofExecutor as DynamicIsabelleProofExecutor
+from itp_interface.tools.misc_defns import HammerMode
 
 class ProofExecutorCallback(object):
     def __init__(self,
@@ -27,7 +28,7 @@ class ProofExecutorCallback(object):
                 file_path: str,
                 language: ProofAction.Language = ProofAction.Language.COQ,
                 prefix: str = None,
-                use_hammer: bool = False,
+                use_hammer: typing.Union[bool, HammerMode] = False,
                 timeout_in_secs: int = 60,
                 use_human_readable_proof_context: bool = True,
                 suppress_error_log: bool = True,

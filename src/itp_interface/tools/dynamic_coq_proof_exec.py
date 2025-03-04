@@ -14,6 +14,7 @@ from itp_interface.tools.training_data_format import Goal, TrainingDataFormat
 from itp_interface.tools.coq_parse_utils import CoqLineByLineReader
 from itp_interface.tools.coq_executor import CoqExecutor
 from itp_interface.tools.coq_context_helper import CoqContextHelper
+from itp_interface.tools.misc_defns import HammerMode
 
 class IntertwinedIterator(object):
     def __init__(self, iterator: typing.Optional[typing.Iterator[str]] = None):
@@ -85,7 +86,7 @@ class DynamicProofExecutor(CoqExecutor):
             return -1
 
 
-    def __init__(self, coq_context_helper: CoqContextHelper, project_folder: str = None, proof_file: str = None, instruction_iter: typing.Optional[str] = None, use_hammer: bool = False, timeout_in_seconds: int = 60, use_human_readable_proof_context: bool = True, suppress_error_log: bool = True, context_type: ContextType = ContextType.NoContext, setup_cmds: typing.List[str] = []):
+    def __init__(self, coq_context_helper: CoqContextHelper, project_folder: str = None, proof_file: str = None, instruction_iter: typing.Optional[str] = None, use_hammer: typing.Union[bool, HammerMode] = False, timeout_in_seconds: int = 60, use_human_readable_proof_context: bool = True, suppress_error_log: bool = True, context_type: ContextType = ContextType.NoContext, setup_cmds: typing.List[str] = []):
         assert proof_file is None or os.path.exists(proof_file), f"Proof file {proof_file} does not exist"
         assert coq_context_helper is not None, "coq_context_helper must not be None"
         self.proof_file = proof_file
