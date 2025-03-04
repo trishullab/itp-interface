@@ -14,6 +14,7 @@ from itp_interface.tools.lean4_sync_executor import Lean4SyncExecutor
 from itp_interface.tools.training_data_format import Goal, TrainingDataFormat
 from itp_interface.tools.lean_parse_utils import LeanLineByLineReader
 from itp_interface.tools.lean_context_helper import Lean3ContextHelper
+from itp_interface.tools.misc_defns import HammerMode
 
 class IntertwinedIterator(object):
     def __init__(self, iterator: typing.Optional[typing.Iterator[str]] = None):
@@ -87,7 +88,7 @@ class DynamicProofExecutor(Lean4SyncExecutor):
             return -1
 
 
-    def __init__(self, coq_context_helper: Lean3ContextHelper, project_folder: str = None, proof_file: str = None, instruction_iter: typing.Optional[str] = None, use_hammer: bool = False, timeout_in_seconds: int = 60, use_human_readable_proof_context: bool = True, suppress_error_log: bool = True, context_type: ContextType = ContextType.NoContext, keep_local_context = False, enforce_qed: bool = False):
+    def __init__(self, coq_context_helper: Lean3ContextHelper, project_folder: str = None, proof_file: str = None, instruction_iter: typing.Optional[str] = None, use_hammer: typing.Union[bool, HammerMode] = False, timeout_in_seconds: int = 60, use_human_readable_proof_context: bool = True, suppress_error_log: bool = True, context_type: ContextType = ContextType.NoContext, keep_local_context = False, enforce_qed: bool = False):
         assert proof_file is None or os.path.exists(proof_file), f"Proof file {proof_file} does not exist"
         assert coq_context_helper is not None, "coq_context_helper must not be None"
         self.proof_file = proof_file

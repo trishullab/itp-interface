@@ -19,6 +19,7 @@ from itp_interface.lean_server.lean4_utils import Lean4Utils
 from itp_interface.tools.lean_parse_utils import LeanLineByLineReader
 from itp_interface.tools.theorem_details import TheoremDetails
 from itp_interface.lean_server.lean4_repl_interface import ProcessInterface
+from itp_interface.tools.misc_defns import HammerMode
 from typing import Iterator, List, Optional, Tuple, OrderedDict, Generator, Dict
 
 class Lean4SyncExecutor:
@@ -52,7 +53,7 @@ class Lean4SyncExecutor:
         project_root: Optional[str] = None, 
         prefix: Optional[str] = None, 
         main_file: Optional[str] = None, 
-        use_hammer: bool = False, 
+        use_hammer: typing.Union[bool, HammerMode] = False, 
         timeout_in_sec: int = 60, 
         use_human_readable_proof_context: bool = True, 
         proof_step_iter: Optional[Iterator[str]] = None, 
