@@ -18,6 +18,7 @@ from pathlib import Path
 from enum import Enum
 from itp_interface.pisa.src.main.python.pisa_client import PisaEnv, initialise_env, IsabelleLemma
 from itp_interface.tools.isabelle_parse_utils import IsabelleLineByLineReader, IsabelleStepByStepStdInReader
+from itp_interface.tools.misc_defns import HammerMode
 logger = logging.getLogger()
 
 class Obligation(typing.NamedTuple):
@@ -78,16 +79,6 @@ class ProofContext(typing.NamedTuple):
             return self.fg_goals[0].hypotheses
         else:
             return []
-
-class HammerMode(Enum):
-    NONE = 'NONE' # Prohibit hammer
-    ALLOW = 'ALLOW' # Allow agent to query hammer
-    AUTO = 'AUTO' # Automatically apply hammer to individual tactics (heuristically)
-    ONESHOT = 'ONESHOT' # Proof attempt in one shot using hammer
-    ALWAYS = 'ALWAYS' # Always use hammer on thesis after a successful proof attempt
-
-    def __str__(self):
-        return self.name
 
 class IsabelleExecutor:
     # This doesn't do the best job of capturing each state changing
