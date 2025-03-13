@@ -64,7 +64,7 @@ def install_lean_repl():
         elan_url = "https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh"
         os.system(f"curl -sSL {elan_url} | sh")
         print("[OK] .elan installed")
-        lean_repo = "leanprover-community/lean"
+        lean_repo = "leanprover/lean4"
         # Create a temporary script to run
         shell_code = f"""
 source $HOME/.elan/env
