@@ -11,11 +11,14 @@ Generic interface for hooking up to any Interactive Theorem Prover (ITP) and col
 pip install itp-interface
 ```
 
-2. Run the following command to prepare the REPL for Lean 4. (The default version is 4.7.0-rc2. You can change the version by setting the `LEAN_VERSION` environment variable. If no version is set, then 4.7.0-rc2 is used.)
+2. Run the following command to prepare the REPL for Lean 4. The default version is 4.7.0-rc2. You can change the version by setting the `LEAN_VERSION` environment variable. If no version is set, then 4.7.0-rc2 is used. However, the itp-interface supports up to Lean 4.17.0.
 >NOTE: The Lean 4 version must match the version of the Lean 4 project you are working with.
 ```bash
-export LEAN_VERSION="4.15.0"
+export LEAN_VERSION="4.7.0-rc2"
 install-lean-repl
+# ^^ Change the LEAN_VERSION to the version of Lean 4 you are working with.
+# ^^^ Example: export LEAN_VERSION="4.15.0" to use Lean 4.15.0
+# itp-interface supports up to Lean 4.17.0
 ```
 
 3. Run the following command to build the REPL for Lean 4. Make sure that `lean --version` returns the correct version before running the command below. If not then check if `$HOME/.elan/bin` is in your path. Recommended to run `source $HOME/.elan/env` before running the command below.
