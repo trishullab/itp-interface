@@ -69,7 +69,7 @@ def install_lean_repl():
     else:
         print("Installing .elan")
         elan_url = "https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh"
-        os.system(f"curl -sSL {elan_url} | sh")
+        os.system(f"curl -sSL {elan_url} -sSf | sh -s -- -y")
         print("[OK] .elan installed")
         lean_repo = "leanprover/lean4"
         # Create a temporary script to run
@@ -95,7 +95,8 @@ export PATH=$PATH:$HOME/.elan/bin"""
         print("Removing the script")
         os.system(f"rm {random_sh_path}")
         os.system(f"rmdir /tmp/{random_path}")
-        assert os.system("source $HOME/.elan/env && export PATH=$PATH:$HOME/.elan/bin && lean --version") == 0, "Lean 4 is not installed aborting"
+        os.system("ls -l $HOME/.elan/bin")
+        assert os.system("export PATH=$PATH:$HOME/.elan/bin && lean --version") == 0, "Lean 4 is not installed aborting"
         print("[OK] Lean 4 installed successfully")
     print("NOTE: Please run `install-itp-interface` to finish the installation")
 
