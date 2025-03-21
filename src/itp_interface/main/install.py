@@ -1,6 +1,13 @@
 import os
+import random
+import string
 
 file_path = os.path.abspath(__file__)
+def generate_random_string(length, allowed_chars = None):
+    if allowed_chars is None:
+        allowed_chars = string.ascii_letters + string.digits
+    return ''.join(random.choice(allowed_chars) for _ in range(length))
+
 def install_itp_interface():
     print("Installing itp_interface")
     itp_dir = os.path.dirname(os.path.dirname(file_path))
@@ -66,23 +73,29 @@ def install_lean_repl():
         print("[OK] .elan installed")
         lean_repo = "leanprover/lean4"
         # Create a temporary script to run
-        shell_code = f"""
-source $HOME/.elan/env
+        shell_code = f"""source $HOME/.elan/env
 echo "Installing Lean 4 ({lean_repo}:{lean_version})..."
 elan toolchain install {lean_repo}:{lean_version}
 elan override set {lean_repo}:{lean_version}
 echo "Installed Lean 4 ({lean_repo}:{lean_version}) successfully!"
-export PATH=$PATH:$HOME/.elan/bin
-"""
+export PATH=$PATH:$HOME/.elan/bin"""
         random_string = os.urandom(8).hex()
-        with open(f"/tmp/{random_string}.sh", "w") as f:
+        number = random.randint(1, 10)
+        lens = [random.randint(1, 10) for _ in range(number)]
+        rand_dirnames = [generate_random_string(l) for l in lens]
+        random_path = "/".join(rand_dirnames)
+        os.makedirs(f"/tmp/{random_path}", exist_ok=True)
+        random_sh_path = f"/tmp/{random_path}/{random_string}.sh"
+        print(f"Writing the script to {random_sh_path}")
+        with open(random_sh_path, "w") as f:
             f.write(shell_code)
-        os.system(f"chmod +x /tmp/{random_string}.sh")
+        os.system(f"chmod +x {random_sh_path}")
         print("Running the script")
-        os.system(f"bash /tmp/{random_string}.sh")
+        os.system(f"bash {random_sh_path}")
         print("Removing the script")
-        os.system(f"rm /tmp/{random_string}.sh")
-        assert os.system("lean --version") == 0, "Lean 4 is not installed aborting"
+        os.system(f"rm {random_sh_path}")
+        os.system(f"rmdir /tmp/{random_path}")
+        assert os.system("source $HOME/.elan/env && export PATH=$PATH:$HOME/.elan/bin && lean --version") == 0, "Lean 4 is not installed aborting"
         print("[OK] Lean 4 installed successfully")
     print("NOTE: Please run `install-itp-interface` to finish the installation")
 
