@@ -41,6 +41,18 @@ jobs:
       - name: Install package
         run: pip install dist/*.whl --break-system-packages
 
+      - name: Install Lean (elan) and prepare Lean REPL
+        shell: bash
+        run: |
+          install-lean-repl
+          source $HOME/.elan/env
+
+      - name: Build Lean REPL for itp-interface
+        shell: bash
+        run: |
+          source $HOME/.elan/env
+          install-itp-interface
+
       - name: Check and Init opam version
         run: |
           opam --version
@@ -53,24 +65,6 @@ jobs:
           eval $(opam env)
           opam repo add coq-released https://coq.inria.fr/opam/released
           opam pin add -y coq-lsp 0.1.8+8.18
-
-      - name: Install Lean (elan)
-        shell: bash
-        run: |
-          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y
-          source $HOME/.elan/env
-
-      - name: Prepare Lean REPL
-        shell: bash
-        run: |
-          source $HOME/.elan/env
-          install-lean-repl
-
-      - name: Build Lean REPL for itp-interface
-        shell: bash
-        run: |
-          source $HOME/.elan/env
-          install-itp-interface
 
       - name: List repository files (debug step)
         run: find . -type f
