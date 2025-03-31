@@ -7,7 +7,7 @@ class Helper():
     def build_lean4_project(self, project_folder):
         import os
         # Build the project
-        with os.popen(f"cd {project_folder} && lake build") as proc:
+        with os.popen(f"cd {project_folder} && lake exe cache get && lake build") as proc:
             print("Building Lean4 project...")
             print('-'*15 + 'Build Logs' + '-'*15)
             print(proc.read())
@@ -488,6 +488,88 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
                         print(goal.goal)
                     print(f"="*30)
 
+    def test_simple_lean4_have_test(self):
+        from itp_interface.rl.proof_state import ProofState
+        from itp_interface.rl.proof_action import ProofAction
+        from itp_interface.rl.simple_proof_env import ProofEnv
+        from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
+        from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
+        project_folder = "src/data/test/lean4_proj"
+        file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
+        # Build the project
+        # cd src/data/test/lean4_proj && lake build
+        helper = Helper()
+        helper.build_lean4_project(project_folder)
+        language = ProofAction.Language.LEAN4
+        theorem_name = "imo_1959_p1"
+        # theorem test3 (p q : Prop) (hp : p) (hq : q)
+        # : p ∧ q ∧ p :=
+        proof_exec_callback = ProofExecutorCallback(
+            project_folder=project_folder,
+            file_path=file_path,
+            language=language,
+            always_use_retrieval=False,
+            keep_local_context=True,
+            enforce_qed=True
+        )
+        always_retrieve_thms = False
+        retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
+        env = ProofEnv("test_lean4", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms)
+        proof_steps = [
+'rw [Nat.gcd_rec]',
+'rw [Nat.mod_eq_of_lt (by linarith)]',
+'rw [Nat.gcd_rec]',
+'rw [Nat.gcd_rec]',
+'have eq₂ : (21 * n + 4) % (14 * n + 3) = 7 * n + 1 := by',
+'    have eq₁ : 21 * n + 4 = (14 * n + 3) + (7 * n + 1) := by ring',
+'    rw [eq₁, Nat.add_mod, Nat.mod_self, zero_add]',
+'    have h₂ : 7 * n + 1 < 14 * n + 3 := by linarith',
+'    rw [Nat.mod_eq_of_lt]',
+'    rw [Nat.mod_eq_of_lt]',
+'    exact h₂',
+'    rw [Nat.mod_eq_of_lt]',
+'    exact h₂',
+'    exact h₂',
+'rw [eq₂]'
+        ]
+        with env:
+            for proof_step in proof_steps:
+                state, _, next_state, _, done, info = env.step(ProofAction(
+                    ProofAction.ActionType.RUN_TACTIC, 
+                    language, 
+                    tactics=[proof_step]))
+                if info.error_message is not None:
+                    print(f"Error: {info.error_message}")
+                # This prints StateChanged, StateUnchanged, Failed, or Done
+                print(info.progress)
+                print('-'*30)
+                if done:
+                    raise Exception("Proof should not have finished")
+                else:
+                    s1 : ProofState = state
+                    s2 : ProofState = next_state
+                    print(f"Current Goal:")
+                    print('-'*30)
+                    for goal in s1.training_data_format.start_goals:
+                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
+                        print(hyps)
+                        print('|- ', end='')
+                        print(goal.goal)
+                        print(f'*'*30)
+                    print(f"="*30)
+                    print(f"Action: {proof_step}")
+                    print(f"="*30)
+                    print(f"Next Goal:")
+                    print('-'*30)
+                    for goal in s2.training_data_format.start_goals:
+                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
+                        print(hyps)
+                        print('|- ', end='')
+                        print(goal.goal)
+                        print(f'*'*30)
+                    print(f"="*30)
+                    print(f"DONE: {done}")
+                    print('-'*30)
 
 def main():
     unittest.main()

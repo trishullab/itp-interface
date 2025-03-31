@@ -1,3 +1,4 @@
+import Mathlib
 namespace Lean4Proj1
 
 def hello := "world"
@@ -50,5 +51,27 @@ theorem test3 (p q : Prop) (hp : p) (hq : q)
     apply And.intro
     exact hq
     exact hp
+
+theorem imo_1959_p1
+  (n : ℕ)
+  (h₀ : 0 < n) :
+  Nat.gcd (21*n + 4) (14*n + 3) = 1 := by
+rw [Nat.gcd_rec]
+rw [Nat.mod_eq_of_lt (by linarith)]
+rw [Nat.gcd_rec]
+rw [Nat.gcd_rec]
+have eq₂ : (21 * n + 4) % (14 * n + 3) = 7 * n + 1 := by
+    have eq₁ : 21 * n + 4 = (14 * n + 3) + (7 * n + 1) := by ring
+    rw [eq₁, Nat.add_mod, Nat.mod_self, zero_add]
+    have h₂ : 7 * n + 1 < 14 * n + 3 := by linarith
+    rw [Nat.mod_eq_of_lt]
+    rw [Nat.mod_eq_of_lt]
+    exact h₂
+    rw [Nat.mod_eq_of_lt]
+    exact h₂
+    exact h₂
+rw [eq₂]
+sorry
+
 
 end Lean4Proj2

@@ -39,8 +39,12 @@ class TestDataGen(unittest.TestCase):
         dirs = sorted(os.listdir(".log/data_generation/benchmark/simple_benchmark_lean"))
         print(dirs)
         last_dir = dirs[-1]
-        train_data = os.path.join(".log/data_generation/benchmark/simple_benchmark_lean", last_dir, "train")
-        data_gen_file = os.path.join(train_data, "local_data_0000000025.json")
+        train_data = os.path.join(".log/data_generation/benchmark/simple_benchmark_lean", last_dir, "train")        
+        list_files = os.listdir(train_data)
+        data_files = [f for f in list_files if f.endswith(".json") and f.startswith("local_data_")]
+        assert len(data_files) == 1, f"No files found in the train directory. Expected one file. Found: {data_files}"
+        print(data_files[0])
+        data_gen_file = os.path.join(train_data, data_files[0])
         print("Data Gen File:", data_gen_file)
         with open(data_gen_file, "r") as f:
             print(f.read())

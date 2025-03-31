@@ -831,6 +831,7 @@ class Lean4SyncExecutor:
         proof_running = 'sorries' in response or 'proofState' in response
         error_messages = response.get('message', None)
         goal_text = None
+        goal_texts = []
         if error_messages is None and 'proofState' in response:
             error_messages = response.get('messages', None)
         elif error_messages is None:
@@ -840,6 +841,7 @@ class Lean4SyncExecutor:
                 text_msg = msg.get('data', None)
                 if text_msg is not None and text_msg.startswith(Lean4SyncExecutor.unsolved_message):
                     goal_text = text_msg[len(Lean4SyncExecutor.unsolved_message):]
+                    goal_texts.append(goal_text)
                 else:
                     error_messages.append(msg)
             if len(error_messages) == 0:
@@ -865,11 +867,11 @@ class Lean4SyncExecutor:
             if self._proof_running:
                 proof_state_idx = None
                 proof_goals = []
-                if goal_text is not None:
-                    if len(goal_text) == 0:
-                        proof_goals = []
-                    else:
-                        proof_goals = [goal_text]
+                if len(goal_texts) == 0:
+                    proof_goals = []
+                elif len(goal_texts) > 0:
+                    proof_goals = [g_text for g_text in goal_texts 
+                    if g_text is not None and len(g_text) > 0]
                 elif 'sorries' in response:
                     sorries = response['sorries']
                     # TODO: Go over all the sorries and find the one which matches the line number with idx + 1
