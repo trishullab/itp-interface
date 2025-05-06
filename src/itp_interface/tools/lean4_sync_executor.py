@@ -30,8 +30,8 @@ class Lean4SyncExecutor:
     # We ONLY support proofs which are written in tactic mode i.e. with := syntax
     theorem_endings = r"(:=|(\|[\S|\s]*=>))"
     theorem_end_regex = r"(theorem|lemma|example)([\s|\S]*?)(:=|=>)"
-    theorem_regex = r"((((theorem|lemma)[\s]+([\S]*))|example)([\S|\s]*?)(:=|=>)[\s]*?)[\s]+"
-    theorem_name_regex = r"(((theorem|lemma)[\s]+([\S]*))|example)"
+    theorem_regex = r"((((theorem|lemma)[\s]+([^ :]*))|example)([\S|\s]*?)(:=|=>)[\s]*?)[\s]+"
+    theorem_name_regex = r"(((theorem|lemma)[\s]+([^ :]*))|example)"
     remove_proof_regex = r"([\s|\S]*(:=|\|))[\s|\S]*?"
     proof_context_separator = "⊢"
     proof_context_regex = r"((\d+) goals)*([\s|\S]*?)\n\n"
