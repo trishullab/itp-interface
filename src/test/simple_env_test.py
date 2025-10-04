@@ -80,13 +80,17 @@ class Lean4Test(unittest.TestCase):
         retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
         env = ProofEnv("test_lean4", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms)
         proof_steps = [
+            '-- TODO',
             'apply And.intro',
             'exact hp',
             'apply And.intro',
+            '--TODO',
+            '-- This is just some extra comment',
             'exact hq',
             'exact hp'
         ]
         with env:
+            proof_was_finished = False
             for proof_step in proof_steps:
                 state, _, next_state, _, done, info = env.step(ProofAction(
                     ProofAction.ActionType.RUN_TACTIC, 
@@ -99,6 +103,7 @@ class Lean4Test(unittest.TestCase):
                 print('-'*30)
                 if done:
                     print("Proof Finished!!")
+                    proof_was_finished = True
                 else:
                     s1 : ProofState = state
                     s2 : ProofState = next_state
@@ -120,6 +125,7 @@ class Lean4Test(unittest.TestCase):
                         print('|- ', end='')
                         print(goal.goal)
                     print(f"="*30)
+            assert proof_was_finished, "Proof was not finished"
 
     def test_lean4_backtracking(self):
         from itp_interface.rl.proof_state import ProofState
@@ -156,6 +162,7 @@ class Lean4Test(unittest.TestCase):
         ]
         with env:
             prev_state = env.state
+            proof_was_finished = False
             for idx, proof_step in enumerate(proof_steps):
                 if idx > 0 and random.random() <= 0.5:
                     print(f"Backtracking at step {idx + 1} i.e. {proof_step}")
@@ -179,6 +186,8 @@ class Lean4Test(unittest.TestCase):
                 prev_state = state
                 if done:
                     print("Proof Finished!!")
+                    proof_was_finished = True
+            assert proof_was_finished, "Proof was not finished"
 
     def test_simple_coq(self):
         from itp_interface.rl.proof_state import ProofState
@@ -286,6 +295,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
 "_ = (n + 1)*(n + 1) := by \n   rw [Nat.right_distrib n 1 (n + 1)]"
 ]
         with env:
+            proof_was_finished = False
             for proof_step in proof_steps:
                 state, _, next_state, _, done, info = env.step(ProofAction(
                     ProofAction.ActionType.RUN_TACTIC, 
@@ -310,6 +320,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
                     print(f"Action: {proof_step}")
                     print(f"="*30)
                     print("Proof Finished!!")
+                    proof_was_finished = True
                 else:
                     s1 : ProofState = state
                     s2 : ProofState = next_state
@@ -331,6 +342,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
                         print('|- ', end='')
                         print(goal.goal)
                     print(f"="*30)
+            assert proof_was_finished, "Proof was not finished"
 
     def test_simple_lean_enforce_done_test(self):
         from itp_interface.rl.proof_state import ProofState
@@ -372,6 +384,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
 "done"
 ]
         with env:
+            proof_finished = False
             for proof_step in proof_steps:
                 state, _, next_state, _, done, info = env.step(ProofAction(
                     ProofAction.ActionType.RUN_TACTIC, 
@@ -397,6 +410,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
                     print(f"Action: {proof_step}")
                     print(f"="*30)
                     print("Proof Finished!!")
+                    proof_finished = True
                 else:
                     s1 : ProofState = state
                     s2 : ProofState = next_state
@@ -418,6 +432,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
                         print('|- ', end='')
                         print(goal.goal)
                     print(f"="*30)
+            assert proof_finished, "Proof was not finished"
 
     def test_simple_lean4_done_test(self):
         from itp_interface.rl.proof_state import ProofState
