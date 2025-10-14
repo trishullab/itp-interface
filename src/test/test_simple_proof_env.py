@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import sys
-import os
 import logging
 from itp_interface.rl.simple_proof_env import ProofEnv, ProofEnvReRankStrategy
 from itp_interface.rl.proof_action import ProofAction
@@ -35,7 +34,7 @@ def main():
     if inp == 'coq':
         proof_exec_callback = ProofExecutorCallback(
             project_folder=".",
-            file_path="data/test/SimpleAlgebra.v"
+            file_path="src/data/test/SimpleAlgebra.v"
         )
         theorem_name = "algb_add_comm"
         language = ProofAction.Language.COQ
@@ -43,8 +42,8 @@ def main():
         retrieval_strategy = ProofEnvReRankStrategy.BM25
     elif inp == 'lean':
         proof_exec_callback = ProofExecutorCallback(
-            project_folder="data/test/lean_proj",
-            file_path="data/test/lean_proj/src/simple_solved.lean",
+            project_folder="src/data/test/lean_proj",
+            file_path="src/data/test/lean_proj/src/simple_solved.lean",
             language=ProofAction.Language.LEAN,
             always_use_retrieval=True,
             keep_local_context=True
@@ -55,8 +54,8 @@ def main():
         retrieval_strategy = ProofEnvReRankStrategy.BM25
     elif inp == 'lean4':
         proof_exec_callback = ProofExecutorCallback(
-            project_folder="data/test/lean4_proj",
-            file_path="data/test/lean4_proj/Lean4Proj/Basic.lean",
+            project_folder="src/data/test/lean4_proj",
+            file_path="src/data/test/lean4_proj/Lean4Proj/Basic.lean",
             language=ProofAction.Language.LEAN4,
             always_use_retrieval=False,
             keep_local_context=True
@@ -67,8 +66,8 @@ def main():
         retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
     elif inp == 'isabelle':
         proof_exec_callback = ProofExecutorCallback(
-            project_folder="data/test",
-            file_path="data/test/SimpleAlgebra.thy",
+            project_folder="src/data/test",
+            file_path="src/data/test/SimpleAlgebra.thy",
             language=ProofAction.Language.ISABELLE,
             use_hammer=HammerMode.AUTO
         )
