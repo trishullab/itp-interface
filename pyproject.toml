@@ -11,7 +11,7 @@ authors = [
 ]
 description = "Generic interface for hooking up to any Interactive Theorem Prover (ITP) and collecting data for training ML models for AI in formal theorem proving."
 readme = "README.md"
-requires-python = ">=3.9, <3.13"
+requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -25,7 +25,7 @@ dependencies = [
     "pexpect==4.8.0",
     "sexpdata==1.0.0",
     "pampy==0.3.0",
-    "ray==2.36.0",
+    "ray>=2.50.0; python_version<'3.14'",
     "pydantic>=2.10.6",
     "faiss-cpu>=1.6.1",
     "filelock==3.12.4",
