@@ -22,6 +22,7 @@ jobs:
           submodules: true  # Ensure submodules are checked out
 
       - name: Install Miniconda
+        shell: bash
         run: |
           apt-get update
           apt-get install -y wget
@@ -29,16 +30,16 @@ jobs:
           bash /tmp/miniconda.sh -b -p $HOME/miniconda
           rm /tmp/miniconda.sh
           export PATH="$HOME/miniconda/bin:$PATH"
-          echo "export PATH=\"$HOME/miniconda/bin:\$PATH\"" >> $HOME/.bashrc
           conda init bash
-          source $HOME/.bashrc
 
       - name: Create Python 3.14 free-threading conda environment
+        shell: bash
         run: |
           export PATH="$HOME/miniconda/bin:$PATH"
           conda create -n py314-ft python=3.14 python-freethreading -c conda-forge -y
 
       - name: Check Python version and GIL status
+        shell: bash
         run: |
           export PATH="$HOME/miniconda/bin:$PATH"
           source $HOME/miniconda/bin/activate py314-ft
@@ -46,6 +47,7 @@ jobs:
           python -c "import sys; print('GIL disabled:', not sys._is_gil_enabled())"
 
       - name: Upgrade pip and install build tools
+        shell: bash
         run: |
           export PATH="$HOME/miniconda/bin:$PATH"
           source $HOME/miniconda/bin/activate py314-ft
@@ -53,12 +55,14 @@ jobs:
           pip install build==1.3.0 hatchling==1.27.0
 
       - name: Build package with hatchling
+        shell: bash
         run: |
           export PATH="$HOME/miniconda/bin:$PATH"
           source $HOME/miniconda/bin/activate py314-ft
           python -m build
 
       - name: Install package
+        shell: bash
         run: |
           export PATH="$HOME/miniconda/bin:$PATH"
           source $HOME/miniconda/bin/activate py314-ft
