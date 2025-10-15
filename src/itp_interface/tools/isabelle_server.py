@@ -3,7 +3,6 @@ root_dir = f"{__file__.split('itp_interface')[0]}"
 if root_dir not in sys.path:
     sys.path.append(root_dir)
 import os
-import ray
 import signal
 import subprocess
 import time
@@ -11,8 +10,15 @@ import threading
 import uuid
 from itp_interface.tools.log_utils import setup_logger
 
-@ray.remote
-class IsabelleServer(object):
+# Conditional Ray import
+try:
+    import ray
+    HAS_RAY = True
+except ImportError:
+    HAS_RAY = False
+    ray = None
+
+class _IsabelleServerImpl(object):
     def __init__(self, log_filename: str, port: int = 8000):
         assert port > 0, "Port number must be greater than 0"
         assert port < 65536, "Port number must be less than 65536"
@@ -104,3 +110,9 @@ class IsabelleServer(object):
                 thread.join(5)
                 break
         pass
+
+# Create Ray remote version if Ray is available
+if HAS_RAY:
+    IsabelleServer = ray.remote(_IsabelleServerImpl)
+else:
+    IsabelleServer = _IsabelleServerImpl

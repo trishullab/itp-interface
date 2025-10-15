@@ -1,0 +1,119 @@
+name: Build, Package, and Test (Python 3.14 Free-Threading)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test-python314t:
+    runs-on: ubuntu-latest
+    container:
+      image: coqorg/coq:8.18.0-ocaml-4.14.2-flambda
+      options: --user 0  # Running as root; no sudo needed
+    env:
+      HOME: /root
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true  # Ensure submodules are checked out
+
+      - name: Install Miniconda
+        shell: bash
+        run: |
+          apt-get update
+          apt-get install -y wget
+          wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh
+          bash /tmp/miniconda.sh -b -p $HOME/miniconda
+          rm /tmp/miniconda.sh
+          export PATH="$HOME/miniconda/bin:$PATH"
+          conda init bash
+
+      - name: Create Python 3.14 free-threading conda environment
+        shell: bash
+        run: |
+          export PATH="$HOME/miniconda/bin:$PATH"
+          conda create -n py314-ft python=3.14 python-freethreading -c conda-forge -y
+
+      - name: Check Python version and GIL status
+        shell: bash
+        run: |
+          export PATH="$HOME/miniconda/bin:$PATH"
+          source $HOME/miniconda/bin/activate py314-ft
+          python --version
+          python -c "import sys; print('GIL disabled:', not sys._is_gil_enabled())"
+
+      - name: Upgrade pip and install build tools
+        shell: bash
+        run: |
+          export PATH="$HOME/miniconda/bin:$PATH"
+          source $HOME/miniconda/bin/activate py314-ft
+          python -m pip install --upgrade pip
+          pip install build==1.3.0 hatchling==1.27.0
+
+      - name: Build package with hatchling
+        shell: bash
+        run: |
+          export PATH="$HOME/miniconda/bin:$PATH"
+          source $HOME/miniconda/bin/activate py314-ft
+          python -m build
+
+      - name: Install package
+        shell: bash
+        run: |
+          export PATH="$HOME/miniconda/bin:$PATH"
+          source $HOME/miniconda/bin/activate py314-ft
+          pip install dist/*.whl
+
+      - name: Install Lean (elan) and prepare Lean REPL
+        shell: bash
+        run: |
+          export PATH="$HOME/miniconda/bin:$PATH"
+          source $HOME/miniconda/bin/activate py314-ft
+          install-lean-repl
+          source $HOME/.elan/env
+
+      - name: Build Lean REPL for itp-interface
+        shell: bash
+        run: |
+          export PATH="$HOME/miniconda/bin:$PATH"
+          source $HOME/miniconda/bin/activate py314-ft
+          source $HOME/.elan/env
+          install-itp-interface
+
+      - name: Check and Init opam version
+        run: |
+          opam --version
+          opam init --disable-sandboxing --yes
+
+      - name: Install Coq
+        run: |
+          opam switch create simple_grp_theory 4.14.2
+          opam switch simple_grp_theory
+          eval $(opam env)
+          opam repo add coq-released https://coq.inria.fr/opam/released
+          opam pin add -y coq-lsp 0.1.8+8.18
+
+      - name: List repository files (debug step)
+        run: find . -type f
+
+      - name: Run Simple Env Test
+        shell: bash
+        run: |
+          export PATH="$HOME/miniconda/bin:$PATH"
+          source $HOME/miniconda/bin/activate py314-ft
+          eval $(opam env)
+          source $HOME/.elan/env
+          python src/test/simple_env_test.py
+
+      - name: Run Data Gen Test
+        shell: bash
+        run: |
+          export PATH="$HOME/miniconda/bin:$PATH"
+          source $HOME/miniconda/bin/activate py314-ft
+          eval $(opam env)
+          source $HOME/.elan/env
+          python src/test/simple_data_gen_test.py
