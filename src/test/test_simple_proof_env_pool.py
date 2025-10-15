@@ -2,18 +2,16 @@
 
 import sys
 import logging
-import ray
-
-root_dir = f"{__file__.split('itp_interface')[0]}"
-if root_dir not in sys.path:
-    sys.path.append(root_dir)
-
 from itp_interface.rl.simple_proof_env_pool import ProofEnvPool
-from itp_interface.rl.simple_proof_env_ray import ProofEnvActor
+from itp_interface.rl.simple_proof_env_ray import ProofEnvActor, HAS_RAY
 from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
 from itp_interface.rl.proof_action import ProofAction
 from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
 from itp_interface.tools.isabelle_executor import IsabelleExecutor, HammerMode
+
+# Conditional Ray import
+if HAS_RAY:
+    import ray
 
 
 def scan_action(language, supported_actions):
@@ -32,7 +30,11 @@ def scan_action(language, supported_actions):
 
 
 def main():
-    print("Interactive Proof Environment Pool (Ray)")
+    if HAS_RAY:
+        print("Interactive Proof Environment Pool (Ray - Process-based)")
+    else:
+        print("Interactive Proof Environment Pool (Thread-based)")
+
     supported_actions = [x.name for x in ProofAction.ActionType]
 
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -92,32 +94,62 @@ def main():
 
     try:
         logger = logging.getLogger(__name__)
-        ray.init()
-        env_actors = [
-            ProofEnvActor.remote("test", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms, logger=logger, should_load_env=False)
-            for _ in range(4)]
-        pool = ProofEnvPool(proof_env_actors=env_actors, logger=logger, max_parallel_envs=3)
-        with pool:
-            dones = pool.get_done(list(range(4)))
-            action = scan_action(language, supported_actions)
-            while action.action_type != ProofAction.ActionType.EXIT and not all(dones):
-                step_res = pool.step([action]*4, list(range(4)))
-                dones = []
-                for i, (state, act, new_state, reward, done, info) in enumerate(step_res):
-                    if done:
-                        print(f"Environment {i} done")
-                    else:
-                        print(f"Environment {i} not done")
-                    dones.append(done)
-                    print(f"[{i}] Reward: {reward}")
-                    print(f"[{i}] Done: {done}")
-                    print(f"[{i}] Info: {info.to_json()}")
-                if not all(dones):
-                    action = scan_action(language, supported_actions)
 
-        # Cleanup actors
-        for env_actor in env_actors:
-            ray.kill(env_actor)
+        if HAS_RAY:
+            # Ray-based implementation (process-based parallelism)
+            ray.init()
+            env_actors = [
+                ProofEnvActor.remote("test", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms, logger=logger, should_load_env=False)
+                for _ in range(4)]
+            pool = ProofEnvPool(proof_env_actors=env_actors, logger=logger, max_parallel_envs=3)
+            with pool:
+                dones = pool.get_done(list(range(4)))
+                action = scan_action(language, supported_actions)
+                while action.action_type != ProofAction.ActionType.EXIT and not all(dones):
+                    step_res = pool.step([action]*4, list(range(4)))
+                    dones = []
+                    for i, (state, act, new_state, reward, done, info) in enumerate(step_res):
+                        if done:
+                            print(f"Environment {i} done")
+                        else:
+                            print(f"Environment {i} not done")
+                        dones.append(done)
+                        print(f"[{i}] Reward: {reward}")
+                        print(f"[{i}] Done: {done}")
+                        print(f"[{i}] Info: {info.to_json()}")
+                    if not all(dones):
+                        action = scan_action(language, supported_actions)
+
+            # Cleanup actors
+            for env_actor in env_actors:
+                ray.kill(env_actor)
+        else:
+            # Thread-based implementation (thread-safe, no Ray)
+            env_actors = [
+                ProofEnvActor("test", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms, logger=logger, should_load_env=False)
+                for _ in range(4)]
+            pool = ProofEnvPool(proof_env_actors=env_actors, logger=logger, max_parallel_envs=3)
+            with pool:
+                dones = pool.get_done(list(range(4)))
+                action = scan_action(language, supported_actions)
+                while action.action_type != ProofAction.ActionType.EXIT and not all(dones):
+                    step_res = pool.step([action]*4, list(range(4)))
+                    dones = []
+                    for i, (state, act, new_state, reward, done, info) in enumerate(step_res):
+                        if done:
+                            print(f"Environment {i} done")
+                        else:
+                            print(f"Environment {i} not done")
+                        dones.append(done)
+                        print(f"[{i}] Reward: {reward}")
+                        print(f"[{i}] Done: {done}")
+                        print(f"[{i}] Info: {info.to_json()}")
+                    if not all(dones):
+                        action = scan_action(language, supported_actions)
+
+            # Cleanup actors
+            for env_actor in env_actors:
+                env_actor.cleanup()
     finally:
         if language == ProofAction.Language.ISABELLE:
             IsabelleExecutor.stop_server()

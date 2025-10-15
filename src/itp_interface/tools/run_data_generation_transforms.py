@@ -10,7 +10,6 @@ import ray
 import logging
 import typing
 import shutil
-import psutil
 import gc
 from itp_interface.tools.ray_utils import RayUtils
 from itp_interface.tools.training_data import TrainingData
@@ -211,12 +210,10 @@ class RunDataGenerationTransforms(object):
                 tds: typing.List[TrainingData],
                 transform: typing.Union[CoqLocalDataGenerationTransform, LeanLocalDataGenerationTransform, IsabelleLocalDataGenerationTransform]):
         self.logger.info(f"==============================>[{transform.name}] Merging local transforms for all projects<==============================")
-        process = psutil.Process()
         for idx in range(len(tds)):
             if tds[idx] is None:
                 continue
             training_data = tds[idx]
-            self.logger.info(f"[Process Id = {process.pid}], Memory used (Before GC): {process.memory_info().rss/2**30} GiB")
             folder = training_data.folder
             self.logger.info(f"==============================>[{transform.name}] Merging local transforms for project {folder}<==============================")
             final_training_data.merge(training_data)
@@ -225,7 +222,6 @@ class RunDataGenerationTransforms(object):
             training_data = None # free up memory
             self.logger.info(f"==============================>[{transform.name}] Merged local transforms for project {folder}<==============================")
             gc.collect()
-            self.logger.info(f"[Process Id = {process.pid}], Memory used (After GC): {process.memory_info().rss/2**30} GiB")
             idx += 1
         self.logger.info(f"==============================>[{transform.name}] Merged local transforms for all projects<==============================")
 
@@ -324,8 +320,6 @@ class RunDataGenerationTransforms(object):
                 self.logger.info(f"Number of theorems processed: {training_data.meta.num_theorems}")
                 self.logger.info(f"Number of theorems processed so far: {num_theorems}")
                 tds[idx] = training_data
-            process = psutil.Process()
-            self.logger.info(f"[{transform.name}] Process Id = {process.pid}, Memory used: {process.memory_info().rss/2**30} GiB")
         
         RayUtils.ray_run_within_parallel_limits(pool_size, len(job_spec), _transform_output, _prepare_remotes, _create_remotes, logger=self.logger)
 

@@ -38,7 +38,6 @@ dependencies = [
     "soundfile==0.12.1",
     "rank_bm25==0.2.2",
     "parglare==0.16.1",
-    "psutil==5.9.8",
     "urllib3>=2.0.7",
     "mathlibtools==1.3.2",
     "pylspclient==0.0.3",

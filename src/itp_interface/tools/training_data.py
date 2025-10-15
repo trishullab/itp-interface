@@ -11,7 +11,6 @@ import copy
 import typing
 import logging
 import time
-import psutil
 import threading
 from itp_interface.tools.training_data_format import LemmaRefWithScore, LemmaReferencesCollection, MergableCollection, TrainingDataCollection, TrainingDataFormat, TrainingDataMetadataFormat
 
@@ -150,8 +149,6 @@ class TrainingData(MergableCollection):
                         self.logger.info(f"[TrainingData] Finished the loading of {self._lemma_ref_filename}")
                 else:
                     raise Exception(f"Invalid type {type(res)}")
-                process = psutil.Process()
-                self.logger.info(f"[TrainingData] Memory usage: {process.memory_info().rss / 2**30} GiB, Process: {process.pid}")
 
         def _prepare_next_batch(num:int):
             nonlocal last_loaded_idx
@@ -180,8 +177,6 @@ class TrainingData(MergableCollection):
 
             end_time = time.time()
             self.logger.info(f"[TrainingData] Loaded {file_path} in {end_time - start_time} seconds")
-            process = psutil.Process()
-            self.logger.info(f"[TrainingData] Memory usage: {process.memory_info().rss / 2**30} GiB, Process: {process.pid}")
     
     def unload(self):
         assert self.is_readonly, "Training data is not loadable"
@@ -346,8 +341,6 @@ class TrainingData(MergableCollection):
                     self.logger.info(f"[TrainingData] Saved [{res[0]}] in file {res[1]}")
                 else:
                     raise Exception(f"Unable to save {res}")
-            process = psutil.Process()
-            self.logger.info(f"[TrainingData] Memory usage: {process.memory_info().rss / 2**30} GiB, Process: {process.pid}")
 
         def _prepare_next_batch(num:int):
             nonlocal last_idx, files_to_save
@@ -372,8 +365,6 @@ class TrainingData(MergableCollection):
 
             self.logger.info(f"[TrainingData] Saved {filepath} in {save_end_time - save_start_time}s")
             self.logger.info(f"[TrainingData] Saved [{idx}] in file {filepath}")
-            process = psutil.Process()
-            self.logger.info(f"[TrainingData] Memory usage: {process.memory_info().rss / 2**30} GiB, Process: {process.pid}")
 
     def _merge_training_data_format(self, other: TrainingDataFormat, new_lemma_ref_idx: typing.List[int] = None):
         assert isinstance(other, TrainingDataFormat), "other must be a TrainingDataFormat"
