@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 
-import sys
-root_dir = f"{__file__.split('itp_interface')[0]}"
-if root_dir not in sys.path:
-    sys.path.append(root_dir)
 import copy
 import typing
 import logging
@@ -12,7 +8,9 @@ from itp_interface.tools.isabelle_executor import IsabelleExecutor, HammerMode
 from itp_interface.rl.proof_action import ProofAction
 from itp_interface.rl.proof_state import ProofState
 from itp_interface.tools.cache import SimpleLruCache
-from itp_interface.rl.simple_proof_env import ProofEnv, ProofEnvActor, ProofEnvInfo, ProofEnvReRankStrategy, ProofExecutorCallback
+from itp_interface.rl.simple_proof_env import ProofEnv, ProofEnvInfo, ProofEnvReRankStrategy
+from itp_interface.rl.simple_proof_env_ray import ProofEnvActor
+from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
 
 def replicate_proof_env(proof_env: ProofEnv, logger: typing.Optional[logging.Logger] = None) -> ProofEnv:
     new_proof_env = copy.deepcopy(proof_env)
@@ -479,113 +477,4 @@ class ProofEnvPool(object):
             if env_idx in self._active_envs:
                 self._active_envs.remove(env_idx)
         self._logger.info(f"Removed environments: {idxs}")
-    
-if __name__ == "__main__":
-    import os
-    os.chdir(root_dir)
-
-    print("Interactive Proof Environment")
-    supported_actions = [x.name for x in ProofAction.ActionType]
-
-    def scan_action(language):
-        inp_action_type = input(f"Enter an action type from {supported_actions}: (default RUN_TACTIC)")
-        if inp_action_type not in supported_actions:
-            inp_action_type = ProofAction.ActionType.RUN_TACTIC.name
-        action_type = ProofAction.ActionType[inp_action_type]
-        if action_type == ProofAction.ActionType.RUN_TACTIC:
-            inp = input("Enter tactic(s) (';' separated): ")
-            inp = inp.split(';')
-            return ProofAction(action_type, language, tactics=inp)
-        elif action_type == ProofAction.ActionType.GET_DFNS_THMS or action_type == ProofAction.ActionType.BACKTRACK or action_type == ProofAction.ActionType.EXIT:
-            return ProofAction(action_type, language)
-        else:
-            raise Exception(f"Invalid action type {action_type}")
-    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    inp = input("Want to run coq, lean, or isabelle env? (Enter 'coq'/'lean'/'lean4'/'isabelle') ")
-    language = ProofAction.Language.COQ
-    if inp == 'coq':
-        proof_exec_callback = ProofExecutorCallback(
-            project_folder=".",
-            file_path="data/test/SimpleAlgebra.v",
-            enable_search=False
-        )
-        theorem_name = "algb_add_comm"
-        language = ProofAction.Language.COQ
-        always_retrieve_thms = False
-        retrieval_strategy = ProofEnvReRankStrategy.BM25
-    elif inp == 'lean':
-        proof_exec_callback = ProofExecutorCallback(
-            project_folder="data/test/lean_proj",
-            file_path="data/test/lean_proj/src/simple_solved.lean",
-            language=ProofAction.Language.LEAN,
-            always_use_retrieval=True,
-            keep_local_context=True
-        )
-        theorem_name = "a_plus_b_a_minus_a"
-        language = ProofAction.Language.LEAN
-        always_retrieve_thms = True
-        retrieval_strategy = ProofEnvReRankStrategy.BM25
-        pass
-    elif inp == 'lean4':
-        proof_exec_callback = ProofExecutorCallback(
-            project_folder="data/test/lean4_proj",
-            file_path="data/test/lean4_proj/Lean4Proj/Basic.lean",
-            language=ProofAction.Language.LEAN4,
-            always_use_retrieval=False,
-            keep_local_context=True
-        )
-        theorem_name = "test3"
-        language = ProofAction.Language.LEAN4
-        always_retrieve_thms = False
-        retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
-    elif inp == 'isabelle':
-        proof_exec_callback = ProofExecutorCallback(
-            project_folder="data/test",
-            file_path="data/test/SimpleAlgebra.thy",
-            language=ProofAction.Language.ISABELLE,
-            use_hammer=HammerMode.AUTO
-        )
-        theorem_name = "sqrt_comp"
-        language = ProofAction.Language.ISABELLE
-        always_retrieve_thms = False
-        retrieval_strategy = ProofEnvReRankStrategy.BM25
-    else:
-        raise Exception(f"Invalid input {inp} for choosing coq/lean/lean4 env")
-    
-    if language == ProofAction.Language.ISABELLE:
-        IsabelleExecutor.start_server(port=13000)
-    
-    try:
-        test_ray = True
-        if test_ray:
-            logger = logging.getLogger(__name__)
-            ray.init()
-            env_actors = [
-            ProofEnvActor.remote("test", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms, logger=logger, should_load_env=False)
-            for _ in range(4)]
-            pool = ProofEnvPool(proof_env_actors=env_actors, logger=logger, max_parallel_envs=3)
-            with pool:
-                dones = pool.get_done(list(range(4)))
-                action = scan_action(language)
-                while action.action_type != ProofAction.ActionType.EXIT and not all(dones):
-                    step_res = pool.step([action]*4, list(range(4)))
-                    dones = []
-                    for i, (state, act, new_state, reward, done, info) in enumerate(step_res):
-                        if done:
-                            print(f"Environment {i} done")
-                        else:
-                            print(f"Environment {i} not done")
-                        dones.append(done)
-                        print(f"[{i}] Reward: {reward}")
-                        print(f"[{i}] Done: {done}")
-                        print(f"[{i}] Info: {info.to_json()}")
-                    if not all(dones):
-                        action = scan_action(language)
-
-            # If you wish to explicitly kill the actor, do so after the cleanup
-            for env_actor in env_actors:
-                ray.kill(env_actor)
-    finally:
-        if language == ProofAction.Language.ISABELLE:
-            IsabelleExecutor.stop_server()
     
