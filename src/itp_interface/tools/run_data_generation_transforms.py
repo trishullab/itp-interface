@@ -6,14 +6,23 @@ root_dir = f"{__file__.split('itp_interface')[0]}"
 if root_dir not in sys.path:
     sys.path.append(root_dir)
 import os
-import ray
 import logging
 import typing
 import shutil
-import psutil
 import gc
-from itp_interface.tools.ray_utils import RayUtils
+import threading
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from itp_interface.tools.training_data import TrainingData
+
+# Conditional Ray import
+try:
+    import ray
+    from itp_interface.tools.ray_utils import RayUtils
+    HAS_RAY = True
+except ImportError:
+    HAS_RAY = False
+    ray = None
+    RayUtils = None
 from itp_interface.tools.coq_executor import CoqExecutor
 from itp_interface.tools.lean_cmd_executor import Lean3Executor
 from itp_interface.tools.lean4_sync_executor import Lean4SyncExecutor
@@ -25,7 +34,7 @@ from itp_interface.tools.isabelle_local_data_generation_transform import LocalDa
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
 
 class RunDataGenerationTransforms(object):
-    def __init__(self, transforms: typing.List[GenericTrainingDataGenerationTransform], logging_dir: str, save_intermidiat_transforms: bool = True, logger: logging.Logger = None):
+    def __init__(self, transforms: typing.List[GenericTrainingDataGenerationTransform], logging_dir: str, save_intermidiat_transforms: bool = True, logger: logging.Logger = None, use_ray: bool = None):
         assert transforms is not None, "transforms should not be None"
         assert isinstance(transforms, list), "transforms should be a list"
         assert len(transforms) > 0, "transforms should not be empty"
@@ -38,7 +47,20 @@ class RunDataGenerationTransforms(object):
         self.transforms = transforms
         self.save_intermidiate_transforms = save_intermidiat_transforms
         self.logger = logger if logger is not None else logging.getLogger("DataGenerationTransforms")
-        pass
+
+        # Determine which backend to use
+        if use_ray is None:
+            self._use_ray = HAS_RAY
+        else:
+            self._use_ray = use_ray and HAS_RAY
+            if use_ray and not HAS_RAY:
+                raise ImportError("Ray is not installed but use_ray=True was specified. Please install Ray with: pip install ray")
+
+        if self.logger:
+            if self._use_ray:
+                self.logger.info("RunDataGenerationTransforms: Using Ray-based implementation")
+            else:
+                self.logger.info("RunDataGenerationTransforms: Using Thread-based implementation")
 
     @staticmethod
     def _get_transform_name(transform: typing.Union[GenericTrainingDataGenerationTransform, TrainingDataGenerationType]) -> str:
@@ -182,8 +204,8 @@ class RunDataGenerationTransforms(object):
             logger=logger)
         return training_data
 
-    @ray.remote(max_retries=-1)
-    def run_local_transform_on_file(idx, log_file: str, output_dir: str, project_path: str, file_path: str, use_human_readable: bool, transform: GenericTrainingDataGenerationTransform, log_error: bool, save_transform: bool = True, theorems: typing.List[str] = None, other_args: dict = {}):
+    @staticmethod
+    def _run_local_transform_on_file_impl(idx, log_file: str, output_dir: str, project_path: str, file_path: str, use_human_readable: bool, transform: GenericTrainingDataGenerationTransform, log_error: bool, save_transform: bool = True, theorems: typing.List[str] = None, other_args: dict = {}):
         logging.basicConfig(filename=log_file, filemode='w', level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         logger = logging.getLogger("FullTransform")
         logger.info(f"Process ID: {os.getpid()}")
@@ -211,12 +233,10 @@ class RunDataGenerationTransforms(object):
                 tds: typing.List[TrainingData],
                 transform: typing.Union[CoqLocalDataGenerationTransform, LeanLocalDataGenerationTransform, IsabelleLocalDataGenerationTransform]):
         self.logger.info(f"==============================>[{transform.name}] Merging local transforms for all projects<==============================")
-        process = psutil.Process()
         for idx in range(len(tds)):
             if tds[idx] is None:
                 continue
             training_data = tds[idx]
-            self.logger.info(f"[Process Id = {process.pid}], Memory used (Before GC): {process.memory_info().rss/2**30} GiB")
             folder = training_data.folder
             self.logger.info(f"==============================>[{transform.name}] Merging local transforms for project {folder}<==============================")
             final_training_data.merge(training_data)
@@ -225,7 +245,6 @@ class RunDataGenerationTransforms(object):
             training_data = None # free up memory
             self.logger.info(f"==============================>[{transform.name}] Merged local transforms for project {folder}<==============================")
             gc.collect()
-            self.logger.info(f"[Process Id = {process.pid}], Memory used (After GC): {process.memory_info().rss/2**30} GiB")
             idx += 1
         self.logger.info(f"==============================>[{transform.name}] Merged local transforms for all projects<==============================")
 
@@ -237,15 +256,20 @@ class RunDataGenerationTransforms(object):
         assert len(projects) > 0, "projects should not be empty"
         temp_output_dir = os.path.join(new_output_dir, f"temp_{transform.name}")
         os.makedirs(temp_output_dir, exist_ok=True)
-        # Change the directories to absolute paths, so that ray can access them
+        # Change the directories to absolute paths
         new_output_dir = os.path.abspath(new_output_dir)
         temp_output_dir = os.path.abspath(temp_output_dir)
         temporary_files_found: typing.List[str] = []
-        object_store_memory_in_gb = 100
-        memory_in_gb = 5
-        ray_dashboard = RayUtils.init_ray(num_of_cpus=pool_size, object_store_memory_in_gb=object_store_memory_in_gb)
-        self.logger.info(f"==============================>[{transform.name}] Ray initialized with {transform.max_parallelism} CPUs, Memory=({memory_in_gb} GiB, Object Memory = {object_store_memory_in_gb} GiB)<==============================")
-        self.logger.info(f"Ray Context:\n {ray_dashboard}")
+
+        # Initialize backend
+        if self._use_ray:
+            object_store_memory_in_gb = 100
+            memory_in_gb = 5
+            ray_dashboard = RayUtils.init_ray(num_of_cpus=pool_size, object_store_memory_in_gb=object_store_memory_in_gb)
+            self.logger.info(f"==============================>[{transform.name}] Ray initialized with {transform.max_parallelism} CPUs, Memory=({memory_in_gb} GiB, Object Memory = {object_store_memory_in_gb} GiB)<==============================")
+            self.logger.info(f"Ray Context:\n {ray_dashboard}")
+        else:
+            self.logger.info(f"==============================>[{transform.name}] Using Thread-based execution with {pool_size} workers<==============================")
         job_spec = []
         job_idx = 0
         project_names = list(projects.keys())
@@ -303,31 +327,54 @@ class RunDataGenerationTransforms(object):
         last_job_idx = 0
         tds = [None]*len(job_spec)
         num_theorems = 0
-        def _create_remotes(job_list):
-            remotes = []
-            for job in job_list:
-                self.logger.info(f"[{transform.name}] Starting transform for {job[4]}")
-                remotes.append(RunDataGenerationTransforms.run_local_transform_on_file.remote(*job))
-            return remotes
-        
-        def _prepare_remotes(num: int):
-            nonlocal last_job_idx
-            job_list = job_spec[last_job_idx:last_job_idx+num]
-            last_job_idx += len(job_list)
-            return job_list
 
-        def _transform_output(results):
-            nonlocal num_theorems
-            for idx, training_data in results:
-                self.logger.info(f"[{transform.name}] Transform finished for [{idx}] {job_spec[idx]}")
-                num_theorems += training_data.meta.num_theorems
-                self.logger.info(f"Number of theorems processed: {training_data.meta.num_theorems}")
-                self.logger.info(f"Number of theorems processed so far: {num_theorems}")
-                tds[idx] = training_data
-            process = psutil.Process()
-            self.logger.info(f"[{transform.name}] Process Id = {process.pid}, Memory used: {process.memory_info().rss/2**30} GiB")
-        
-        RayUtils.ray_run_within_parallel_limits(pool_size, len(job_spec), _transform_output, _prepare_remotes, _create_remotes, logger=self.logger)
+        if self._use_ray:
+            # Ray-based execution
+            def _create_remotes(job_list):
+                remotes = []
+                for job in job_list:
+                    self.logger.info(f"[{transform.name}] Starting transform for {job[4]}")
+                    remotes.append(RunDataGenerationTransforms.run_local_transform_on_file.remote(*job))
+                return remotes
+
+            def _prepare_remotes(num: int):
+                nonlocal last_job_idx
+                job_list = job_spec[last_job_idx:last_job_idx+num]
+                last_job_idx += len(job_list)
+                return job_list
+
+            def _transform_output(results):
+                nonlocal num_theorems
+                for idx, training_data in results:
+                    self.logger.info(f"[{transform.name}] Transform finished for [{idx}] {job_spec[idx]}")
+                    num_theorems += training_data.meta.num_theorems
+                    self.logger.info(f"Number of theorems processed: {training_data.meta.num_theorems}")
+                    self.logger.info(f"Number of theorems processed so far: {num_theorems}")
+                    tds[idx] = training_data
+
+            RayUtils.ray_run_within_parallel_limits(pool_size, len(job_spec), _transform_output, _prepare_remotes, _create_remotes, logger=self.logger)
+        else:
+            # Thread-based execution
+            with ThreadPoolExecutor(max_workers=pool_size) as executor:
+                futures = []
+                for job in job_spec:
+                    self.logger.info(f"[{transform.name}] Starting transform for {job[4]}")
+                    future = executor.submit(RunDataGenerationTransforms._run_local_transform_on_file_impl, *job)
+                    futures.append(future)
+
+                for future in futures:
+                    try:
+                        result = future.result()
+                        if result is not None:
+                            idx, training_data = result
+                            self.logger.info(f"[{transform.name}] Transform finished for [{idx}] {job_spec[idx]}")
+                            num_theorems += training_data.meta.num_theorems
+                            self.logger.info(f"Number of theorems processed: {training_data.meta.num_theorems}")
+                            self.logger.info(f"Number of theorems processed so far: {num_theorems}")
+                            tds[idx] = training_data
+                    except Exception as e:
+                        self.logger.error(f"Error in transform: {e}")
+                        self.logger.exception("Exception details")
 
         # Merge all the files into one
         self.merge_local_transforms(final_training_data, tds, transform)
@@ -347,3 +394,7 @@ class RunDataGenerationTransforms(object):
             save_transform = self.save_intermidiate_transforms or last_transform
             self.run_local_transform(pool_size, transform, projects, use_human_readable, new_output_dir, log_error, save_transform, preserve_temp=self.save_intermidiate_transforms, other_args=other_args)
         pass
+
+# Create Ray remote version if Ray is available
+if HAS_RAY:
+    RunDataGenerationTransforms.run_local_transform_on_file = ray.remote(max_retries=-1)(RunDataGenerationTransforms._run_local_transform_on_file_impl)

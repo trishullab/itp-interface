@@ -9,12 +9,24 @@ import logging
 import os
 import time
 import shutil
-import ray
 import typing
 import numpy as np
 import yaml
 import uuid
-from itp_interface.tools.ray_utils import RayResourcePoolActor, TimedRayExec, RayUtils
+import threading
+from concurrent.futures import ThreadPoolExecutor
+
+# Conditional Ray import
+try:
+    import ray
+    from itp_interface.tools.ray_utils import RayResourcePoolActor, TimedRayExec, RayUtils
+    HAS_RAY = True
+except ImportError:
+    HAS_RAY = False
+    ray = None
+    RayResourcePoolActor = None
+    TimedRayExec = None
+    RayUtils = None
 from itp_interface.rl.proof_action import ProofAction
 from itp_interface.tools.isabelle_server import IsabelleServer
 from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
@@ -38,8 +50,7 @@ from itp_interface.tools.bin_packing import best_fit_packing
 
 ray_resource_pool = None
 
-@ray.remote(num_cpus=0.5)
-def get_all_lemmas(
+def _get_all_lemmas_impl(
         project_folder, 
         file_path, 
         language, 
@@ -59,7 +70,11 @@ def get_all_lemmas(
     if language == ProofAction.Language.ISABELLE:
         assert ray_resource_pool is not None, "ray_resource_pool is required for Isabelle"
         port_pool = ray_resource_pool
-        port = ray.get(port_pool.wait_and_acquire.remote(1))[0]
+        if HAS_RAY and hasattr(port_pool, 'wait_and_acquire'):
+            port = ray.get(port_pool.wait_and_acquire.remote(1))[0]
+        else:
+            # Thread-based resource pool
+            port = port_pool.wait_and_acquire(1)[0]
         logger.info(f"Using PISA server on port {port} for {file_path}")
     proof_exec_callback = ProofExecutorCallback(
         project_folder=project_folder,
@@ -94,7 +109,10 @@ def get_all_lemmas(
                 try:
                     lemmas_to_prove = get_all_lemmas_isabelle(main_executor, logger)
                 finally:
-                    ray.get(port_pool.release.remote([port]))
+                    if HAS_RAY and hasattr(port_pool, 'release'):
+                        ray.get(port_pool.release.remote([port]))
+                    else:
+                        port_pool.release([port])
                     logger.info(f"Released PISA server on port {port}")
             else:
                 raise ValueError(f"Unexpected language: {language}")
@@ -103,6 +121,12 @@ def get_all_lemmas(
         logger.exception(e)
     logger.info(f"Discovered {len(lemmas_to_prove)} lemmas")
     return lemmas_to_prove
+
+# Create Ray remote version if Ray is available
+if HAS_RAY:
+    get_all_lemmas = ray.remote(num_cpus=0.5)(_get_all_lemmas_impl)
+else:
+    get_all_lemmas = _get_all_lemmas_impl
 
 def partition_data(project_to_theorems: typing.Dict[str, typing.Dict[str, typing.List[str]]], partition: typing.List[float], logger: logging.Logger, seed: int = 0xf00, random_split: bool = False):
         train_project_to_theorems = {}
@@ -225,17 +249,29 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
         #         raise Exception(
         #         "PISA_PORT environment variable is not set but the PISA service is already running on default port 17000. " + 
         #         "Please set the PISA_PORT environment variable to the port on which the PISA service is running.")
-        pisa_server_remotes = []
-        for port in ports:
-            logger.info(f"Starting PISA server on port {port}")
-            logfile = os.path.join(log_dir, f"PISA-{port}.log")
-            pisa_server_actor = IsabelleServer.remote(logfile, port)
-            pisa_servers.append(pisa_server_actor)
-            pisa_server_start_remote = pisa_server_actor.start_server.remote()
-            pisa_server_remotes.append(pisa_server_start_remote)
-            resources.append(port)
-        ray.get(pisa_server_remotes)
-        logger.info(f"Started PISA servers on ports\n {resources}")
+        if HAS_RAY:
+            pisa_server_remotes = []
+            for port in ports:
+                logger.info(f"Starting PISA server on port {port}")
+                logfile = os.path.join(log_dir, f"PISA-{port}.log")
+                pisa_server_actor = IsabelleServer.remote(logfile, port)
+                pisa_servers.append(pisa_server_actor)
+                pisa_server_start_remote = pisa_server_actor.start_server.remote()
+                pisa_server_remotes.append(pisa_server_start_remote)
+                resources.append(port)
+            ray.get(pisa_server_remotes)
+            logger.info(f"Started PISA servers on ports\n {resources}")
+        else:
+            # Thread-based - start PISA servers directly
+            from itp_interface.tools.isabelle_server import IsabelleServer as ThreadIsabelleServer
+            for port in ports:
+                logger.info(f"Starting PISA server on port {port}")
+                logfile = os.path.join(log_dir, f"PISA-{port}.log")
+                pisa_server_actor = ThreadIsabelleServer(logfile, port)
+                pisa_servers.append(pisa_server_actor)
+                pisa_server_actor.start_server()
+                resources.append(port)
+            logger.info(f"Started PISA servers on ports\n {resources}")
     try:
         transforms = []
         str_time = time.strftime("%Y%m%d-%H%M%S")
@@ -266,7 +302,12 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
                     no_thms=only_proof_state)
                 clone_dir = None
             elif experiment.benchmark.language == ProofAction.Language.ISABELLE:
-                ray_resource_pool = RayResourcePoolActor.remote(resources)
+                if HAS_RAY:
+                    ray_resource_pool = RayResourcePoolActor.remote(resources)
+                else:
+                    # Thread-based resource pool (simplified version)
+                    from itp_interface.tools.thread_resource_pool import ThreadResourcePool
+                    ray_resource_pool = ThreadResourcePool(resources)
                 transform = IsabelleLocalDataGenerationTransform(
                     experiment.run_settings.dep_depth,
                     max_search_results=experiment.run_settings.max_search_results, 
@@ -305,23 +346,46 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
                     file_to_theorems[file.path].extend(theorems_in_file)
                 else:
                     discover_log_file = os.path.join(log_dir, f"discover{idx}_{file_idx}.log")
-                    timed_exec = TimedRayExec.remote(get_all_lemmas, kwargs=dict(
-                        project_folder=dataset.project,
-                        file_path=os.path.join(dataset.project, file.path),
-                        language=experiment.benchmark.language,
-                        use_hammer=False,
-                        timeout_in_secs=experiment.run_settings.timeout_in_secs,
-                        use_human_readable_proof_context=experiment.run_settings.use_human_readable,
-                        suppress_error_log=True,
-                        always_use_retrieval=False,
-                        setup_cmds=experiment.benchmark.setup_cmds,
-                        log_file=discover_log_file))
-                    timeout_in_secs = experiment.run_settings.timeout_in_secs * 100
-                    timed_exec_remote = timed_exec.execute_with_timeout.remote(timeout=timeout_in_secs)
-                    lemma_discovery_remotes.append(timed_exec_remote)
+                    if HAS_RAY:
+                        timed_exec = TimedRayExec.remote(get_all_lemmas, kwargs=dict(
+                            project_folder=dataset.project,
+                            file_path=os.path.join(dataset.project, file.path),
+                            language=experiment.benchmark.language,
+                            use_hammer=False,
+                            timeout_in_secs=experiment.run_settings.timeout_in_secs,
+                            use_human_readable_proof_context=experiment.run_settings.use_human_readable,
+                            suppress_error_log=True,
+                            always_use_retrieval=False,
+                            setup_cmds=experiment.benchmark.setup_cmds,
+                            log_file=discover_log_file))
+                        timeout_in_secs = experiment.run_settings.timeout_in_secs * 100
+                        timed_exec_remote = timed_exec.execute_with_timeout.remote(timeout=timeout_in_secs)
+                        lemma_discovery_remotes.append(timed_exec_remote)
+                    else:
+                        # Thread-based execution
+                        lemma_discovery_remotes.append((dataset.project, file.path, discover_log_file))
                 pass
         if len(lemma_discovery_remotes) > 0:
-            lemmas = ray.get(lemma_discovery_remotes)
+            if HAS_RAY:
+                lemmas = ray.get(lemma_discovery_remotes)
+            else:
+                # Thread-based lemma discovery
+                with ThreadPoolExecutor(max_workers=experiment.run_settings.pool_size) as executor:
+                    futures = []
+                    for proj, fpath, log_file in lemma_discovery_remotes:
+                        future = executor.submit(_get_all_lemmas_impl,
+                            project_folder=proj,
+                            file_path=os.path.join(proj, fpath),
+                            language=experiment.benchmark.language,
+                            use_hammer=False,
+                            timeout_in_secs=experiment.run_settings.timeout_in_secs,
+                            use_human_readable_proof_context=experiment.run_settings.use_human_readable,
+                            suppress_error_log=True,
+                            always_use_retrieval=False,
+                            setup_cmds=experiment.benchmark.setup_cmds,
+                            log_file=log_file)
+                        futures.append(future)
+                    lemmas = [f.result() for f in futures]
             _idx = 0
             for idx, dataset in enumerate(experiment.benchmark.datasets):
                 for file_idx, file in enumerate(dataset.files):
@@ -382,12 +446,19 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
         raise e 
     finally:
         if experiment.benchmark.language == ProofAction.Language.ISABELLE:
-            pisa_server_stop_remotes = []
-            for port, actor in zip(resources, pisa_servers):
-                logger.info(f"Stopping PISA server on port: {port}")
-                pisa_server_stop_remotes.append(actor.stop_server.remote())
-            ray.get(pisa_server_stop_remotes)
-            logger.info(f"Stopped PISA servers on ports\n {resources}")
+            if HAS_RAY:
+                pisa_server_stop_remotes = []
+                for port, actor in zip(resources, pisa_servers):
+                    logger.info(f"Stopping PISA server on port: {port}")
+                    pisa_server_stop_remotes.append(actor.stop_server.remote())
+                ray.get(pisa_server_stop_remotes)
+                logger.info(f"Stopped PISA servers on ports\n {resources}")
+            else:
+                # Thread-based - stop PISA servers directly
+                for port, actor in zip(resources, pisa_servers):
+                    logger.info(f"Stopping PISA server on port: {port}")
+                    actor.stop_server()
+                logger.info(f"Stopped PISA servers on ports\n {resources}")
 
 def run_data_generation(experiment: Experiments, log_dir: str, logger: logging.Logger = None):
     trial_cnt = 1
