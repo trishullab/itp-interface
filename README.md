@@ -44,6 +44,24 @@ export PATH="/home/$USER/.opam/default/bin:$PATH"
 
 4. Create a `Miniconda` environment and activate it.
 
+### Python 3.14 Free-Threading Support (Optional)
+
+For Python 3.14 with free-threading (GIL-free) support, create a conda environment using:
+```bash
+conda create -n py314-ft python=3.14 python-freethreading -c conda-forge
+conda activate py314-ft
+```
+
+This enables true parallel execution for computational threads. You can verify free-threading is working by running:
+```bash
+python src/test/test_python314_threading.py
+```
+
+**Note**: When using Python 3.14 free-threading:
+- Ray is not supported (Ray doesn't support Python 3.14 yet)
+- The interface will automatically fall back to thread-based parallelism using `ThreadPoolExecutor`
+- `psutil` is not available in free-threading builds, so memory logging is disabled
+
 5. Run the commands for installing the Lean 4 interface as mentioned in [Quick Setup for Lean 4](#quick-setup-for-lean-4).
 
 6. Add the following to your `.bashrc` file for Lean:
