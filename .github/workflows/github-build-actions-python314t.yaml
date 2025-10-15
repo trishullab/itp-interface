@@ -23,6 +23,8 @@ jobs:
 
       - name: Install Miniconda
         run: |
+          apt-get update
+          apt-get install -y wget
           wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh
           bash /tmp/miniconda.sh -b -p $HOME/miniconda
           rm /tmp/miniconda.sh
