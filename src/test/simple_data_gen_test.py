@@ -25,7 +25,7 @@ class TestDataGen(unittest.TestCase):
         except subprocess.TimeoutExpired as e:
             self.fail(f"'run-itp-data-gen' command timed out: {e}")
         except Exception as e:
-            self.fail(f"Error running 'proof-wala-search': {e}")
+            self.fail(f"'run-itp-data-gen' failed with unknown exception: {e}")
 
         # Check that the command exited with a return code of 0.
         self.assertEqual(
@@ -37,11 +37,16 @@ class TestDataGen(unittest.TestCase):
         # directory to see what was generated.
         # Do a list and pick the last folder in the list as per the sorted order
         dirs = sorted(os.listdir(".log/data_generation/benchmark/simple_benchmark_lean"))
-        print(dirs)
+        print("Directories:", dirs)
         last_dir = dirs[-1]
-        train_data = os.path.join(".log/data_generation/benchmark/simple_benchmark_lean", last_dir, "train")        
+        # Print the directory contents
+        last_dir_path = os.path.join(".log/data_generation/benchmark/simple_benchmark_lean", last_dir)
+        print("Last Directory Contents:", os.listdir(last_dir_path))
+        train_data = os.path.join(last_dir_path, "train")
         list_files = os.listdir(train_data)
+        print("Train Directory Contents:", list_files)
         data_files = [f for f in list_files if f.endswith(".json") and f.startswith("local_data_")]
+        print("Data Files:", data_files)
         assert len(data_files) == 1, f"No files found in the train directory. Expected one file. Found: {data_files}"
         print(data_files[0])
         data_gen_file = os.path.join(train_data, data_files[0])
