@@ -771,7 +771,7 @@ class Lean4SyncExecutor:
             messages = response['messages']
             # Go over all sev after the line number and check if there is an error
             for msg_idx, msg in enumerate(messages):
-                full_error_msg = self._get_error_msg(msg_idx, msg)
+                full_error_msg = f"Line: {idx} " + self._get_error_msg(msg_idx, msg)
                 unsolved_goal_never_seen_before = not (full_error_msg in self._error_messages_since_last_thm.values())
                 if msg['severity'] == 'error' and 'pos' in msg and 'endPos' in msg and \
                 ((msg['endPos'] is not None and 'line' in msg['endPos']) or \
