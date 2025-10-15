@@ -61,6 +61,8 @@ python src/test/test_python314_threading.py
 - Ray is not supported (Ray doesn't support Python 3.14 yet)
 - The interface will automatically fall back to thread-based parallelism using `ThreadPoolExecutor`
 - `psutil` is not available in free-threading builds, so memory logging is disabled
+- **Isabelle/PISA is not supported** - grpcio and protobuf are not compatible with Python 3.14's free-threading mode. Use Python < 3.14 for Isabelle support
+- The `run-itp-data-gen` command now auto-detects Python version and uses Hydra-free mode for Python 3.14+
 
 5. Run the commands for installing the Lean 4 interface as mentioned in [Quick Setup for Lean 4](#quick-setup-for-lean-4).
 

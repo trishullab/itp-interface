@@ -16,7 +16,17 @@ import threading
 from collections import OrderedDict
 from pathlib import Path
 from enum import Enum
-from itp_interface.pisa.src.main.python.pisa_client import PisaEnv, initialise_env, IsabelleLemma
+
+# Conditional import for Isabelle support (only available for Python < 3.14)
+try:
+    from itp_interface.pisa.src.main.python.pisa_client import PisaEnv, initialise_env, IsabelleLemma
+    HAS_ISABELLE = True
+except (ImportError, RuntimeError):
+    HAS_ISABELLE = False
+    PisaEnv = None
+    initialise_env = None
+    IsabelleLemma = None
+
 from itp_interface.tools.isabelle_parse_utils import IsabelleLineByLineReader, IsabelleStepByStepStdInReader
 from itp_interface.tools.misc_defns import HammerMode
 logger = logging.getLogger()
@@ -112,9 +122,11 @@ class IsabelleExecutor:
     # Proof automation tactics: [tactics from LYRA] + `algebra`
     auto_tactics = ["auto", "simp", "blast", "fastforce", "force", "eval", "presburger", "sos", "arith", "linarith", "(auto simp: field_simps)", "algebra"]
 
-    def __init__(self, project_root: str = None, main_file: str = None, use_hammer: HammerMode = HammerMode.AUTO, timeout_in_sec: int = 60, 
-                 use_human_readable_proof_context: bool = False, proof_step_iter: typing.Iterator[str] = None, 
+    def __init__(self, project_root: str = None, main_file: str = None, use_hammer: HammerMode = HammerMode.AUTO, timeout_in_sec: int = 60,
+                 use_human_readable_proof_context: bool = False, proof_step_iter: typing.Iterator[str] = None,
                  suppress_error_log: bool = False, port: int = 8000):
+        if not HAS_ISABELLE:
+            raise RuntimeError("Isabelle/PISA is not available. Isabelle support requires grpcio which is only available for Python < 3.14")
         assert proof_step_iter is None or isinstance(proof_step_iter, typing.Iterator), \
             "proof_step_iter must be an iterator"
         assert main_file is not None or proof_step_iter is not None, \

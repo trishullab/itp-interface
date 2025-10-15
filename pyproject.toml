@@ -41,8 +41,8 @@ dependencies = [
     "urllib3>=2.0.7",
     "mathlibtools==1.3.2",
     "pylspclient==0.0.3",
-    "protobuf==3.20.3",
-    "grpcio>=1.51.3"
+    "protobuf==3.20.3; python_version<'3.14'",
+    "grpcio>=1.51.3; python_version<'3.14'"
 ]
 
 [project.urls]
@@ -52,4 +52,4 @@ Issues = "https://github.com/trishullab/itp-interface/issues"
 [project.scripts]
 install-itp-interface = "itp_interface.main.install:install_itp_interface"
 install-lean-repl = "itp_interface.main.install:install_lean_repl"
-run-itp-data-gen = "itp_interface.main.run_tool:main"
+run-itp-data-gen = "itp_interface.main.run_tool_no_hydra:main"
