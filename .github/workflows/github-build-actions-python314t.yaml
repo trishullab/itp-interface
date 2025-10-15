@@ -50,11 +50,12 @@ jobs:
       - name: Upgrade pip and install build tools
         run: |
           python -m pip install --upgrade pip
-          pip install hatchling wheel
+          pip install build
+          pip install hatchling
 
       - name: Build package with hatchling
         run: |
-          python -m pip wheel . --no-deps -w dist
+          python -m build
 
       - name: Install package
         run: pip install dist/*.whl
