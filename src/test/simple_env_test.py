@@ -35,9 +35,9 @@ class Helper():
         # IMPORTANT NOTE: Make sure to switch to the correct switch before running the code.
         os.system("opam switch simple_grp_theory && eval $(opam env)")
         # Clean the project
-        os.system(f"cd {project_folder} && make clean")
+        os.system(f"eval $(opam env) && cd {project_folder} && make clean")
         # Build the project
-        with os.popen(f"cd {project_folder} && make") as proc:
+        with os.popen(f"eval $(opam env) && cd {project_folder} && make") as proc:
             print("Building Coq project...")
             print('-'*15 + 'Build Logs' + '-'*15)
             print(proc.read())
@@ -572,7 +572,9 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
                     print('-'*30)
 
 def main():
-    unittest.main()
+    tests = Lean4Test()
+    tests.test_simple_coq()
+    #unittest.main()
 
 if __name__ == '__main__':
     main()
