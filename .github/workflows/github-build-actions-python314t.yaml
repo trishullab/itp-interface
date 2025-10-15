@@ -2,9 +2,9 @@ name: Build, Package, and Test (Python 3.14 Free-Threading)
 
 on:
   push:
-    branches: [main, feature/python_314_support]
+    branches: [main]
   pull_request:
-    branches: [main, feature/python_314_support]
+    branches: [main]
 
 jobs:
   build-test-python314t:
