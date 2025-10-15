@@ -25,6 +25,15 @@ except ImportError:
     RayUtils = None
 
 
+class NoOpLock:
+    """A no-op context manager that does nothing. Used when Ray is enabled to avoid pickling issues."""
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return False
+
+
 class TrainingData(MergableCollection):
     def __init__(
             self,
@@ -58,10 +67,12 @@ class TrainingData(MergableCollection):
         # Object storage - either Ray ObjectRefs or local objects
         self._object_id_map : typing.List[typing.Any] = []
         # Thread safety lock for concurrent operations
-        self._lock = threading.RLock()
+        # Use NoOpLock when Ray is enabled to avoid pickling issues
         if self._use_ray:
+            self._lock = NoOpLock()
             self.logger.info("TrainingData initialized with Ray support")
         else:
+            self._lock = threading.RLock()
             self.logger.info("TrainingData initialized without Ray (sequential mode)")
         super().__init__()
 
