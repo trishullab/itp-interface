@@ -47,13 +47,13 @@ jobs:
           python --version
           python -c "import sys; print('GIL disabled:', not sys._is_gil_enabled())"
 
-      - name: Upgrade pip and install build tool
+      - name: Upgrade pip and install build tools
         run: |
           python -m pip install --upgrade pip
-          pip install build
+          pip install setuptools wheel
 
       - name: Build package
-        run: python -m build
+        run: python setup.py bdist_wheel
 
       - name: Install package
         run: pip install dist/*.whl
