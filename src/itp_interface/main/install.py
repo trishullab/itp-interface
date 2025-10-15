@@ -36,11 +36,11 @@ def install_lean_repl():
     assert os.system("git --version") == 0, "git is not installed"
     print("[OK] git is installed")
     print("Checking if Lean version is set in environment variables as LEAN_VERSION")
-    print("If not, defaulting to 4.7.0-rc2")
-    lean_version = os.environ.get("LEAN_VERSION", "4.7.0-rc2")
+    print("If not, defaulting to 4.24.0")
+    lean_version = os.environ.get("LEAN_VERSION", "4.24.0")
     github_repo = "https://github.com/amit9oct/repl.git"
-    if lean_version.strip() == "4.7.0-rc2":
-        print("Lean version is set to 4.7.0-rc2, not cloning the REPL")
+    if lean_version.strip() == "4.24.0":
+        print("Lean version is set to 4.24.0, not cloning the REPL")
     else:
         # Clone the repl fresh
         print("Cloning the REPL fresh")
@@ -57,9 +57,9 @@ def install_lean_repl():
             print(
                 f"Could not find a commit with message containing {lean_version}")
             print("Probably this version does not exist in the git history of the REPL")
-            lean_version = "4.7.0-rc2"
-            print("Switching to v4.7.0-rc2 on commit 97182f0")
-            os.system(f"cd {repl_dir} && git checkout 97182f0")
+            lean_version = "4.24.0"
+            print("Switching to v4.24.0 (latest default)")
+            os.system(f"cd {repl_dir} && git checkout main")
         else:
             # Split on first space
             for line in output.split("\n"):

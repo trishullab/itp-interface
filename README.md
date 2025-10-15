@@ -3,7 +3,11 @@
 [![PyPI downloads](https://img.shields.io/pypi/dm/itp-interface.svg)](https://pypi.org/project/itp-interface/)
 
 # itp-interface
-Generic interface for hooking up to any Interactive Theorem Prover (ITP) and collecting data for training ML models for AI in formal theorem proving. 
+Generic interface for hooking up to any Interactive Theorem Prover (ITP) and collecting data for training ML models for AI in formal theorem proving.
+
+## 🎉 What's New
+
+**Python 3.14 Free-Threading Support** (January 2025) - `itp-interface` now supports Python 3.14's experimental free-threading mode (GIL-free execution)! Experience true parallel proof search with up to 2.13x speedup on multi-core systems. The interface automatically detects your Python version and seamlessly falls back to thread-based parallelism when Ray is unavailable. See [Python 3.14 Free-Threading Support](#python-314-free-threading-support-optional) for details. 
 
 ## Quick Setup for Lean 4:
 1. Install itp-interface using the following command:
@@ -11,14 +15,12 @@ Generic interface for hooking up to any Interactive Theorem Prover (ITP) and col
 pip install itp-interface
 ```
 
-2. Run the following command to prepare the REPL for Lean 4. The default version is 4.7.0-rc2. You can change the version by setting the `LEAN_VERSION` environment variable. If no version is set, then 4.7.0-rc2 is used. However, the itp-interface supports up to Lean 4.17.0.
+2. Run the following command to prepare the REPL for Lean 4. The default version is 4.24.0. You can change the version by setting the `LEAN_VERSION` environment variable. If no version is set, then 4.24.0 is used.
 >NOTE: The Lean 4 version must match the version of the Lean 4 project you are working with.
 ```bash
-export LEAN_VERSION="4.7.0-rc2"
 install-lean-repl
-# ^^ Change the LEAN_VERSION to the version of Lean 4 you are working with.
-# ^^^ Example: export LEAN_VERSION="4.15.0" to use Lean 4.15.0
-# itp-interface supports up to Lean 4.17.0
+# To use a different Lean version, set LEAN_VERSION before running:
+# export LEAN_VERSION="4.17.0" && install-lean-repl
 ```
 
 3. Run the following command to build the REPL for Lean 4. Make sure that `lean --version` returns the correct version before running the command below. If not then check if `$HOME/.elan/bin` is in your path. Recommended to run `source $HOME/.elan/env` before running the command below.

@@ -572,9 +572,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
                     print('-'*30)
 
 def main():
-    tests = Lean4Test()
-    tests.test_simple_coq()
-    #unittest.main()
+    unittest.main()
 
 if __name__ == '__main__':
     main()
