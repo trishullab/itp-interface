@@ -5,7 +5,7 @@ requires = [
 build-backend = "hatchling.build"
 [project]
 name = "itp_interface"
-version = "1.1.13"
+version = "1.1.14"
 authors = [
   { name="Amitayush Thakur", email="amitayush@utexas.edu" },
 ]
@@ -28,7 +28,7 @@ dependencies = [
     "ray>=2.50.0; python_version<'3.14'",
     "pydantic>=2.10.6",
     "faiss-cpu>=1.6.1",
-    "filelock==3.12.4",
+    "filelock>=3.12.4",
     "regex==2023.10.3",
     "tqdm>=4.27",
     "wget==3.2",
