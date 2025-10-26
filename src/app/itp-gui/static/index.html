@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ITP GUI - Interactive Theorem Proving</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- Prism.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ITP GUI - Lean 4 Proof Explorer</h1>
+            <p class="subtitle">Interactive web interface for Lean 4 theorem proving</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Initialization Panel -->
+            <div class="panel initialization-panel" id="initPanel">
+                <h2>Initialize Proof Session</h2>
+                <div class="form-group">
+                    <label for="projectRoot">Project Root:</label>
+                    <input type="text" id="projectRoot" placeholder="e.g., /path/to/project" />
+                    <small>Absolute path to the Lean 4 project root directory</small>
+                </div>
+                <div class="form-group">
+                    <label for="filePath">File Path:</label>
+                    <input type="text" id="filePath" placeholder="e.g., /path/to/project/MyFile.lean" />
+                    <small>Absolute path to the .lean file containing the lemma</small>
+                </div>
+                <div class="form-group">
+                    <label for="lemmaName">Lemma Name:</label>
+                    <input type="text" id="lemmaName" placeholder="e.g., my_theorem" />
+                    <small>Name of the theorem/lemma to prove</small>
+                </div>
+                <button id="initButton" class="btn btn-primary">Initialize Session</button>
+                <button id="resetButton" class="btn btn-secondary">Reset</button>
+                <button id="killButton" class="btn btn-danger">Kill Executor</button>
+                <div id="initStatus" class="status-message"></div>
+            </div>
+
+            <!-- Proof Interface -->
+            <div class="proof-interface" id="proofInterface" style="display: none;">
+                <div class="two-column">
+                    <!-- Left Column: Proof State -->
+                    <div class="column">
+                        <div class="panel">
+                            <h2>Current Proof State</h2>
+                            <div id="lemmaInfo" class="lemma-info">
+                                <h3 id="currentLemmaName"></h3>
+                                <pre id="currentLemmaStmt" class="code-block"></pre>
+                            </div>
+
+                            <div id="proofGoals" class="proof-goals">
+                                <h3>Goals:</h3>
+                                <div id="goalsContainer"></div>
+                            </div>
+
+                            <div id="errorMessages" class="error-messages" style="display: none;">
+                                <h3>Errors:</h3>
+                                <div id="errorsContainer"></div>
+                            </div>
+                        </div>
+
+                        <!-- Tactic Input -->
+                        <div class="panel tactic-input-panel">
+                            <h2>Run Tactic</h2>
+                            <div class="form-group">
+                                <textarea id="tacticInput" placeholder="Enter tactic (e.g., intro, apply, rw)" rows="3"></textarea>
+                            </div>
+                            <div class="button-group">
+                                <button id="runTacticButton" class="btn btn-primary">Run Tactic</button>
+                                <button id="validateButton" class="btn btn-secondary">Validate Proof (lake lean)</button>
+                                <button id="killButtonProof" class="btn btn-danger">Kill Executor</button>
+                            </div>
+                            <div id="tacticStatus" class="status-message"></div>
+                            <div id="validationStatus" class="status-message"></div>
+                        </div>
+
+                        <!-- Validation Results Panel -->
+                        <div class="panel validation-results-panel" id="validationResults" style="display: none;">
+                            <h2>Validation Results</h2>
+                            <div class="tabs">
+                                <button class="tab-button active" data-tab="lean-code">Lean Code</button>
+                                <button class="tab-button" data-tab="output">Output</button>
+                                <button class="tab-button" data-tab="errors">Errors</button>
+                                <button class="tab-button" data-tab="debug-traces">Debug Traces</button>
+                            </div>
+                            <div class="tab-content">
+                                <div id="lean-code" class="tab-pane active">
+                                    <pre id="validationLeanCode" class="code-block"></pre>
+                                </div>
+                                <div id="output" class="tab-pane">
+                                    <pre id="validationOutput" class="code-block"></pre>
+                                </div>
+                                <div id="errors" class="tab-pane">
+                                    <pre id="validationErrors" class="code-block"></pre>
+                                </div>
+                                <div id="debug-traces" class="tab-pane">
+                                    <pre id="validationDebugTraces" class="code-block"></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: History and Debug -->
+                    <div class="column">
+                        <div class="panel">
+                            <h2>Tactics History</h2>
+                            <div id="tacticHistory" class="tactic-history">
+                                <p class="empty-message">No tactics executed yet.</p>
+                            </div>
+                        </div>
+
+                        <div class="panel debug-panel">
+                            <h2>Debug Info <button id="toggleDebug" class="btn-small">Toggle</button></h2>
+                            <div id="debugInfo" class="debug-info" style="display: none;">
+                                <pre id="debugContent"></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prism.js for syntax highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-haskell.min.js"></script>
+    <script src="/static/app.js"></script>
+</body>
+</html>

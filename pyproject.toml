@@ -45,6 +45,12 @@ dependencies = [
     "grpcio>=1.51.3; python_version<'3.14'"
 ]
 
+[project.optional-dependencies]
+app = [
+    "flask>=2.3.0",
+    "flask-cors>=4.0.0"
+]
+
 [project.urls]
 Homepage = "https://github.com/trishullab/itp-interface"
 Issues = "https://github.com/trishullab/itp-interface/issues"
