@@ -129,7 +129,10 @@ class Lean4SyncExecutor:
         self._file_handle = None
         self._in_tactic_mode = False
         self._env_idx_last_thm = None
+        self._debug_traces = []
+        self.debug_enabled = False
         self._last_tactics = {}
+        self.possible_proof_tactics = ""
         self._last_tactic_line_idx = None
         self._error_messages_so_far = set()
         self._error_messages_since_last_thm = {}
@@ -185,7 +188,10 @@ class Lean4SyncExecutor:
         self._in_tactic_mode = False
         self._env_idx_last_thm = None
         self._last_tactics = {}
+        self.possible_proof_tactics = ""
         self._last_tactic_line_idx = None
+        self._debug_traces = []
+        self.debug_enabled = False
         self._error_messages_so_far = set()
         self._error_messages_since_last_thm = {}
         if self._enable_search:
@@ -692,6 +698,7 @@ class Lean4SyncExecutor:
         tactics_so_far = sorted(tactics_so_far, key=lambda x: x[0])
         tactics_so_far = [v for _, v in tactics_so_far]
         self._write_lean_file(self._last_tactic_line_idx, "\n".join(tactics_so_far))
+        self.possible_proof_tactics += "\n".join(tactics_so_far)
         self._last_tactics = {}
         self._last_tactic_line_idx = None
         self._error_messages_since_last_thm = {}
@@ -772,6 +779,8 @@ class Lean4SyncExecutor:
             # Go over all sev after the line number and check if there is an error
             for msg_idx, msg in enumerate(messages):
                 full_error_msg = f"Line: {idx} " + self._get_error_msg(msg_idx, msg)
+                if self.debug_enabled:
+                    self._debug_traces.append(f"Debug Trace: Processing message at line {idx}: {full_error_msg}")
                 unsolved_goal_never_seen_before = not (full_error_msg in self._error_messages_since_last_thm.values())
                 if msg['severity'] == 'error' and 'pos' in msg and 'endPos' in msg and \
                 ((msg['endPos'] is not None and 'line' in msg['endPos']) or \
@@ -1014,7 +1023,219 @@ class Lean4SyncExecutor:
             return ProofContext.empty()
         else:
             return ProofContext(goals, [], [], [])
-    
+
+    def validate_proof_with_lake(self, theorem_name: Optional[str] = None, timeout_sec: int = 30, keep_temp_file: bool = True) -> typing.Dict[str, typing.Any]:
+        """
+        Validate the current proof state by running 'lake lean' on a temporary file.
+        This provides an independent verification without relying on the REPL.
+
+        Args:
+            theorem_name: Name of the theorem to validate (optional, for logging only)
+            timeout_sec: Timeout in seconds for the lake lean process
+            keep_temp_file: If True, keeps the temporary file after validation (default: True)
+
+        Returns:
+            Dictionary with validation results:
+            {
+                'success': bool,  # True if proof is complete with no errors
+                'compilation_ok': bool,  # True if file compiles
+                'has_sorries': bool,  # True if there are unsolved goals (sorries)
+                'error_message': str,  # Error message if any
+                'errors': list,  # List of error details
+                'lean_code': str,  # The code that was validated
+                'theorem_name': str  # Name of theorem being validated
+            }
+        """
+        import subprocess
+        import re
+
+        # Get theorem name for logging/reporting, but don't require it
+        if theorem_name is None:
+            theorem_name = self.curr_lemma_name or "unknown"
+
+        # Create the Lean code with all executed lines up to current point
+        lines_executed_str = '\n'.join(self._lines_executed)
+
+        if not lines_executed_str or not lines_executed_str.strip():
+            return {
+                'success': False,
+                'compilation_ok': False,
+                'has_sorries': False,
+                'error_message': 'No code to validate',
+                'errors': [],
+                'lean_code': '',
+                'theorem_name': theorem_name,
+                'full_output': 'No code available to validate',
+                'stdout': '',
+                'stderr': '',
+                'return_code': -1,
+                'temp_filename': 'N/A',
+                'temp_file_path': 'N/A',
+                'temp_file_kept': False,
+                'debug_traces': list(self._debug_traces),
+                'possible_proof_tactics': self.possible_proof_tactics
+            }
+
+        # Build the complete Lean code with actual proof tactics
+        # The proof tactics are accumulated in self.possible_proof_tactics
+        actual_proof = ""  # Track the actual proof for sorry checking
+        proof_tactics_source = self.possible_proof_tactics
+
+        # If possible_proof_tactics is empty, try to use _last_tactics as fallback
+        if not proof_tactics_source or not proof_tactics_source.strip():
+            if self._last_tactics:
+                # Extract tactics from _last_tactics (same logic as _clear_tacitcs)
+                tactics_so_far = [(k, v) for k, v in self._last_tactics.items()]
+                tactics_so_far = sorted(tactics_so_far, key=lambda x: x[0])
+                tactics_so_far = [v for _, v in tactics_so_far]
+                proof_tactics_source = "\n".join(tactics_so_far)
+
+            # If both are empty, raise an error
+            if not proof_tactics_source or not proof_tactics_source.strip():
+                raise ValueError("No proof tactics available. Neither 'possible_proof_tactics' nor '_last_tactics' contain any proof steps.")
+
+        # Now build the Lean code with the proof tactics
+        if proof_tactics_source and proof_tactics_source.strip():
+            # Find the last ':=' in lines_executed
+            last_assign_idx = lines_executed_str.rfind(':=')
+            if last_assign_idx != -1:
+                # Take everything up to and including the last ':=' from lines_executed
+                code_prefix = lines_executed_str[:last_assign_idx + 2]
+
+                # In proof_tactics_source, find the first ':= by' (with flexible whitespace)
+                # Use regex to find ':=' followed by optional whitespace and 'by'
+                assign_by_match = re.search(r':=\s+by', proof_tactics_source)
+
+                if assign_by_match:
+                    # Extract everything after ':= <whitespace> by' (excluding the match itself)
+                    match_end_idx = assign_by_match.end()
+                    actual_proof = proof_tactics_source[match_end_idx:].strip()
+                    lean_code = code_prefix + ' by\n' + actual_proof
+                else:
+                    # No ':= by' found, use proof_tactics_source as-is
+                    actual_proof = proof_tactics_source.strip()
+                    lean_code = code_prefix + ' by\n' + actual_proof
+            else:
+                # No ':=' found, just use lines_executed as-is
+                lean_code = lines_executed_str
+        else:
+            # No proof tactics available, use lines_executed as-is
+            lean_code = lines_executed_str
+
+        # Create a unique temporary file
+        temp_filename = f"validation_{self.ticks}_{self.random_num}.lean"
+        temp_file_path = os.path.join(self.project_root, temp_filename)
+
+        try:
+            # Write the Lean code to the temporary file
+            with open(temp_file_path, 'w') as f:
+                f.write(lean_code)
+
+            # Run lake lean on the file
+            try:
+                result = subprocess.run(
+                    ['lake', 'lean', temp_filename],
+                    cwd=self.project_root,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout_sec
+                )
+
+                stdout = result.stdout
+                stderr = result.stderr
+                output = stdout + '\n' + stderr
+
+            except subprocess.TimeoutExpired:
+                # Don't delete temp file on timeout so it can be inspected
+                return {
+                    'success': False,
+                    'compilation_ok': False,
+                    'has_sorries': False,
+                    'error_message': f'Timeout after {timeout_sec} seconds',
+                    'errors': [],
+                    'lean_code': lean_code,
+                    'theorem_name': theorem_name,
+                    'full_output': f'Process timed out after {timeout_sec} seconds',
+                    'stdout': '',
+                    'stderr': '',
+                    'return_code': -1,
+                    'temp_filename': temp_filename,
+                    'temp_file_path': temp_file_path,
+                    'temp_file_kept': True,  # Keep file on timeout for debugging
+                    'debug_traces': list(self._debug_traces),
+                    'possible_proof_tactics': self.possible_proof_tactics
+                }
+
+            # Parse the output for errors and warnings
+            errors = []
+            error_pattern = re.compile(r'(\S+):(\d+):(\d+):\s*(warning|error):\s*(.+)')
+
+            for line in output.split('\n'):
+                match = error_pattern.match(line)
+                if match:
+                    filename, line_num, col_num, severity, message = match.groups()
+                    errors.append({
+                        'file': filename,
+                        'line': int(line_num),
+                        'column': int(col_num),
+                        'severity': severity,
+                        'message': message
+                    })
+
+            # Check for 'sorry' only in the actual proof we generated
+            has_sorries = 'sorry' in actual_proof.lower()
+
+            # Only fail on actual errors (not warnings)
+            # Also check for "unsolved goals" in error messages
+            theorem_has_error = False
+            for error in errors:
+                if error['severity'] == 'error':
+                    theorem_has_error = True
+                    # Also check if the error mentions unsolved goals
+                    if 'unsolved goals' in error['message'].lower():
+                        has_sorries = True
+
+            # Determine success: compilation ok, no sorries in actual proof, no errors (ignore warnings)
+            compilation_ok = result.returncode == 0
+            success = compilation_ok and not has_sorries and not theorem_has_error
+
+            error_message = ''
+            if not compilation_ok:
+                error_message = 'Compilation failed'
+            elif has_sorries:
+                error_message = 'Proof has unsolved goals (sorries)'
+            elif theorem_has_error:
+                error_message = 'Theorem has errors'
+            else:
+                error_message = 'Proof is complete'
+
+            # Combine full raw output for debugging
+            full_output = f"=== STDOUT ===\n{stdout}\n\n=== STDERR ===\n{stderr}"
+
+            return {
+                'success': success,
+                'compilation_ok': compilation_ok,
+                'has_sorries': has_sorries,
+                'error_message': error_message,
+                'errors': errors,
+                'lean_code': lean_code,
+                'return_code': result.returncode,
+                'stdout': stdout,
+                'stderr': stderr,
+                'full_output': full_output,
+                'theorem_name': theorem_name,
+                'temp_filename': temp_filename,
+                'temp_file_path': temp_file_path,
+                'temp_file_kept': keep_temp_file,
+                'debug_traces': list(self._debug_traces),
+                'possible_proof_tactics': self.possible_proof_tactics
+            }
+
+        finally:
+            # Clean up the temporary file only if requested
+            if not keep_temp_file and os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+
 
 theorem_names_in_file_cache: Dict[str, List[TheoremDetails]] = {}
 namespace_regex = r"^namespace[ ]+([\S]+)"
