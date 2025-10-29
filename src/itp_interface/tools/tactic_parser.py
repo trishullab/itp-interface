@@ -9,6 +9,7 @@ The parser process runs in the background to avoid restart overhead.
 
 import base64
 import json
+import os
 import subprocess
 import logging
 from bisect import bisect_left
@@ -124,7 +125,7 @@ class TacticParser:
     and automatically find the project's .lake/build with all dependencies.
     """
 
-    def __init__(self, parser_path: Optional[str] = None, project_path: Optional[str] = None, logger: Optional[logging.Logger] = None):
+    def __init__(self, parser_path: Optional[str] = None, project_path: Optional[str] = None, file_path: Optional[str] = None, logger: Optional[logging.Logger] = None):
         """
         Initialize the tactic parser.
 
@@ -143,6 +144,7 @@ class TacticParser:
             self.parser_path = parser_path
 
         self.project_path = project_path
+        self.file_path = file_path
         self.logger = logger if logger else logging.getLogger(__name__)
         self.process: Optional[subprocess.Popen] = None
         self._start()
@@ -159,9 +161,15 @@ class TacticParser:
             else:
                 working_dir = Path(self.parser_path).parent.parent.parent
                 self.logger.debug(f"Starting parser in standalone mode from: {working_dir}")
-
+            tools_dir = os.path.dirname(__file__)
+            repl_path = os.path.join(tools_dir, "tactic_parser")
+            abs_path = os.path.abspath(repl_path)
+            path_to_repl_exec = os.path.join(abs_path, ".lake", "build", "bin", "tactic-parser")
+            cmds = ["lake", "env", path_to_repl_exec]
+            if self.file_path:
+                cmds += [self.file_path]
             self.process = subprocess.Popen(
-                [self.parser_path],
+                cmds,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -331,6 +339,10 @@ class TacticParser:
 
 
 # Example usage
+def print_tactics(tactics: List[TacticInfo]):
+    for tactic in tactics:
+        print(f"Line {tactic.line}, Col {tactic.column} to Line {tactic.end_line}, Col {tactic.end_column}: {tactic.text}")
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
 
@@ -340,16 +352,33 @@ if __name__ == "__main__":
 
         print("Parsing example 1...")
         tactics = parser.parse(lean_code)
-        print(f"Found {len(tactics)} tactics:")
-        for t in tactics:
-            print(f"  - Line {t.line}: {t.text}")
+        print_tactics(tactics)
 
+
+    project_path = str(Path(__file__).parent.parent.parent / "data" / "test" / "lean4_proj")
+    file_path = str(Path(__file__).parent.parent.parent / "data" / "test" / "lean4_proj" / "Lean4Proj"/ "Basic.lean")
+    file_path = None
+
+    with TacticParser(project_path=project_path, file_path=file_path) as parser:
         # Example 2: Multiline with params
-        lean_code2 = "example (p q : Prop) (hp : p) (hq : q) : p ∧ q := by\n  apply And.intro\n  exact hp\n  exact hq"
+        lean_code2 = "example (r: Nat) (p q : Prop) (hp : p) (hq : q) : p ∧ q := by\n  apply And.intro\n  exact hp\n  exact hq"
 
         print("\nParsing example 2...")
         tactics2 = parser.parse(lean_code2)
-        print(f"Found {len(tactics2)} tactics:")
-        for t in tactics2:
-            print(f"  - Line {t.line}: {t.text}")
+        print_tactics(tactics2)
+        
+        # Check if linarith is parsed correctly
+        lean_code3 = """
+import Mathlib
+        
+example (a b : Nat) 
+(h1: a + b = 10)
+(h2: a = 5) :
+b = 5:= by
+  rw [h2] at h1
+  linarith
+"""
+        print("\nParsing example 3...")
+        tactics3 = parser.parse(lean_code3)
+        print_tactics(tactics3)
 

@@ -9,6 +9,60 @@ Can work in two modes:
 import Lean
 import Lean.Elab.Frontend
 import TacticParser.Types
+import Lean.Elab.Frontend
+
+open Lean Elab
+
+namespace Lean.Elab.IO
+
+/--
+Wrapper for `IO.processCommands` that enables info states, and returns
+* the new command state
+* messages
+* info trees
+-/
+def processCommandsWithInfoTrees
+    (inputCtx : Parser.InputContext) (parserState : Parser.ModuleParserState)
+    (commandState : Command.State) : IO (Command.State × Array Message × Array InfoTree) := do
+  let commandState := { commandState with infoState.enabled := true }
+  let s ← IO.processCommands inputCtx parserState commandState <&> Frontend.State.commandState
+  pure (s, s.messages.toArray, s.infoState.trees.toArray)
+
+/--
+Process some text input, with or without an existing command state.
+If there is no existing environment, we parse the input for headers (e.g. import statements),
+and create a new environment.
+Otherwise, we add to the existing environment.
+
+Returns:
+1. The header-only command state (only useful when cmdState? is none)
+2. The resulting command state after processing the entire input
+3. List of messages
+4. List of info trees
+-/
+def processInput (input : String) (cmdState? : Option Command.State)
+    (opts : Options := {}) (fileName : Option String := none) :
+    IO (Command.State × Command.State × Array Message × Array InfoTree) := unsafe do
+  Lean.initSearchPath (← Lean.findSysroot)
+  enableInitializersExecution
+  let fileName   := fileName.getD "<input>"
+  let inputCtx   := Parser.mkInputContext input fileName
+
+  match cmdState? with
+  | none => do
+    -- Split the processing into two phases to prevent self-reference in proofs in tactic mode
+    let (header, parserState, messages) ← Parser.parseHeader inputCtx
+    let (env, messages) ← processHeader header opts messages inputCtx
+    let headerOnlyState := Command.mkState env messages opts
+    let (cmdState, messages, trees) ← processCommandsWithInfoTrees inputCtx parserState headerOnlyState
+    return (headerOnlyState, cmdState, messages, trees)
+
+  | some cmdStateBefore => do
+    let parserState : Parser.ModuleParserState := {}
+    let (cmdStateAfter, messages, trees) ← processCommandsWithInfoTrees inputCtx parserState cmdStateBefore
+    return (cmdStateBefore, cmdStateAfter, messages, trees)
+
+end Lean.Elab.IO
 
 namespace TacticParser
 
@@ -24,136 +78,9 @@ def posToLineColumn (input : String) (pos : String.Pos) : Position :=
   let column := (lines.getLast!).length
   { line, column }
 
-/-- Process commands with InfoTrees enabled (like REPL does) -/
-def processCommandsWithInfoTrees
-    (inputCtx : Parser.InputContext) (parserState : Parser.ModuleParserState)
-    (commandState : Command.State) : IO (Command.State × Array Message × Array InfoTree) := do
-  let commandState := { commandState with infoState.enabled := true }
-  let s ← IO.processCommands inputCtx parserState commandState <&> Frontend.State.commandState
-  pure (s, s.messages.toArray, s.infoState.trees.toArray)
-
-
 /-- Extract the source text for a syntax node -/
 def syntaxToString (stx : Syntax) : String :=
   stx.reprint.getD (toString stx)
-
--- /-- Check if string contains substring -/
--- def stringContains (s : String) (sub : String) : Bool :=
---   (s.splitOn sub).length > 1
-
--- /-- Check if a syntax kind is a tactic (not a sequence/grouping construct) -/
--- def isTacticKind (kind : Name) : Bool :=
---   let s := kind.toString
---   s.startsWith "Lean.Parser.Tactic." &&
---   !stringContains s "tacticSeq" &&
---   !stringContains s "Syntax" &&
---   kind != `null
-
--- /-- Extract individual tactics from syntax -/
--- partial def extractTactics (input : String) (stx : Syntax) : Array TacticInfo :=
---   match stx with
---   | .node _ kind children =>
---     -- Check if this is an individual tactic
---     if isTacticKind kind then
---       let text := syntaxToString stx |>.trim
---       if text.isEmpty || text == "by" || text == "done" then
---         -- Recurse into children for nested tactics
---         children.foldl (fun acc child => acc ++ extractTactics input child) #[]
---       else
---         let startPos := posToLineColumn input (stx.getPos?.getD 0)
---         let endPos := posToLineColumn input (stx.getTailPos?.getD 0)
---         let tacticInfo := { text, startPos, endPos : TacticInfo }
---         -- Also check children for nested tactics (e.g., in try/catch)
---         let childTactics := children.foldl (fun acc child => acc ++ extractTactics input child) #[]
---         if childTactics.isEmpty then
---           #[tacticInfo]
---         else
---           #[tacticInfo] ++ childTactics
---     else
---       -- Not a tactic node, recurse into children
---       children.foldl (fun acc child => acc ++ extractTactics input child) #[]
---   | _ => #[]
-
--- /-- Find all `by` blocks in the syntax tree -/
--- partial def findByBlocks (stx : Syntax) : Array Syntax :=
---   match stx with
---   | .node _ kind children =>
---     let result := if kind == `Lean.Parser.Term.byTactic then #[stx] else #[]
---     -- Recurse into children
---     children.foldl (fun acc child => acc ++ findByBlocks child) result
---   | _ => #[]
-
--- /-- Parse all syntax from input string, collecting partial parses -/
--- partial def parseAllSyntax (input : String) (env : Environment) : Array Syntax :=
---   let inputCtx := Parser.mkInputContext input "<input>"
---   let s : Parser.ModuleParserState := {}
---   let pmctx : Parser.ParserModuleContext := { env := env, options := {} }
-
---   let rec loop (state : Parser.ModuleParserState) (msgs : MessageLog) (acc : Array Syntax) : Array Syntax :=
---     if inputCtx.input.atEnd state.pos then
---       acc
---     else
---       let (cmd, state', msgs') := Parser.parseCommand inputCtx pmctx state msgs
---       -- Always add the command, even if incomplete
---       let acc' := acc.push cmd
---       -- Stop if position didn't advance (parser is stuck)
---       if state'.pos == state.pos then
---         acc'
---       else
---         loop state' msgs' acc'
-
---   loop s {} #[]
-
-
-
--- /-- Check if range1 fully contains range2 -/
--- def rangeContains (start1 end1 start2 end2 : Position) : Bool :=
---   -- Range1 contains range2 if:
---   -- start1 <= start2 AND end2 <= end1
---   let startBefore := start1.line < start2.line || (start1.line == start2.line && start1.column <= start2.column)
---   let endAfter := end1.line > end2.line || (end1.line == end2.line && end1.column >= end2.column)
---   startBefore && endAfter
-
--- /-- Get all leaf tactics (tactics that don't contain other tactics) -/
--- def getLeafTactics (tactics : Array TacticInfo) : Array TacticInfo :=
---   tactics.filter fun t =>
---     -- A tactic is a leaf if it doesn't contain any other tactic
---     !tactics.any fun child =>
---       -- Skip if it's the same tactic
---       if t.startPos == child.startPos && t.endPos == child.endPos then
---         false
---       else
---         -- Check if t contains child
---         rangeContains t.startPos t.endPos child.startPos child.endPos
-
--- /-- Remove exact duplicates (same text and position) -/
--- def deduplicateTactics (tactics : Array TacticInfo) : Array TacticInfo :=
---   let rec go (acc : Array TacticInfo) (remaining : Array TacticInfo) (idx : Nat) : Array TacticInfo :=
---     if idx >= remaining.size then
---       acc
---     else
---       let t := remaining[idx]!
---       -- Check if this tactic already exists in acc
---       let isDuplicate := acc.any fun existing =>
---         existing.text == t.text &&
---         existing.startPos == t.startPos &&
---         existing.endPos == t.endPos
---       if isDuplicate then
---         go acc remaining (idx + 1)
---       else
---         go (acc.push t) remaining (idx + 1)
---   go #[] tactics 0
-
--- /-- Check if text is just punctuation or other non-tactic token -/
--- def isNonTactic (text : String) : Bool :=
---   let text := text.trim
---   -- Filter out: empty, "by", "done", and single punctuation characters
---   text.isEmpty || text == "by" || text == "done" ||
---   (text.length == 1 && (
---     text == "]" || text == "[" || text == ")" || text == "(" ||
---     text == "}" || text == "{" || text == "," || text == ";" ||
---     text == ":" || text == "|" || text == "·"
---   ))
 
 /-- Pretty print InfoTree structure for debugging -/
 partial def printInfoTree (input : String) (tree : InfoTree) (indent : Nat := 0) : IO Unit := do
@@ -245,26 +172,24 @@ partial def filterChildrenAtLevel (node : InfoTreeNode) (level : Nat) : Option I
       some (.other filteredChildren)
   | .hole => none
 
-/- Helper: parse tactics in the current context -/
-unsafe def parseInCurrentContext (input : String) : IO ParseResult := do
+/-- Helper: parse tactics in the current context -/
+unsafe def parseInCurrentContext (input : String) (filePath : Option String := none) : IO ParseResult := do
   try
-    let inputCtx := Parser.mkInputContext input "<input>"
+    --let inputCtx := Parser.mkInputContext input "<input>"
+    let (initialCmdState, cmdState, messages, trees) ← try
+      IO.processInput input none Options.empty filePath
+    catch e =>
+      return { trees := #[], error := some e.toString }
 
-    -- Parse header (imports)
-    let (header, parserState, messages) ← Parser.parseHeader inputCtx
-    let (env, _messages) ← processHeader header {} messages inputCtx 0
-    let cmdState := Command.mkState env messages {}
 
-    -- Process commands with elaboration (NO compilation!)
-    let (_cmdState, _messages, trees) ← processCommandsWithInfoTrees inputCtx parserState cmdState
-
+    let mut error : Option String := none
     -- Print any messages
     -- IO.println "\n=== Elaboration Messages ==="
-    -- for msg in messages do
-    --   let severity := match msg.severity with
-    --     | .error => "ERROR"
-    --     | .warning => "WARNING"
-    --     | .information => "INFO"
+
+    for msg in messages do
+      if msg.severity == .error then
+        error := some (← msg.data.toString)
+
     --   IO.println s!"[{severity}] {← msg.data.toString}"
     -- IO.println "=== End Messages ===\n"
 
@@ -284,7 +209,7 @@ unsafe def parseInCurrentContext (input : String) : IO ParseResult := do
       let ans := removeOtherAndHoles (infoTreeToNode input t)
       let ans_d := ans.getD (.other #[])
       filterChildrenAtLevel ans_d level)
-    return { trees := transformed_trees, error := none }
+    return { trees := transformed_trees, error := error }
 
     -- return { tree := treeNode, error := none }
   catch e =>
@@ -295,18 +220,18 @@ unsafe def parseInCurrentContext (input : String) : IO ParseResult := do
     Initializes Lean from current working directory (finds .lake/build automatically).
     For project-specific parsing, start the process from the project directory.
 -/
-unsafe def parseTacticsWithElaboration (input : String) : IO ParseResult := do
+unsafe def parseTacticsWithElaboration (input : String) (filePath : Option String := none) : IO ParseResult := do
   try
     -- Initialize Lean from current directory (finds .lake/build if present)
     Lean.initSearchPath (← Lean.findSysroot)
     Lean.enableInitializersExecution
-    return ← parseInCurrentContext input
+    return ← parseInCurrentContext input filePath
   catch e =>
     return { trees := #[], error := some s!"Error in parseTacticsWithElaboration: {e}" }
 
 /-- Parse Lean code and extract all tactics (uses elaboration-based approach) -/
 @[implemented_by parseTacticsWithElaboration]
-opaque parseTactics (input : String) : IO ParseResult
+opaque parseTactics (input : String) (filePath : Option String := none) : IO ParseResult
 
 -- -- Test case 1: Simple proof with apply and exact
 def simple_example := "theorem test (p q : Prop) (hp : p) (hq : q)
@@ -329,8 +254,21 @@ simp [htemp]
 rw [hp]
 "
 
+def import_example := "import Lean
+
+theorem test_import (p q : Prop) (hp : p) (hq : q)
+: p ∧ q ∧ p := by
+apply And.intro
+exact hp
+apply And.intro
+exact hq
+exact hp
+"
+
 #eval parseTacticsWithElaboration simple_example
 
 #eval parseTacticsWithElaboration more_complex_example
+
+#eval parseTacticsWithElaboration import_example
 
 end TacticParser

@@ -13,7 +13,7 @@ open Lean
 open TacticParser
 
 /-- Process a single request and output JSON -/
-def processRequest (b64Input : String) : IO Unit := do
+def processRequest (b64Input : String) (filePath : Option String := none) : IO Unit := do
   try
     -- Decode base64 to Lean code
     let leanCode ← match Base64.decode b64Input with
@@ -25,7 +25,7 @@ def processRequest (b64Input : String) : IO Unit := do
         return
 
     -- Parse tactics from Lean code
-    let result ← parseTactics leanCode
+    let result ← parseTactics leanCode filePath
 
     -- Output result as JSON
     IO.println (toJson result).compress
@@ -36,7 +36,7 @@ def processRequest (b64Input : String) : IO Unit := do
     IO.println (toJson result).compress
 
 /-- Loop to process requests -/
-partial def loop (stdin : IO.FS.Stream) (stdout : IO.FS.Stream) : IO Unit := do
+partial def loop (stdin : IO.FS.Stream) (stdout : IO.FS.Stream) (filePath : Option String := none) : IO Unit := do
   -- Read input from stdin (base64)
   let line ← stdin.getLine
   let line := line.trim
@@ -46,7 +46,7 @@ partial def loop (stdin : IO.FS.Stream) (stdout : IO.FS.Stream) : IO Unit := do
     return
 
   -- Process the request
-  processRequest line
+  processRequest line filePath
 
   -- Flush output to ensure Python can read it
   stdout.flush
@@ -54,8 +54,13 @@ partial def loop (stdin : IO.FS.Stream) (stdout : IO.FS.Stream) : IO Unit := do
   -- Continue loop
   loop stdin stdout
 
-/-- Main function: run in loop, processing requests from stdin -/
-def main : IO Unit := do
+/-- Start processing with filePath passed as an optional argument -/
+def main (args : List String) : IO Unit := do
+  let filePath : Option String :=
+    match args with
+    | [] => none
+    | fp::_ => some fp
+
   let stdin ← IO.getStdin
   let stdout ← IO.getStdout
-  loop stdin stdout
+  loop stdin stdout filePath
