@@ -221,7 +221,7 @@ class TacticParser:
         return tactic_context
 
 
-    def parse(self, lean_code: str) -> List[TacticInfo]:
+    def parse(self, lean_code: str, fail_on_error: bool = True) -> tuple[List[TacticInfo], Optional[str]]:
         """
         Parse tactics from Lean 4 code.
 
@@ -272,8 +272,13 @@ class TacticParser:
             raise RuntimeError(f"Failed to parse JSON response: {e}\nOutput: {response_line}")
 
         # Check for errors
+        error_str = None
         if response.get("error"):
-            raise RuntimeError(f"Parse error: {response['error']}")
+            if fail_on_error:
+                raise RuntimeError(f"Parse error: {response['error']}")
+            else:
+                error_str = str(response['error'])
+                self.logger.debug(f"Parse error: {response['error']}")
 
         # Convert tree to TacticInfo objects
         trees = []
@@ -299,9 +304,9 @@ class TacticParser:
         if len(tactics) > 0 and tactics[0].text.strip() == "by":
             tactics = tactics[1:]
             self.logger.debug("Removed leading 'by' tactic")
-        return tactics
+        return tactics, error_str
 
-    def parse_file(self, file_path: str) -> List[TacticInfo]:
+    def parse_file(self, file_path: str) -> tuple[List[TacticInfo], str]:
         """
         Parse tactics from a Lean 4 file.
 
@@ -351,8 +356,10 @@ if __name__ == "__main__":
         lean_code = "example : True := by trivial"
 
         print("Parsing example 1...")
-        tactics = parser.parse(lean_code)
+        tactics, error_str = parser.parse(lean_code)
         print_tactics(tactics)
+        if error_str:
+            print(f"Error: {error_str}")
 
 
     project_path = str(Path(__file__).parent.parent.parent / "data" / "test" / "lean4_proj")
@@ -364,8 +371,10 @@ if __name__ == "__main__":
         lean_code2 = "example (r: Nat) (p q : Prop) (hp : p) (hq : q) : p ∧ q := by\n  apply And.intro\n  exact hp\n  exact hq"
 
         print("\nParsing example 2...")
-        tactics2 = parser.parse(lean_code2)
+        tactics2, error_str = parser.parse(lean_code2)
         print_tactics(tactics2)
+        if error_str:
+            print(f"Error: {error_str}")
         
         # Check if linarith is parsed correctly
         lean_code3 = """
@@ -379,6 +388,8 @@ b = 5:= by
   linarith
 """
         print("\nParsing example 3...")
-        tactics3 = parser.parse(lean_code3)
+        tactics3, error_str = parser.parse(lean_code3)
         print_tactics(tactics3)
+        if error_str:
+            print(f"Error: {error_str}")
 
