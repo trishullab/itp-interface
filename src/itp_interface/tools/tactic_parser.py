@@ -12,6 +12,7 @@ import json
 import os
 import subprocess
 import logging
+import re
 from enum import Enum
 from bisect import bisect_left
 from pydantic import BaseModel, field_validator
@@ -120,6 +121,88 @@ class RequestType(Enum):
     PARSE_TACTICS = "parse_tactics"
     PARSE_THEOREM = "parse_theorem"
 
+
+def get_path_to_tactic_parser_project() -> str:
+    """Get the path to the tactic parser project directory."""
+    tools_dir = os.path.dirname(__file__)
+    tactic_parser_path = os.path.join(tools_dir, "tactic_parser")
+    abs_path = os.path.abspath(tactic_parser_path)
+    return abs_path
+
+def get_path_to_tactic_parser_executable() -> str:
+    """Get the path to the tactic parser executable."""
+    abs_path = get_path_to_tactic_parser_project()
+    tactic_parser_bin_path = os.path.join(abs_path, ".lake", "build", "bin", "tactic-parser")
+    return tactic_parser_bin_path
+
+def is_tactic_parser_built() -> bool:
+    """Check if the tactic parser executable exists."""
+    path_to_exec = get_path_to_tactic_parser_executable()
+    if not os.path.isfile(path_to_exec):
+        return False
+    else:
+        lean_version_needed = os.getenv("LEAN_VERSION", None)
+        if lean_version_needed is None:
+            return True
+        tactic_parser_project = get_path_to_tactic_parser_project()
+        # Check the version of the built parser
+        toolchain_file = os.path.join(tactic_parser_project, "lean-toolchain")
+        assert os.path.isfile(toolchain_file), f"lean-toolchain file not found at {toolchain_file}, something is wrong."
+        with open(toolchain_file, 'r') as f:
+            toolchain_content = f.read()
+        toolchain_content = toolchain_content.strip()
+        if toolchain_content.endswith(lean_version_needed):
+            return True
+        else:
+            # Replace the version in the toolchain file
+            # The version should be like 4.x.y
+            pattern = r'^4\.\d+\.\d+$'
+            if re.match(pattern, lean_version_needed):
+                raise RuntimeError(f"Tactic parser built with Lean version {toolchain_content}, but version {lean_version_needed} is required." +
+                "Don't know how to build Lean which is not of the form 4.x.y. " +
+                "Please rebuild the tactic parser.")
+            toolchain_final = f"leanprover/lean4:v{lean_version_needed}"
+            with open(toolchain_file, 'w') as f:
+                f.write(toolchain_final)
+            return False
+
+def build_lean4_project(project_folder, logger: Optional[logging.Logger] = None):
+    """Build the Lean4 project at the given folder."""
+
+    logger = logger if logger else logging.getLogger(__name__)
+    # Define the command
+    command = f"cd {project_folder} && lake exe cache get && lake build"
+    
+    logging.info(f"Building Lean4 project {project_folder}...")
+
+    # Run the command
+    # - shell=True is needed to process 'cd' and '&&'
+    # - capture_output=True captures stdout and stderr
+    # - text=True decodes stdout/stderr as text (using default encoding)
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+
+    # Print the build logs from stdout
+    logging.info('-'*15 + f'Build Logs from {project_folder}' + '-'*15)
+    logging.info(result.stdout)
+    
+    # Optionally print error logs if any exist
+    if result.stderr:
+        logging.error('-'*15 + f'Error Logs from {project_folder}' + '-'*15)
+        logging.error(result.stderr)
+
+    logging.info('-'*15 + f'End Build Logs from {project_folder}' + '-'*15)
+
+    # --- Here is how you check the exit code ---
+    exit_code = result.returncode
+    logging.info(f"Process finished with exit code: {exit_code}")
+
+    # You can now act on the exit code
+    if exit_code == 0:
+        logging.info("Build successful!")
+    else:
+        logging.error("Build FAILED!")
+        raise Exception(f"Build failed with code {exit_code}")
+
 class TacticParser:
     """Parse tactics from Lean 4 code without compilation.
 
@@ -153,6 +236,11 @@ class TacticParser:
         self.process: Optional[subprocess.Popen] = None
         self._start()
 
+    def _build_if_needed(self):
+        """Build the tactic parser if not already built."""
+        if not is_tactic_parser_built():
+            build_lean4_project(get_path_to_tactic_parser_project(), self.logger)
+
     def _start(self):
         """Start the tactic parser process."""
         try:
@@ -165,11 +253,11 @@ class TacticParser:
             else:
                 working_dir = Path(self.parser_path).parent.parent.parent
                 self.logger.debug(f"Starting parser in standalone mode from: {working_dir}")
-            tools_dir = os.path.dirname(__file__)
-            repl_path = os.path.join(tools_dir, "tactic_parser")
-            abs_path = os.path.abspath(repl_path)
-            path_to_repl_exec = os.path.join(abs_path, ".lake", "build", "bin", "tactic-parser")
-            cmds = ["lake", "env", path_to_repl_exec]
+            # Ensure the parser is built
+            self._build_if_needed()
+            path_to_tactic_parser_exec = get_path_to_tactic_parser_executable()
+            assert os.path.isfile(path_to_tactic_parser_exec), f"Tactic parser executable not found at {path_to_tactic_parser_exec}, please build it first."
+            cmds = ["lake", "env", path_to_tactic_parser_exec]
             self.process = subprocess.Popen(
                 cmds,
                 stdin=subprocess.PIPE,
