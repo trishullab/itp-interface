@@ -11,6 +11,7 @@ import copy
 import enum
 import logging
 from itp_interface.tools.lean4_sync_executor import Lean4SyncExecutor
+from itp_interface.tools.simple_lean4_sync_executor import SimpleLean4SyncExecutor
 from itp_interface.tools.training_data_format import Goal, TrainingDataFormat
 from itp_interface.tools.lean_parse_utils import LeanLineByLineReader
 from itp_interface.tools.lean_context_helper import Lean3ContextHelper
@@ -52,7 +53,7 @@ class IntertwinedIterator(object):
             self.base_iterator.close()
         pass
 
-class DynamicProofExecutor(Lean4SyncExecutor):
+class DynamicProofExecutor(SimpleLean4SyncExecutor):
     class RunState(object):
         def __init__(self):
             self.tatics_ran = []
@@ -93,7 +94,7 @@ class DynamicProofExecutor(Lean4SyncExecutor):
         assert coq_context_helper is not None, "coq_context_helper must not be None"
         self.proof_file = proof_file
         self.context_type = context_type
-        self.lean_file_iter = LeanLineByLineReader(proof_file, remove_comments=True, no_strip=True).instruction_step_generator() if proof_file is not None else instruction_iter
+        self.lean_file_iter = LeanLineByLineReader(proof_file, remove_comments=False, no_strip=True).instruction_step_generator() if proof_file is not None else instruction_iter
         self.tactic_switch_iterator = IntertwinedIterator(self.lean_file_iter)
         self.run_state = DynamicProofExecutor.RunState()
         self.logger = None
