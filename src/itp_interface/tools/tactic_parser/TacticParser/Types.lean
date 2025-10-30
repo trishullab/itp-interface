@@ -28,7 +28,7 @@ instance : FromJson Position where
 /-- InfoTree node representation -/
 inductive InfoTreeNode where
   | context : InfoTreeNode → InfoTreeNode
-  | tacticInfo : String → Position → Position → Array InfoTreeNode → InfoTreeNode
+  | leanInfo : String → Position → Position → Array InfoTreeNode → InfoTreeNode
   | other : Array InfoTreeNode → InfoTreeNode
   | hole : InfoTreeNode
   deriving Inhabited, Repr
@@ -39,9 +39,9 @@ partial def InfoTreeNode.toJson : InfoTreeNode → Json
       ("type", "context"),
       ("children", child.toJson)
     ]
-  | .tacticInfo text startPos endPos children =>
+  | leanInfo text startPos endPos children =>
     Json.mkObj [
-      ("type", "tacticInfo"),
+      ("type", "leanInfo"),
       ("text", Lean.ToJson.toJson text),
       ("start_pos", Lean.ToJson.toJson startPos),
       ("end_pos", Lean.ToJson.toJson endPos),
@@ -69,5 +69,16 @@ instance : ToJson ParseResult where
     ("trees", toJson r.trees),
     ("error", toJson r.error)
   ]
+
+def get_position_from_char_pos (content : String) (charPos : Nat) : Position :=
+  let before := content.extract ⟨0⟩ ⟨charPos⟩
+  let lines := before.splitOn "\n"
+  let lineCount := lines.length
+  if lineCount == 0 then
+    { line := 0, column := 0 }
+  else
+    let lastLine := lines[lineCount - 1]!
+    -- let byteLen := lastLine.endPos.byteIdx
+    { line := lineCount, column := lastLine.length }
 
 end TacticParser

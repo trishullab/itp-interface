@@ -1,0 +1,506 @@
+import Lean
+import Lean.Data.Json
+import TacticParser.Types
+namespace TacticParser
+
+open Lean
+open Lean.Parser
+
+/-- Represents different types of Lean declarations -/
+inductive DeclType where
+  | inductive
+  | theorem
+  | def
+  | axiom
+  | structure
+  | class_decl
+  | instance
+  | other
+  | example
+  | lemma
+  | unknown
+  deriving Repr, BEq
+
+instance : ToString DeclType where
+  toString
+    | .inductive => "inductive"
+    | .theorem => "theorem"
+    | .def => "def"
+    | .axiom => "axiom"
+    | .structure => "structure"
+    | .class_decl => "class"
+    | .instance => "instance"
+    | .other => "other"
+    | .example => "example"
+    | .lemma => "lemma"  -- lemma is treated as theorem
+    | .unknown => "unknown"
+
+/-- Information extracted from a declaration -/
+structure DeclInfo where
+  declType : DeclType
+  name : String
+  startPos : Nat
+  endPos : Nat
+  text : String
+  docString : Option String  -- Extracted documentation comment
+  deriving Repr
+
+/-- Identify the type of declaration from syntax -/
+unsafe def identifyDeclType (stx : Syntax) : DeclType :=
+  let kind := stx.getKind
+  -- Check if this is a declaration wrapper, if so, look inside
+  if kind == `Lean.Parser.Command.declaration then
+    match stx with
+    | Syntax.node _ _ args =>
+      -- Look for the actual declaration type in the children
+      if args.isEmpty then .unknown else
+      identifyDeclType args[0]!
+    | _ => .unknown
+  else if kind == `Lean.Parser.Command.inductive then .inductive
+  else if kind == `Lean.Parser.Command.theorem then .theorem
+  else if kind == `Lean.Parser.Command.definition then .def
+  else if kind == `Lean.Parser.Command.axiom then .axiom
+  else if kind == `Lean.Parser.Command.structure then .structure
+  else if kind == `Lean.Parser.Command.classDecl then .class_decl
+  else if kind == `Lean.Parser.Command.instance then .instance
+  else if kind == `Lean.Parser.Command.example then .example
+  else if kind == `Lean.Parser.Command.otherDecl then .other
+  else .unknown
+
+/-- Extract the name of the declaration from syntax tree -/
+partial def extractDeclName (stx : Syntax) : String :=
+  match stx with
+  | Syntax.ident _ _ name _ => name.toString
+  | Syntax.node _ _ args =>
+    -- Search through arguments to find an identifier
+    (args.findSome? fun arg =>
+      let result := extractDeclName arg
+      if result != "" && result != "anonymous" then some result else none
+    ).getD "anonymous"
+  | _ => ""
+
+/-- Comment parsing state machine, can parse nested comments too -/
+partial def trimComment (text : String) (state : Nat := 0) (depth : Nat := 0) : Nat :=
+  if text.startsWith "--" ∧ state == 0 then
+    -- we are not inside a block comment, so this is a line comment
+    let newState := 0
+    -- Go till the end of line
+    let endOfLine := text.find (fun c => c == '\n')
+    let remaining := text.drop endOfLine.byteIdx
+    let ep := trimComment remaining newState depth
+    endOfLine.byteIdx + ep
+  else if text.startsWith "/-" ∧ state == 0 then
+    -- starting of a block comment
+    let newState := 1
+    let remaining := text.drop 2
+    let ep := trimComment remaining newState (depth + 1)
+    ep + 2
+  else if text.startsWith "-/" ∧ state == 1 then
+    -- ending of a block comment
+    let newDepth := depth - 1
+    let newState := if newDepth == 0 then 0 else 1
+    let remaining := text.drop 2
+    let ep := trimComment remaining newState newDepth
+    ep + 2
+  else if text.length == 0 then
+    0
+  else
+    -- consume one character and continue
+    if state == 0 ∧ text.trimLeft.length == text.length then
+      -- not in comment and no leading spaces, stop
+      0
+    else
+      let remaining := text.drop 1
+      let ep := trimComment remaining state depth
+      ep + 1
+
+def comment_testcase := "
+/- This is a /* nested */ comment -/
+/--This is an example lemma-/ --- let's see how it works
+def exampleLemma : Nat := 42
+"
+
+#eval trimComment comment_testcase  -- should return length of comment part
+#eval comment_testcase.drop (trimComment comment_testcase)  -- should return " rest of code"
+
+def no_comment_testcase := "def noComment : Nat := 100"
+
+#eval trimComment no_comment_testcase  -- should return 0
+#eval no_comment_testcase.drop (trimComment no_comment_testcase)  -- should return "def noComment : Nat := 100"
+
+
+/-- Parse a Lean 4 file and extract declaration information -/
+unsafe def parseDecls (originalContent : String) : IO (Array DeclInfo) := do
+  let inputCtx := mkInputContext originalContent "<input>"
+
+  -- Parse the header (using original content)
+  let (_, parserState, _) ← parseHeader inputCtx
+
+  -- Create a minimal parser context with empty environment
+  let env ← Lean.importModules #[] {} 0
+  let opts := {}
+  let pmctx : ParserModuleContext := {
+    env := env
+    options := opts
+  }
+
+  -- First pass: parse all commands and collect their positions
+  -- We parse the ORIGINAL content to find declaration boundaries
+  let mut commands : Array (String.Pos × Syntax) := #[]
+  let mut pstate := parserState
+  let mut done := false
+
+  while !done do
+    let startPos := pstate.pos
+    -- IO.println s!"Parsing at position: {pstate.pos}, kind will be: ..."
+
+    -- Try to parse a command from original content
+    let (stx, pstate', msgs) := parseCommand inputCtx pmctx pstate {}
+    pstate := pstate'
+
+    -- IO.println s!"  Got kind: {stx.getKind}"
+    -- IO.println s!"  New position: {pstate.pos}, atEnd: {inputCtx.atEnd pstate.pos}, messages: {msgs.toList.length}"
+
+    -- Store command with its start position
+    commands := commands.push (startPos, stx)
+
+    -- Check if we made progress or reached end
+    if pstate.pos == startPos || inputCtx.atEnd pstate.pos then
+      -- IO.println s!"  Stopping: pos unchanged={pstate.pos == startPos}, atEnd={inputCtx.atEnd pstate.pos}"
+      done := true
+
+  -- Second pass: extract and re-parse declarations
+  let mut decls : Array DeclInfo := #[]
+  for i in [:commands.size] do
+    let (parsePos, stx) := commands[i]!
+
+    -- Get position range for this command
+    let realStart := match stx.getRange? with
+      | some range => range.start
+      | none => parsePos
+    let endPos := if i + 1 < commands.size then
+      let (nextParsePos, nextStx) := commands[i + 1]!
+      let nextRealStart := match nextStx.getRange? with
+        | some range => range.start
+        | none => nextParsePos
+      ⟨nextRealStart.byteIdx - 1⟩
+    else
+      ⟨originalContent.endPos.byteIdx⟩
+
+    -- Extract text from ORIGINAL content
+    let text := originalContent.extract realStart endPos
+
+    -- Strip comments to check if this starts with "lemma"
+    let commentEnd := trimComment text
+    let docStringStr := (text.take commentEnd).trim
+    let mut docString := none
+    if !docStringStr.isEmpty then
+      docString := some docStringStr
+    let textWithoutComments := text.drop commentEnd
+    let isLemma := textWithoutComments.startsWith "lemma "
+
+    -- Print the docstring and the text without comments for debugging
+    -- IO.println s!"Docstring part:\n{docString}\n--- End of docstring ---"
+    -- IO.println s!"Text without comments:\n{textWithoutComments}\n--- End of text without comments ---"
+    -- -- print if it's identified as lemma
+    -- IO.println s!"Is lemma: {isLemma}"
+
+    let mut textToParse := text
+    if isLemma then
+    -- If it's a lemma, preprocess it for parsing
+      -- replace the "lemma" at the end position of the comment with "theorem"
+      textToParse := text.take commentEnd ++
+                     "theorem " ++
+                     textWithoutComments.drop "lemma ".length
+
+    let declInputCtx := mkInputContext textToParse "<input>"
+    let (_, declParserState, _) ← parseHeader declInputCtx
+    let (declStx, _, _) := parseCommand declInputCtx pmctx declParserState {}
+
+    -- Now identify the declaration type from the (possibly preprocessed) syntax
+    let declType := identifyDeclType declStx
+    let name := extractDeclName declStx
+
+    -- If we preprocessed it and it parsed as theorem, it's actually a lemma
+    let actualDeclType := if isLemma && declType == .theorem then .lemma else declType
+
+    let info : DeclInfo := {
+      declType := actualDeclType
+      name := name
+      startPos := realStart.byteIdx
+      endPos := endPos.byteIdx
+      text := textWithoutComments -- Store text after extracting docstring
+      docString := docString -- Store extracted docstring
+    }
+    decls := decls.push info
+
+  return decls
+
+/-- Parse a Lean 4 file and extract declaration information -/
+unsafe def parseFile (filepath : System.FilePath) : IO (Array DeclInfo) := do
+  let originalContent ← IO.FS.readFile filepath
+  let inputCtx := mkInputContext originalContent filepath.toString
+
+  -- Parse the header (using original content)
+  let (_, parserState, _) ← parseHeader inputCtx
+
+  -- Create a minimal parser context with empty environment
+  let env ← Lean.importModules #[] {} 0
+  let opts := {}
+  let pmctx : ParserModuleContext := {
+    env := env
+    options := opts
+  }
+
+  -- First pass: parse all commands and collect their positions
+  -- We parse the ORIGINAL content to find declaration boundaries
+  let mut commands : Array (String.Pos × Syntax) := #[]
+  let mut pstate := parserState
+  let mut done := false
+
+  while !done do
+    let startPos := pstate.pos
+    -- IO.println s!"Parsing at position: {pstate.pos}, kind will be: ..."
+
+    -- Try to parse a command from original content
+    let (stx, pstate', msgs) := parseCommand inputCtx pmctx pstate {}
+    pstate := pstate'
+
+    -- IO.println s!"  Got kind: {stx.getKind}"
+    -- IO.println s!"  New position: {pstate.pos}, atEnd: {inputCtx.atEnd pstate.pos}, messages: {msgs.toList.length}"
+
+    -- Store command with its start position
+    commands := commands.push (startPos, stx)
+
+    -- Check if we made progress or reached end
+    if pstate.pos == startPos || inputCtx.atEnd pstate.pos then
+      -- IO.println s!"  Stopping: pos unchanged={pstate.pos == startPos}, atEnd={inputCtx.atEnd pstate.pos}"
+      done := true
+
+  -- Second pass: extract and re-parse declarations
+  let mut decls : Array DeclInfo := #[]
+  for i in [:commands.size] do
+    let (parsePos, stx) := commands[i]!
+
+    -- Get position range for this command
+    let realStart := match stx.getRange? with
+      | some range => range.start
+      | none => parsePos
+    let endPos := if i + 1 < commands.size then
+      let (nextParsePos, nextStx) := commands[i + 1]!
+      let nextRealStart := match nextStx.getRange? with
+        | some range => range.start
+        | none => nextParsePos
+      ⟨nextRealStart.byteIdx - 1⟩
+    else
+      ⟨originalContent.endPos.byteIdx⟩
+
+    -- Extract text from ORIGINAL content
+    let text := originalContent.extract realStart endPos
+
+    -- Strip comments to check if this starts with "lemma"
+    let commentEnd := trimComment text
+    let docStringStr := (text.take commentEnd).trim
+    let mut docString := none
+    if !docStringStr.isEmpty then
+      docString := some docStringStr
+    let textWithoutComments := text.drop commentEnd
+    let isLemma := textWithoutComments.startsWith "lemma "
+
+    -- Print the docstring and the text without comments for debugging
+    -- IO.println s!"Docstring part:\n{docString}\n--- End of docstring ---"
+    -- IO.println s!"Text without comments:\n{textWithoutComments}\n--- End of text without comments ---"
+    -- -- print if it's identified as lemma
+    -- IO.println s!"Is lemma: {isLemma}"
+
+    let mut textToParse := text
+    if isLemma then
+    -- If it's a lemma, preprocess it for parsing
+      -- replace the "lemma" at the end position of the comment with "theorem"
+      textToParse := text.take commentEnd ++
+                     "theorem " ++
+                     textWithoutComments.drop "lemma ".length
+
+    let declInputCtx := mkInputContext textToParse filepath.toString
+    let (_, declParserState, _) ← parseHeader declInputCtx
+    let (declStx, _, _) := parseCommand declInputCtx pmctx declParserState {}
+
+    -- Now identify the declaration type from the (possibly preprocessed) syntax
+    let declType := identifyDeclType declStx
+    let name := extractDeclName declStx
+
+    -- If we preprocessed it and it parsed as theorem, it's actually a lemma
+    let actualDeclType := if isLemma && declType == .theorem then .lemma else declType
+
+    let info : DeclInfo := {
+      declType := actualDeclType
+      name := name
+      startPos := realStart.byteIdx
+      endPos := endPos.byteIdx
+      text := textWithoutComments -- Store text after extracting docstring
+      docString := docString -- Store extracted docstring
+    }
+    decls := decls.push info
+
+  return decls
+
+/-- Convert DeclInfo to JSON -/
+def declInfoToJson (info : DeclInfo) : Json :=
+  let baseFields := [
+    ("declType", Json.str (toString info.declType)),
+    ("name", Json.str info.name),
+    ("startPos", Json.num info.startPos),
+    ("endPos", Json.num info.endPos),
+    ("text", Json.str info.text)
+  ]
+  let withDocString := match info.docString with
+    | some doc => baseFields ++ [("docString", Json.str doc)]
+    | none => baseFields
+  Json.mkObj withDocString
+
+/-- Simple helper to print declaration info -/
+def printDeclInfo (info : DeclInfo) : IO Unit := do
+  IO.println s!"[{info.declType}] {info.name}"
+  IO.println s!"  Position: {info.startPos} - {info.endPos}"
+  let preview := if info.text.length > 100 then
+    info.text.take 50 ++ "\n ... more text ... \n" ++ info.text.drop (info.text.length - 50)
+  else
+    info.text
+  IO.println s!"  Text: {preview}"
+  IO.println ""
+
+/-- Export declarations to JSON file -/
+def exportToJson (decls : Array DeclInfo) (outputPath : System.FilePath) : IO Unit := do
+  let jsonArray := Json.arr (decls.map declInfoToJson)
+  let jsonStr := jsonArray.pretty
+  IO.FS.writeFile outputPath jsonStr
+  IO.println s!"Exported {decls.size} declaration(s) to {outputPath}"
+
+/-- Parse and print all declarations in a file -/
+unsafe def parseAndPrint (filepath : System.FilePath) : IO Unit := do
+  IO.println s!"Parsing file: {filepath}"
+  IO.println (String.mk (List.replicate 50 '='))
+
+  let decls ← parseFile filepath
+
+  if decls.isEmpty then
+    IO.println "No declarations found."
+  else
+    IO.println s!"Found {decls.size} declaration(s):"
+    IO.println ""
+    for decl in decls do
+      printDeclInfo decl
+
+/-- Parse file and export to both console and JSON -/
+unsafe def parseAndExport (filepath : System.FilePath) (jsonOutput : Option System.FilePath := none) : IO Unit := do
+  let decls ← parseFile filepath
+
+  -- Print to console
+  IO.println s!"Parsing file: {filepath}"
+  IO.println (String.mk (List.replicate 50 '='))
+
+  if decls.isEmpty then
+    IO.println "No declarations found."
+  else
+    IO.println s!"Found {decls.size} declaration(s):"
+    IO.println ""
+    for decl in decls do
+      printDeclInfo decl
+
+  -- Export to JSON if output path provided
+  match jsonOutput with
+  | some outPath => exportToJson decls outPath
+  | none => pure ()
+
+def test_str := "import Mathlib
+namespace Lean4Proj1
+
+def hello := \"world\"
+theorem test (p q : Prop) (hp : p) (hq : q)
+: p ∧ q ∧ p := by
+apply And.intro
+exact hp
+apply And.intro
+exact hq
+exact hp
+
+
+theorem test2 : p -> q -> p ∧ q ∧ p := fun hp hq => ⟨hp, ⟨hq, hp⟩⟩
+
+
+-- show a proof which uses calc
+theorem test_calc (n: Nat) : n^2 + 2*n + 1 = (n + 1)*(n + 1) := by
+calc
+    _ = n^2 + n*2 + 1 := by rw [Nat.mul_comm 2 n]
+    _ = n^2 + (n + n) + 1 := by rw [Nat.mul_two]
+    _ = n^2 + n + n + 1 := by rw [←Nat.add_assoc]
+    _ = n*n + n + n + 1 := by rw [Nat.pow_two]
+    _ = n*n + n*1 + n + 1 := by rw [Nat.mul_one n]
+    _ = n*(n + 1) + n + 1 := by rw [Nat.left_distrib n n 1]
+    _ = n*(n + 1) + (n + 1) := by rw [Nat.add_assoc]
+    _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_one (n + 1), Nat.mul_comm]
+    _ = (n + 1)*(n + 1) := by rw [Nat.right_distrib n 1 (n + 1)]
+done
+
+end Lean4Proj1
+
+namespace Lean4Proj2
+
+example : p -> q -> p ∧ q ∧ p := fun hp hq => ⟨hp, ⟨hq, hp⟩⟩
+
+theorem test (p q : Prop) (hp : p) (hq : q)
+: p ∧ q ∧ p := by
+apply And.intro
+exact hp
+apply And.intro
+exact hq
+exact hp
+done
+
+theorem test3 (p q : Prop) (hp : p) (hq : q)
+: p ∧ q ∧ p := by
+    apply And.intro
+    exact hp
+    apply And.intro
+    exact hq
+    exact hp
+
+theorem imo_1959_p1
+  (n : ℕ)
+  (h₀ : 0 < n) :
+  Nat.gcd (21*n + 4) (14*n + 3) = 1 := by
+rw [Nat.gcd_rec]
+rw [Nat.mod_eq_of_lt (by linarith)]
+rw [Nat.gcd_rec]
+rw [Nat.gcd_rec]
+have eq₂ : (21 * n + 4) % (14 * n + 3) = 7 * n + 1 := by
+    have eq₁ : 21 * n + 4 = (14 * n + 3) + (7 * n + 1) := by ring
+    rw [eq₁, Nat.add_mod, Nat.mod_self, zero_add]
+    have h₂ : 7 * n + 1 < 14 * n + 3 := by linarith
+    rw [Nat.mod_eq_of_lt]
+    rw [Nat.mod_eq_of_lt]
+    exact h₂
+    rw [Nat.mod_eq_of_lt]
+    exact h₂
+    exact h₂
+rw [eq₂]
+sorry
+
+
+end Lean4Proj2
+"
+
+#eval parseDecls test_str
+
+#eval (test_str.extract ⟨15⟩ ⟨37⟩)
+
+#eval (test_str.extract ⟨37⟩ ⟨58⟩)
+
+#eval (test_str.extract ⟨298⟩ ⟨914⟩)
+
+#eval get_position_from_char_pos test_str 57 -- expect line 4, column 20
+
+#eval get_position_from_char_pos test_str 299 -- line 18, column 1
+
+
+end TacticParser

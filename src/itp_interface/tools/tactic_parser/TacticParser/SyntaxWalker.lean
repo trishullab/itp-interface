@@ -127,7 +127,7 @@ partial def infoTreeToNode (input : String) (tree : InfoTree) : InfoTreeNode :=
       let text := tacInfo.stx.reprint.getD (toString tacInfo.stx) |>.trim
       let startPos := posToLineColumn input (tacInfo.stx.getPos?.getD 0)
       let endPos := posToLineColumn input (tacInfo.stx.getTailPos?.getD 0)
-      .tacticInfo text startPos endPos filteredChildren
+      InfoTreeNode.leanInfo text startPos endPos filteredChildren
     | _ => .other childNodes
   | .hole _ => .hole
 
@@ -137,9 +137,9 @@ partial def removeOtherAndHoles (node : InfoTreeNode) : Option InfoTreeNode :=
     match removeOtherAndHoles child with
     | some newChild => some (.context newChild)
     | none => none
-  | .tacticInfo text startPos endPos children =>
+  | InfoTreeNode.leanInfo text startPos endPos children =>
     let newChildren := children.map removeOtherAndHoles |>.filterMap id
-    some (.tacticInfo text startPos endPos newChildren)
+    some (InfoTreeNode.leanInfo text startPos endPos newChildren)
   | .other children =>
     let newChildren := children.map removeOtherAndHoles |>.filterMap id
     if newChildren.isEmpty then
@@ -154,14 +154,14 @@ partial def filterChildrenAtLevel (node : InfoTreeNode) (level : Nat) : Option I
     match filterChildrenAtLevel child level with
     | some newChild => some (.context newChild)
     | none => none
-  | .tacticInfo text startPos endPos children =>
+  | InfoTreeNode.leanInfo text startPos endPos children =>
     if level == 0 then
-      some (.tacticInfo text startPos endPos #[])
+      some (InfoTreeNode.leanInfo text startPos endPos #[])
     else
       let newChildren := children.map fun child =>
         filterChildrenAtLevel child (level - 1)
       let filteredChildren := newChildren.filterMap id
-      some (.tacticInfo text startPos endPos filteredChildren)
+      some (InfoTreeNode.leanInfo text startPos endPos filteredChildren)
   | .other children =>
     let newChildren := children.map fun child =>
       filterChildrenAtLevel child level

@@ -12,6 +12,7 @@ import json
 import os
 import subprocess
 import logging
+from enum import Enum
 from bisect import bisect_left
 from pydantic import BaseModel, field_validator
 from pathlib import Path
@@ -19,8 +20,8 @@ from typing import List, Dict, Optional
 
 class Position(BaseModel):
     """Represents a position in the source code."""
-    line: int
-    column: int
+    line: int # Line counting starts from 1
+    column: int # Column counting starts from 0
 
     @field_validator('line', 'column')
     def validate_non_negative(cls, v):
@@ -58,8 +59,8 @@ class TreeNode(BaseModel):
     def validate_type(cls, v):
         if not isinstance(v, str) or not v:
             raise ValueError("Type must be a non-empty string")
-        # the type must be `context`, `tacticInfo`, `other`, or `hole`
-        if v not in {'context', 'tacticInfo', 'other', 'hole'}:
+        # the type must be `context`, `leanInfo`, `other`, or `hole`
+        if v not in {'context', 'leanInfo', 'other', 'hole'}:
             raise ValueError(f"Invalid type: {v}")
         return v
     
@@ -92,7 +93,7 @@ class TreeNode(BaseModel):
         return (self.start_pos.is_contained_in(tree_node.start_pos, tree_node.end_pos) and
                 self.end_pos.is_contained_in(tree_node.start_pos, tree_node.end_pos))
 
-class TacticInfo:
+class LeanLineInfo:
     """Information about a single tactic."""
 
     def __init__(self, text: str, line: int, column: int, end_line: int, end_column: int):
@@ -103,7 +104,7 @@ class TacticInfo:
         self.end_column = end_column
 
     def __repr__(self) -> str:
-        return f"TacticInfo(text={self.text!r}, line={self.line}, column={self.column})"
+        return f"leanInfo(text={self.text!r}, line={self.line}, column={self.column})"
 
     def to_dict(self) -> Dict:
         return {
@@ -114,6 +115,10 @@ class TacticInfo:
             "endColumn": self.end_column
         }
 
+# Create an enum for parsing request type
+class RequestType(Enum):
+    PARSE_TACTICS = "parse_tactics"
+    PARSE_THEOREM = "parse_theorem"
 
 class TacticParser:
     """Parse tactics from Lean 4 code without compilation.
@@ -125,7 +130,7 @@ class TacticParser:
     and automatically find the project's .lake/build with all dependencies.
     """
 
-    def __init__(self, parser_path: Optional[str] = None, project_path: Optional[str] = None, file_path: Optional[str] = None, logger: Optional[logging.Logger] = None):
+    def __init__(self, parser_path: Optional[str] = None, project_path: Optional[str] = None, logger: Optional[logging.Logger] = None):
         """
         Initialize the tactic parser.
 
@@ -144,7 +149,6 @@ class TacticParser:
             self.parser_path = parser_path
 
         self.project_path = project_path
-        self.file_path = file_path
         self.logger = logger if logger else logging.getLogger(__name__)
         self.process: Optional[subprocess.Popen] = None
         self._start()
@@ -166,8 +170,6 @@ class TacticParser:
             abs_path = os.path.abspath(repl_path)
             path_to_repl_exec = os.path.join(abs_path, ".lake", "build", "bin", "tactic-parser")
             cmds = ["lake", "env", path_to_repl_exec]
-            if self.file_path:
-                cmds += [self.file_path]
             self.process = subprocess.Popen(
                 cmds,
                 stdin=subprocess.PIPE,
@@ -191,7 +193,7 @@ class TacticParser:
             self._start()
 
     def _add_overlapping_tactics(self, tactic_context: List[TreeNode], tree: TreeNode):
-        assert tree.type == "tacticInfo"
+        assert tree.type == "leanInfo"
         assert tree.start_pos is not None
         assert tree.end_pos is not None
         # Find the tactic context that overlaps with the given position
@@ -208,11 +210,9 @@ class TacticParser:
             tactic_context.insert(idx, tree)
 
 
-
-
     def _collect_tactics_from_tree(self, tree: TreeNode, tactic_context: list = []) -> List[TreeNode]:
-        """Recursively extract TacticInfo from the syntax tree."""
-        if tree.type == "tacticInfo" and tree.text and tree.start_pos and tree.end_pos:
+        """Recursively extract leanInfo from the syntax tree."""
+        if tree.type == "leanInfo" and tree.text and tree.start_pos and tree.end_pos:
             self._add_overlapping_tactics(tactic_context, tree)
 
         for child in tree.children:
@@ -221,7 +221,7 @@ class TacticParser:
         return tactic_context
 
 
-    def parse(self, lean_code: str, fail_on_error: bool = True) -> tuple[List[TacticInfo], Optional[str]]:
+    def parse(self, lean_code: str, fail_on_error: bool = True, parse_type: RequestType = RequestType.PARSE_TACTICS) -> tuple[List[LeanLineInfo], Optional[str]]:
         """
         Parse tactics from Lean 4 code.
 
@@ -229,7 +229,7 @@ class TacticParser:
             lean_code: Lean 4 source code as a string
 
         Returns:
-            List of TacticInfo objects
+            List of leanInfo objects
 
         Raises:
             RuntimeError: If parsing fails
@@ -241,8 +241,9 @@ class TacticParser:
 
         while retry_cnt > 0 and not succeeded:
             # Encode Lean code as base64
-            b64_input = base64.b64encode(lean_code.encode('utf-8')).decode('ascii')
-            self.logger.debug(f"Sending {len(lean_code)} bytes of Lean code")
+            final_code = parse_type.value + lean_code
+            b64_input = base64.b64encode(final_code.encode('utf-8')).decode('ascii')
+            self.logger.debug(f"Sending {len(final_code)} bytes of Lean code")
 
             # Send to parser
             try:
@@ -280,18 +281,21 @@ class TacticParser:
                 error_str = str(response['error'])
                 self.logger.debug(f"Parse error: {response['error']}")
 
-        # Convert tree to TacticInfo objects
+        # Convert tree to leanInfo objects
         trees = []
         tactics = []
         for t in response.get("trees", []):
             if t is not None:
                 tree = TreeNode.model_validate(t)
-                self._collect_tactics_from_tree(tree, trees)
+                if parse_type == RequestType.PARSE_TACTICS:
+                    self._collect_tactics_from_tree(tree, trees)
+                else:
+                    trees.append(tree)
         for t in trees:
             assert t.start_pos is not None
             assert t.end_pos is not None
             tactics.append(
-                TacticInfo(
+                LeanLineInfo(
                     text=t.text if t.text else "",
                     line=t.start_pos.line,
                     column=t.start_pos.column,
@@ -300,13 +304,15 @@ class TacticParser:
                 )
             )
         self.logger.debug(f"Parsed {len(tactics)} tactics")
-        # Remove the `by` tactic if present at the start
-        if len(tactics) > 0 and tactics[0].text.strip() == "by":
-            tactics = tactics[1:]
-            self.logger.debug("Removed leading 'by' tactic")
+
+        if parse_type == RequestType.PARSE_TACTICS:
+            # Remove the `by` tactic if present at the start
+            if len(tactics) > 0 and tactics[0].text.strip() == "by":
+                tactics = tactics[1:]
+                self.logger.debug("Removed leading 'by' tactic")
         return tactics, error_str
 
-    def parse_file(self, file_path: str) -> tuple[List[TacticInfo], str]:
+    def parse_file(self, file_path: str, parse_type: RequestType = RequestType.PARSE_THEOREM) -> tuple[List[LeanLineInfo], Optional[str]]:
         """
         Parse tactics from a Lean 4 file.
 
@@ -314,11 +320,11 @@ class TacticParser:
             file_path: Path to the Lean 4 file
 
         Returns:
-            List of TacticInfo objects
+            List of leanInfo objects
         """
         with open(file_path, 'r', encoding='utf-8') as f:
             lean_code = f.read()
-        return self.parse(lean_code)
+        return self.parse(lean_code, parse_type=parse_type)
 
     def close(self):
         """Close the parser process."""
@@ -342,9 +348,8 @@ class TacticParser:
     def __del__(self):
         self.close()
 
-
 # Example usage
-def print_tactics(tactics: List[TacticInfo]):
+def print_tactics(tactics: List[LeanLineInfo]):
     for tactic in tactics:
         print(f"Line {tactic.line}, Col {tactic.column} to Line {tactic.end_line}, Col {tactic.end_column}: {tactic.text}")
 
@@ -363,10 +368,8 @@ if __name__ == "__main__":
 
 
     project_path = str(Path(__file__).parent.parent.parent / "data" / "test" / "lean4_proj")
-    file_path = str(Path(__file__).parent.parent.parent / "data" / "test" / "lean4_proj" / "Lean4Proj"/ "Basic.lean")
-    file_path = None
 
-    with TacticParser(project_path=project_path, file_path=file_path) as parser:
+    with TacticParser(project_path=project_path) as parser:
         # Example 2: Multiline with params
         lean_code2 = "example (r: Nat) (p q : Prop) (hp : p) (hq : q) : p ∧ q := by\n  apply And.intro\n  exact hp\n  exact hq"
 
@@ -392,4 +395,13 @@ b = 5:= by
         print_tactics(tactics3)
         if error_str:
             print(f"Error: {error_str}")
+    
+    file_path = str(Path(__file__).parent.parent.parent / "data" / "test" / "lean4_proj" / "Lean4Proj" / "Basic.lean")
 
+    with TacticParser(project_path=project_path) as parser:
+        # Example 4: Parse from file
+        print("\nParsing example 4 (from file)...")
+        tactics4, error_str = parser.parse_file(file_path)
+        print_tactics(tactics4)
+        if error_str:
+            print(f"Error: {error_str}")
