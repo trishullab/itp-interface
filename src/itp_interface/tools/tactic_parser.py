@@ -50,6 +50,9 @@ class Position(BaseModel):
 class TreeNode(BaseModel):
     """Represents a node in the syntax tree."""
     type: str
+    decl_type: Optional[str] = None
+    name: Optional[str] = None
+    doc_string: Optional[str] = None
     text: Optional[str] = None
     start_pos: Optional[Position] = None
     end_pos: Optional[Position] = None
@@ -94,18 +97,24 @@ class TreeNode(BaseModel):
         return (self.start_pos.is_contained_in(tree_node.start_pos, tree_node.end_pos) and
                 self.end_pos.is_contained_in(tree_node.start_pos, tree_node.end_pos))
 
-class LeanLineInfo:
-    """Information about a single tactic."""
+class ErrorInfo(BaseModel):
+    """Represents an error in parsing."""
+    message: str
+    position: Position
 
-    def __init__(self, text: str, line: int, column: int, end_line: int, end_column: int):
-        self.text = text
-        self.line = line
-        self.column = column
-        self.end_line = end_line
-        self.end_column = end_column
+class LeanLineInfo(BaseModel):
+    """Information about a single tactic."""
+    text: str
+    line: int
+    column: int
+    end_line: int
+    end_column: int
+    decl_type: Optional[str] = None
+    name: Optional[str] = None
+    doc_string: Optional[str] = None
 
     def __repr__(self) -> str:
-        return f"leanInfo(text={self.text!r}, line={self.line}, column={self.column})"
+        return f"LeanLineInfo(text={self.text!r}, line={self.line}, column={self.column})"
 
     def to_dict(self) -> Dict:
         return {
@@ -120,7 +129,6 @@ class LeanLineInfo:
 class RequestType(Enum):
     PARSE_TACTICS = "parse_tactics"
     PARSE_THEOREM = "parse_theorem"
-
 
 def get_path_to_tactic_parser_project() -> str:
     """Get the path to the tactic parser project directory."""
@@ -309,7 +317,7 @@ class TacticParser:
         return tactic_context
 
 
-    def parse(self, lean_code: str, fail_on_error: bool = True, parse_type: RequestType = RequestType.PARSE_TACTICS) -> tuple[List[LeanLineInfo], Optional[str]]:
+    def parse(self, lean_code: str, fail_on_error: bool = True, parse_type: RequestType = RequestType.PARSE_TACTICS) -> tuple[List[LeanLineInfo], List[ErrorInfo]]:
         """
         Parse tactics from Lean 4 code.
 
@@ -332,6 +340,8 @@ class TacticParser:
             final_code = parse_type.value + lean_code
             b64_input = base64.b64encode(final_code.encode('utf-8')).decode('ascii')
             self.logger.debug(f"Sending {len(final_code)} bytes of Lean code")
+            self.logger.debug(f"Base64 encoded input length: {len(b64_input)}")
+            # self.logger.debug(f"Input (base64): {b64_input}")
 
             # Send to parser
             try:
@@ -361,16 +371,18 @@ class TacticParser:
             raise RuntimeError(f"Failed to parse JSON response: {e}\nOutput: {response_line}")
 
         # Check for errors
-        error_str = None
-        if response.get("error"):
+        errors : List[ErrorInfo] = []
+        if response.get("errors"):
             if fail_on_error:
-                raise RuntimeError(f"Parse error: {response['error']}")
+                raise RuntimeError(f"Parse error: {response['errors']}")
             else:
-                error_str = str(response['error'])
-                self.logger.debug(f"Parse error: {response['error']}")
+                for err in response["errors"]:
+                    error_info = ErrorInfo.model_validate(err)
+                    errors.append(error_info)
+                    self.logger.debug(f"Parse error: {error_info}")
 
         # Convert tree to leanInfo objects
-        trees = []
+        trees : list[TreeNode] = []
         tactics = []
         for t in response.get("trees", []):
             if t is not None:
@@ -388,19 +400,17 @@ class TacticParser:
                     line=t.start_pos.line,
                     column=t.start_pos.column,
                     end_line=t.end_pos.line,
-                    end_column=t.end_pos.column
+                    end_column=t.end_pos.column,
+                    decl_type=t.decl_type,
+                    name=t.name,
+                    doc_string=t.doc_string
                 )
             )
         self.logger.debug(f"Parsed {len(tactics)} tactics")
 
-        if parse_type == RequestType.PARSE_TACTICS:
-            # Remove the `by` tactic if present at the start
-            if len(tactics) > 0 and tactics[0].text.strip() == "by":
-                tactics = tactics[1:]
-                self.logger.debug("Removed leading 'by' tactic")
-        return tactics, error_str
+        return tactics, errors
 
-    def parse_file(self, file_path: str, parse_type: RequestType = RequestType.PARSE_THEOREM) -> tuple[List[LeanLineInfo], Optional[str]]:
+    def parse_file(self, file_path: str, parse_type: RequestType = RequestType.PARSE_THEOREM) -> tuple[List[LeanLineInfo], List[ErrorInfo]]:
         """
         Parse tactics from a Lean 4 file.
 
@@ -443,29 +453,29 @@ def print_tactics(tactics: List[LeanLineInfo]):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
+    project_path = str(Path(__file__).parent.parent.parent / "data" / "test" / "lean4_proj")
 
     with TacticParser() as parser:
         # Example 1: Simple proof
         lean_code = "example : True := by trivial"
 
         print("Parsing example 1...")
-        tactics, error_str = parser.parse(lean_code)
+        tactics, errors = parser.parse(lean_code)
         print_tactics(tactics)
-        if error_str:
-            print(f"Error: {error_str}")
+        if errors:
+            print(f"Error: {errors}")
 
 
-    project_path = str(Path(__file__).parent.parent.parent / "data" / "test" / "lean4_proj")
 
     with TacticParser(project_path=project_path) as parser:
         # Example 2: Multiline with params
         lean_code2 = "example (r: Nat) (p q : Prop) (hp : p) (hq : q) : p ∧ q := by\n  apply And.intro\n  exact hp\n  exact hq"
 
         print("\nParsing example 2...")
-        tactics2, error_str = parser.parse(lean_code2)
+        tactics2, errors = parser.parse(lean_code2)
         print_tactics(tactics2)
-        if error_str:
-            print(f"Error: {error_str}")
+        if errors:
+            print(f"Error: {errors}")
         
         # Check if linarith is parsed correctly
         lean_code3 = """
@@ -479,17 +489,44 @@ b = 5:= by
   linarith
 """
         print("\nParsing example 3...")
-        tactics3, error_str = parser.parse(lean_code3)
+        tactics3, errors = parser.parse(lean_code3)
         print_tactics(tactics3)
-        if error_str:
-            print(f"Error: {error_str}")
+        if errors:
+            print(f"Error: {errors}")
     
     file_path = str(Path(__file__).parent.parent.parent / "data" / "test" / "lean4_proj" / "Lean4Proj" / "Basic.lean")
 
     with TacticParser(project_path=project_path) as parser:
         # Example 4: Parse from file
         print("\nParsing example 4 (from file)...")
-        tactics4, error_str = parser.parse_file(file_path)
+        tactics4, errors = parser.parse_file(file_path)
         print_tactics(tactics4)
-        if error_str:
-            print(f"Error: {error_str}")
+        if errors:
+            print(f"Error: {errors}")
+
+    with TacticParser(project_path=project_path) as parser:
+        # Example 2: Multiline with params
+        lean_code4 = "example (r: ℕ) (p q : Prop) (hp : p) (hq : q) : p ∧ q := by grind"
+
+        print("\nParsing example 5...")
+        tactics5, errors = parser.parse(lean_code4)
+        print_tactics(tactics5)
+        if errors:
+            print(f"Error: {errors}")
+    
+    with TacticParser(project_path=project_path) as parser:
+        # Example 6: Parse tactics from file with multiple theorems
+        print("\nParsing example 6 (theorem parsing from file)...")
+        tactics6, errors = parser.parse(lean_code3 + "\n" + lean_code4, parse_type=RequestType.PARSE_TACTICS)
+        print_tactics(tactics6)
+        if errors:
+            print(f"Error: {errors}")
+        
+    with TacticParser(project_path=project_path) as parser:
+        # Example 7: Parse tactics which are wrong
+        print("\nParsing example 7 (theorem declaration parsing from file)...")
+        lean_code5 = "theorem wrong_decl : Nat := by assdfadfs"
+        tactics7, errors = parser.parse(lean_code5, fail_on_error=False)
+        print_tactics(tactics7)
+        if errors:
+            print(f"Error: {errors}")

@@ -6,45 +6,6 @@ namespace TacticParser
 open Lean
 open Lean.Parser
 
-/-- Represents different types of Lean declarations -/
-inductive DeclType where
-  | inductive
-  | theorem
-  | def
-  | axiom
-  | structure
-  | class_decl
-  | instance
-  | other
-  | example
-  | lemma
-  | unknown
-  deriving Repr, BEq
-
-instance : ToString DeclType where
-  toString
-    | .inductive => "inductive"
-    | .theorem => "theorem"
-    | .def => "def"
-    | .axiom => "axiom"
-    | .structure => "structure"
-    | .class_decl => "class"
-    | .instance => "instance"
-    | .other => "other"
-    | .example => "example"
-    | .lemma => "lemma"  -- lemma is treated as theorem
-    | .unknown => "unknown"
-
-/-- Information extracted from a declaration -/
-structure DeclInfo where
-  declType : DeclType
-  name : String
-  startPos : Nat
-  endPos : Nat
-  text : String
-  docString : Option String  -- Extracted documentation comment
-  deriving Repr
-
 /-- Identify the type of declaration from syntax -/
 unsafe def identifyDeclType (stx : Syntax) : DeclType :=
   let kind := stx.getKind

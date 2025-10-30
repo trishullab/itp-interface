@@ -127,7 +127,7 @@ partial def infoTreeToNode (input : String) (tree : InfoTree) : InfoTreeNode :=
       let text := tacInfo.stx.reprint.getD (toString tacInfo.stx) |>.trim
       let startPos := posToLineColumn input (tacInfo.stx.getPos?.getD 0)
       let endPos := posToLineColumn input (tacInfo.stx.getTailPos?.getD 0)
-      InfoTreeNode.leanInfo text startPos endPos filteredChildren
+      InfoTreeNode.leanInfo DeclType.tactic none none text startPos endPos filteredChildren
     | _ => .other childNodes
   | .hole _ => .hole
 
@@ -137,9 +137,9 @@ partial def removeOtherAndHoles (node : InfoTreeNode) : Option InfoTreeNode :=
     match removeOtherAndHoles child with
     | some newChild => some (.context newChild)
     | none => none
-  | InfoTreeNode.leanInfo text startPos endPos children =>
+  | InfoTreeNode.leanInfo decType name docString text startPos endPos children =>
     let newChildren := children.map removeOtherAndHoles |>.filterMap id
-    some (InfoTreeNode.leanInfo text startPos endPos newChildren)
+    some (InfoTreeNode.leanInfo decType name docString text startPos endPos newChildren)
   | .other children =>
     let newChildren := children.map removeOtherAndHoles |>.filterMap id
     if newChildren.isEmpty then
@@ -154,14 +154,14 @@ partial def filterChildrenAtLevel (node : InfoTreeNode) (level : Nat) : Option I
     match filterChildrenAtLevel child level with
     | some newChild => some (.context newChild)
     | none => none
-  | InfoTreeNode.leanInfo text startPos endPos children =>
+  | InfoTreeNode.leanInfo decType name docString text startPos endPos children =>
     if level == 0 then
-      some (InfoTreeNode.leanInfo text startPos endPos #[])
+      some (InfoTreeNode.leanInfo decType name docString text startPos endPos #[])
     else
       let newChildren := children.map fun child =>
         filterChildrenAtLevel child (level - 1)
       let filteredChildren := newChildren.filterMap id
-      some (InfoTreeNode.leanInfo text startPos endPos filteredChildren)
+      some (InfoTreeNode.leanInfo decType name docString text startPos endPos filteredChildren)
   | .other children =>
     let newChildren := children.map fun child =>
       filterChildrenAtLevel child level
@@ -179,16 +179,19 @@ unsafe def parseInCurrentContext (input : String) (filePath : Option String := n
     let (initialCmdState, cmdState, messages, trees) ← try
       IO.processInput input none Options.empty filePath
     catch e =>
-      return { trees := #[], error := some e.toString }
+      let errorInfo := ErrorInfo.mk (s!"Error during processing input: {e}") { line := 0, column := 0 }
+      return { trees := #[], errors := #[errorInfo] }
 
 
-    let mut error : Option String := none
     -- Print any messages
     -- IO.println "\n=== Elaboration Messages ==="
-
+    let mut errorInfos : Array ErrorInfo := #[]
     for msg in messages do
       if msg.severity == .error then
-        error := some (← msg.data.toString)
+        let msgPos := Position.mk msg.pos.line msg.pos.column
+        let errorInfo := ErrorInfo.mk (← msg.data.toString) msgPos
+        errorInfos := errorInfos.push errorInfo
+        -- IO.println s!"[ERROR] {← msg.data.toString} {msg.pos}"
 
     --   IO.println s!"[{severity}] {← msg.data.toString}"
     -- IO.println "=== End Messages ===\n"
@@ -203,17 +206,15 @@ unsafe def parseInCurrentContext (input : String) (filePath : Option String := n
     --   IO.println s!"[{severity}] {← msg.data.toString}"
     -- IO.println "=== End cmdState Messages ===\n"
 
-
     let level := 4 -- Only keep direct children of tactics
     let transformed_trees := trees.map (fun t =>
       let ans := removeOtherAndHoles (infoTreeToNode input t)
       let ans_d := ans.getD (.other #[])
       filterChildrenAtLevel ans_d level)
-    return { trees := transformed_trees, error := error }
-
-    -- return { tree := treeNode, error := none }
+    return { trees := transformed_trees, errors := errorInfos }
   catch e =>
-    return { trees := #[], error := some s!"Error in parseInCurrentContext: {e}" }
+    let errorInfo := ErrorInfo.mk (s!"Error in parseInCurrentContext: {e}") { line := 0, column := 0 }
+    return { trees := #[], errors := #[errorInfo] }
 
 /-- Parse Lean code WITH elaboration to get InfoTrees (lightweight, no compilation!)
 
@@ -227,7 +228,8 @@ unsafe def parseTacticsWithElaboration (input : String) (filePath : Option Strin
     Lean.enableInitializersExecution
     return ← parseInCurrentContext input filePath
   catch e =>
-    return { trees := #[], error := some s!"Error in parseTacticsWithElaboration: {e}" }
+    let errorInfo := ErrorInfo.mk (s!"Error in parseTacticsWithElaboration: {e}") { line := 0, column := 0 }
+    return { trees := #[], errors := #[errorInfo] }
 
 /-- Parse Lean code and extract all tactics (uses elaboration-based approach) -/
 @[implemented_by parseTacticsWithElaboration]
@@ -242,7 +244,8 @@ have h1 : p ∧ q := by
     sorry
 apply And.intro
 exact hq
-exact hp"
+exact hp
+"
 
 def more_complex_example := "theorem test3 (p q : Prop) (hp : p) (hq : q)
 : p ∧ q ∧ p := by
@@ -262,13 +265,26 @@ apply And.intro
 exact hp
 apply And.intro
 exact hq
-exact hp
+
 "
 
-#eval parseTacticsWithElaboration simple_example
+def wrong_tactic_example := "theorem test_wrong (p q : Prop) (hp : p) (hq : q)
+: p ∧ q ∧ p := by
+applly And.intro
+exact hp
+apply And.intro
+"
 
-#eval parseTacticsWithElaboration more_complex_example
+def wrong_tactic_example2 := "theorem wrong_decl : Nat := by assdfadfs"
 
-#eval parseTacticsWithElaboration import_example
+#eval parseTactics simple_example
+
+#eval parseTactics more_complex_example
+
+#eval parseTactics import_example
+
+#eval parseTactics wrong_tactic_example
+
+#eval parseTactics wrong_tactic_example2
 
 end TacticParser

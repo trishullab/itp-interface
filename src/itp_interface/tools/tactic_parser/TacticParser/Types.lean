@@ -7,6 +7,47 @@ namespace TacticParser
 
 open Lean
 
+/-- Represents different types of Lean declarations -/
+inductive DeclType where
+  | inductive
+  | theorem
+  | def
+  | axiom
+  | structure
+  | class_decl
+  | instance
+  | other
+  | example
+  | lemma
+  | unknown
+  | tactic
+  deriving Repr, BEq
+
+instance : ToString DeclType where
+  toString
+    | .inductive => "inductive"
+    | .theorem => "theorem"
+    | .def => "def"
+    | .axiom => "axiom"
+    | .structure => "structure"
+    | .class_decl => "class"
+    | .instance => "instance"
+    | .other => "other"
+    | .example => "example"
+    | .lemma => "lemma"  -- lemma is treated as theorem
+    | .unknown => "unknown"
+    | .tactic => "tactic"
+
+/-- Information extracted from a declaration -/
+structure DeclInfo where
+  declType : DeclType
+  name : String
+  startPos : Nat
+  endPos : Nat
+  text : String
+  docString : Option String  -- Extracted documentation comment
+  deriving Repr
+
 /-- Position information for a tactic -/
 structure Position where
   line : Nat
@@ -28,7 +69,14 @@ instance : FromJson Position where
 /-- InfoTree node representation -/
 inductive InfoTreeNode where
   | context : InfoTreeNode → InfoTreeNode
-  | leanInfo : String → Position → Position → Array InfoTreeNode → InfoTreeNode
+  | leanInfo
+    (declType: DeclType)
+    (name: Option String)
+    (docString: Option String)
+    (text: String)
+    (startPos: Position)
+    (endPos: Position)
+    (children: Array InfoTreeNode) : InfoTreeNode
   | other : Array InfoTreeNode → InfoTreeNode
   | hole : InfoTreeNode
   deriving Inhabited, Repr
@@ -39,9 +87,12 @@ partial def InfoTreeNode.toJson : InfoTreeNode → Json
       ("type", "context"),
       ("children", child.toJson)
     ]
-  | leanInfo text startPos endPos children =>
+  | leanInfo declType name docString text startPos endPos children =>
     Json.mkObj [
       ("type", "leanInfo"),
+      ("decl_type", ToString.toString declType),
+      ("name", Lean.ToJson.toJson name),
+      ("doc_string", Lean.ToJson.toJson docString),
       ("text", Lean.ToJson.toJson text),
       ("start_pos", Lean.ToJson.toJson startPos),
       ("end_pos", Lean.ToJson.toJson endPos),
@@ -58,16 +109,27 @@ partial def InfoTreeNode.toJson : InfoTreeNode → Json
 instance : ToJson InfoTreeNode where
   toJson := InfoTreeNode.toJson
 
+structure ErrorInfo where
+  message : String
+  position : Position
+  deriving Inhabited, Repr
+
+instance : ToJson ErrorInfo where
+  toJson e := Json.mkObj [
+    ("message", toJson e.message),
+    ("position", toJson e.position)
+  ]
+
 /-- Result of parsing tactics from Lean code -/
 structure ParseResult where
   trees : Array (Option InfoTreeNode) := #[]
-  error : Option String := none
+  errors : Array ErrorInfo := #[]
   deriving Inhabited, Repr
 
 instance : ToJson ParseResult where
   toJson r := Json.mkObj [
     ("trees", toJson r.trees),
-    ("error", toJson r.error)
+    ("errors", toJson r.errors)
   ]
 
 def get_position_from_char_pos (content : String) (charPos : Nat) : Position :=

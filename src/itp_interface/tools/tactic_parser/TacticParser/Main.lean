@@ -22,6 +22,11 @@ inductive ParseRequestType
   | parseTheorem
 deriving Inhabited, Repr, BEq
 
+instance : ToString ParseRequestType where
+  toString
+    | .parseTactics => "parse_tactics"
+    | .parseTheorem => "parse_theorem"
+
 -- define the representation of ParseRequestType
 def parse_request_names := [
   "parse_tactics",
@@ -69,7 +74,6 @@ theorem test1 (p q : Prop) (hp : p) (hq : q) : p ∧ q := by
 "
 #eval (FromStr.fromStr some_lean_code : Option UserParseRequest)
 
-
 /-- Process a single request and output JSON -/
 unsafe def processRequest (b64Input : String) : IO Unit := do
   try
@@ -78,7 +82,8 @@ unsafe def processRequest (b64Input : String) : IO Unit := do
       | .ok correct_parse_request => pure correct_parse_request
       | .error msg =>
         -- Output error as JSON
-        let result : ParseResult := { trees := #[], error := some s!"Base64 decode error: {msg}" }
+        let errorInfo := ErrorInfo.mk (s!"Base64 decode error: {msg}") { line := 0, column := 0 }
+        let result : ParseResult := { trees := #[], errors := #[errorInfo] }
         IO.println (toJson result).compress
         return
 
@@ -86,13 +91,14 @@ unsafe def processRequest (b64Input : String) : IO Unit := do
 
     if user_parse_request.isNone then
       -- Output error as JSON
-      let result : ParseResult := { trees := #[], error := some s!"Invalid parse request format." }
+      let errorInfo := ErrorInfo.mk (s!"Invalid parse request format.") { line := 0, column := 0 }
+      let result : ParseResult := { trees := #[], errors := #[errorInfo] }
       IO.println (toJson result).compress
       return
 
     let parse_request := user_parse_request.get!
 
-    let mut result : ParseResult := { trees := #[], error := none }
+    let mut result : ParseResult := { trees := #[], errors := #[] }
     if parse_request.requestType == ParseRequestType.parseTactics then
       -- Parse tactics from Lean code
       result ← parseTactics parse_request.content
@@ -103,16 +109,17 @@ unsafe def processRequest (b64Input : String) : IO Unit := do
       for decl in temp_result do
         let start_pos ← pure (get_position_from_char_pos parse_request.content decl.startPos)
         let end_pos ← pure (get_position_from_char_pos parse_request.content decl.endPos)
-        let info_tree: InfoTreeNode ← pure (InfoTreeNode.leanInfo decl.text start_pos end_pos #[])
+        let info_tree: InfoTreeNode ← pure (InfoTreeNode.leanInfo decl.declType decl.name decl.docString decl.text start_pos end_pos #[])
         tree_list := tree_list.push (some info_tree)
-      result := { trees := tree_list, error := none }
+      result := { trees := tree_list, errors := #[] }
 
     -- Output result as JSON
     IO.println (toJson result).compress
 
   catch e =>
     -- Output error as JSON
-    let result : ParseResult := { trees := #[], error := some s!"Unexpected error: {e}" }
+    let errorInfo := ErrorInfo.mk (s!"Unexpected error: {e}") { line := 0, column := 0 }
+    let result : ParseResult := { trees := #[], errors := #[errorInfo] }
     IO.println (toJson result).compress
 
 /-- Loop to process requests -/
