@@ -7,26 +7,31 @@ open Lean
 open Lean.Parser
 
 /-- Identify the type of declaration from syntax -/
-unsafe def identifyDeclType (stx : Syntax) : DeclType :=
+partial def identifySomeDeclType (stx : Syntax) : Option DeclType :=
   let kind := stx.getKind
   -- Check if this is a declaration wrapper, if so, look inside
   if kind == `Lean.Parser.Command.declaration then
     match stx with
     | Syntax.node _ _ args =>
       -- Look for the actual declaration type in the children
-      if args.isEmpty then .unknown else
-      identifyDeclType args[0]!
-    | _ => .unknown
-  else if kind == `Lean.Parser.Command.inductive then .inductive
-  else if kind == `Lean.Parser.Command.theorem then .theorem
-  else if kind == `Lean.Parser.Command.definition then .def
-  else if kind == `Lean.Parser.Command.axiom then .axiom
-  else if kind == `Lean.Parser.Command.structure then .structure
-  else if kind == `Lean.Parser.Command.classDecl then .class_decl
-  else if kind == `Lean.Parser.Command.instance then .instance
-  else if kind == `Lean.Parser.Command.example then .example
-  else if kind == `Lean.Parser.Command.otherDecl then .other
-  else .unknown
+      args.findSome? identifySomeDeclType
+    | _ => none
+  else if kind == `Lean.Parser.Command.inductive then some .inductive
+  else if kind == `Lean.Parser.Command.theorem then some .theorem
+  else if kind == `Lean.Parser.Command.definition then some .def
+  else if kind == `Lean.Parser.Command.axiom then some .axiom
+  else if kind == `Lean.Parser.Command.structure then some .structure
+  else if kind == `Lean.Parser.Command.classDecl then some .class_decl
+  else if kind == `Lean.Parser.Command.instance then some .instance
+  else if kind == `Lean.Parser.Command.example then some .example
+  else if kind == `Lean.Parser.Command.otherDecl then some .other
+  else none
+
+/-- Identify the type of declaration from syntax -/
+unsafe def identifyDeclType (stx : Syntax) : DeclType :=
+  match identifySomeDeclType stx with
+  | some dt => dt
+  | none => .unknown
 
 /-- Extract the name of the declaration from syntax tree -/
 partial def extractDeclName (stx : Syntax) : String :=

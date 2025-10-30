@@ -305,7 +305,6 @@ class TacticParser:
         else:
             tactic_context.insert(idx, tree)
 
-
     def _collect_tactics_from_tree(self, tree: TreeNode, tactic_context: list = []) -> List[TreeNode]:
         """Recursively extract leanInfo from the syntax tree."""
         if tree.type == "leanInfo" and tree.text and tree.start_pos and tree.end_pos:
@@ -315,7 +314,6 @@ class TacticParser:
             self._collect_tactics_from_tree(child, tactic_context)
 
         return tactic_context
-
 
     def parse(self, lean_code: str, fail_on_error: bool = True, parse_type: RequestType = RequestType.PARSE_TACTICS) -> tuple[List[LeanLineInfo], List[ErrorInfo]]:
         """
@@ -528,5 +526,14 @@ b = 5:= by
         lean_code5 = "theorem wrong_decl : Nat := by assdfadfs"
         tactics7, errors = parser.parse(lean_code5, fail_on_error=False)
         print_tactics(tactics7)
+        if errors:
+            print(f"Error: {errors}")
+    
+    with TacticParser(project_path=project_path) as parser:
+        # Example 8: Parse tactics just before `by`
+        print("\nParsing example 8 (theorem with just before `by`...)")
+        lean_code8 = "theorem temp: 1 + 2 = 3 :=\nby\ndone\ndone"
+        tactics8, errors = parser.parse(lean_code8, fail_on_error=False)
+        print_tactics(tactics8)
         if errors:
             print(f"Error: {errors}")
