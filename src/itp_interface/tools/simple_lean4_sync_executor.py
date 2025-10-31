@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import sys
 import os
 import random
 import logging
@@ -133,6 +132,7 @@ class SimpleLean4SyncExecutor:
         self._import_end_idx: Optional[int] = None
         self._theorem_started = False
         self._content_till_last_theorem_stmt: str|None = None
+        self._content_till_after_theorem_stmt: str|None = None
         self._last_theorem = None
         self._anon_theorem_count = 0
         self._last_tactics : dict[int, str] = {}
@@ -219,11 +219,11 @@ class SimpleLean4SyncExecutor:
             self._last_tactic_line_idx = idx
 
     def _get_lean_code_with_tactics(self, idx: int, stmt: str):
+        assert self._last_theorem is not None, "Last theorem should not be None"
         self._add_last_tactic(idx, stmt)
         temp_tactics_so_far = [(k, v) for k, v in self._last_tactics.items()]
         temp_tactics_so_far = sorted(temp_tactics_so_far, key=lambda x: x[0])
         tactics_so_far = [v for _, v in temp_tactics_so_far]
-        assert self._content_till_last_theorem_stmt is not None, "Content till last theorem statement should not be None"
         assert len(tactics_so_far) > 0, "There should be at least one tactic so far"
         last_tactic = tactics_so_far[-1]
         # Caclulate the space padding for the last tactic
@@ -235,7 +235,8 @@ class SimpleLean4SyncExecutor:
             else:
                 break
         done = f"{''.join(space_tokens)}done"
-        return self._content_till_last_theorem_stmt + "\n".join(tactics_so_far) + "\n" + done
+        _ , _, theorem_stmt = self._last_theorem
+        return theorem_stmt + "\n".join(tactics_so_far) + "\n" + done
 
     def _backtrack_tactic_line(self, idx: int):
         # identify the keys to remove
@@ -344,6 +345,7 @@ class SimpleLean4SyncExecutor:
 
     def _run_stmt_on_lean_server(self, idx : int, stmt: str, theorem_started: bool = False):
         assert self.tactic_parser is not None, "Tactic parser is not initialized"
+        assert self._content_till_last_theorem_stmt is not None, "Content till last theorem statement should not be None"
         if "sorry" in stmt and self._proof_running:
             # We don't need to run the sorry statements. This should be treated as a failed proof step
             self.lean_error_messages = ["The tactic 'sorry' was found in the statement, this is not allowed"]
@@ -366,6 +368,13 @@ class SimpleLean4SyncExecutor:
             return
 
         proof_should_run = False
+        if theorem_started:
+            # Load the theorem context at once
+            self.tactic_parser.parse(
+                self._content_till_last_theorem_stmt,
+                fail_on_error=True,
+                parse_type=RequestType.CHKPT_TACTICS
+            )
         if theorem_started or not self._proof_running:
             proof_should_run = self._theorem_started
             self._theorem_started_init()
@@ -409,18 +418,17 @@ class SimpleLean4SyncExecutor:
         for thm in theorems:
             name = thm.name
             assert name is not None, "Theorem name should not be None"
-            if given_theorem_name in name:
-                # Get the full namespace
-                line_num = thm.line
-                text_till_line = "\n".join(lines[:line_num])
-                namespaces = []
-                process_namespaces(text_till_line, namespaces)
-                last_namespace = ".".join(namespaces) if len(namespaces) > 0 else ""
-                if len(thm_namespace) == 0 or thm_namespace == last_namespace:
-                    if given_theorem_name == name:
-                        # Found the theorem
-                        found_theorem = True
-                        break
+            actual_name = parse_theorem_name(thm.text)
+            assert actual_name is not None, "Parsed theorem name should not be None"
+            if actual_name != name:
+                name = actual_name
+            if given_theorem_name == name:
+                actual_namespace = thm.namespace if thm.namespace is not None else ""
+                if actual_namespace == thm_namespace:
+                    # Found the theorem
+                    found_theorem = True
+                    line_num = thm.line
+                    break
         if not found_theorem:
             raise ValueError(f"The theorem '{theorem}' was not found in the file '{self.main_file}'")
         assert line_num > 0, "Theorem line number should be greater than 0"
@@ -442,10 +450,12 @@ class SimpleLean4SyncExecutor:
         tactic_start_line = start_tactic.line
         tactic_start_col = start_tactic.column
         assert tactic_start_line > 0, "Tactic start line should be greater than 0"
-        content_until_before_theorem = "\n".join(lines[:tactic_start_line - 1] + [lines[tactic_start_line - 1][:tactic_start_col]])
+        content_until_after_theorem = "\n".join(lines[:tactic_start_line - 1] + [lines[tactic_start_line - 1][:tactic_start_col]])
+        self._content_till_after_theorem_stmt = content_until_after_theorem
+        self._content_till_after_theorem_stmt = self._content_till_after_theorem_stmt.strip()
+        assert self._content_till_after_theorem_stmt.endswith(':='), "Content till last theorem statement should end with ':='"
+        content_until_before_theorem = "\n".join(lines[:line_num - 1])
         self._content_till_last_theorem_stmt = content_until_before_theorem
-        self._content_till_last_theorem_stmt = self._content_till_last_theorem_stmt.strip()
-        assert self._content_till_last_theorem_stmt.endswith(':='), "Content till last theorem statement should end with ':='"
         theorem_stmt = "\n".join(lines[line_num - 1:tactic_start_line - 1] + [lines[tactic_start_line - 1][:tactic_start_col]])
         theorem_stmt = theorem_stmt.strip()
         self._last_theorem = (given_theorem_name, theorem_stmt, theorem_stmt)
@@ -710,6 +720,13 @@ def process_namespaces(file_cotent: str, open_namespaces: List[str], is_full_con
                 open_namespaces.remove(ns)
             except ValueError:
                 pass
+
+def parse_theorem_name(thm_stmt: str) -> Optional[str]:
+    match = SimpleLean4SyncExecutor.theorem_name_match.search(thm_stmt)
+    if match:
+        theorem_name = match.group(4)
+        return theorem_name
+    return None
 
 def get_all_theorems_in_file(file_path: str, use_cache: bool=False) -> List[TheoremDetails]:
     if use_cache and file_path in theorem_names_in_file_cache:
