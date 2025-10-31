@@ -20,9 +20,7 @@ from typing import List, Optional, Tuple, OrderedDict, Dict
 
 class SimpleLean4SyncExecutor:
     theorem_regex = r"((((theorem|lemma)[\s]+([^\s:]*))|example)([\S|\s]*?)(:=|=>)[\s]*?)[\s]+"
-    theorem_name_regex = r"(((theorem|lemma)[\s]+([^\s:]*))|example)"
     theorem_match = re.compile(theorem_regex, re.MULTILINE)
-    theorem_name_match = re.compile(theorem_name_regex, re.MULTILINE)
     unsolved_message = "unsolved goals"
     no_goals = "No goals to be solved"
     def __init__(self, 
@@ -418,10 +416,6 @@ class SimpleLean4SyncExecutor:
         for thm in theorems:
             name = thm.name
             assert name is not None, "Theorem name should not be None"
-            actual_name = parse_theorem_name(thm.text)
-            assert actual_name is not None, "Parsed theorem name should not be None"
-            if actual_name != name:
-                name = actual_name
             if given_theorem_name == name:
                 actual_namespace = thm.namespace if thm.namespace is not None else ""
                 if actual_namespace == thm_namespace:
@@ -720,13 +714,6 @@ def process_namespaces(file_cotent: str, open_namespaces: List[str], is_full_con
                 open_namespaces.remove(ns)
             except ValueError:
                 pass
-
-def parse_theorem_name(thm_stmt: str) -> Optional[str]:
-    match = SimpleLean4SyncExecutor.theorem_name_match.search(thm_stmt)
-    if match:
-        theorem_name = match.group(4)
-        return theorem_name
-    return None
 
 def get_all_theorems_in_file(file_path: str, use_cache: bool=False) -> List[TheoremDetails]:
     if use_cache and file_path in theorem_names_in_file_cache:

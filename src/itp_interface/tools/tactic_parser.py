@@ -219,6 +219,21 @@ def build_lean4_project(project_folder, logger: Optional[logging.Logger] = None)
         logging.error("Build FAILED!")
         raise Exception(f"Build failed with code {exit_code}")
 
+def build_tactic_parser_if_needed(logger: Optional[logging.Logger] = None):
+    """Build the tactic parser if not already built."""
+    if not is_tactic_parser_built():
+        build_lean4_project(get_path_to_tactic_parser_project(), logger)
+
+theorem_name_regex = r"(((theorem|lemma)[\s]+([^\s:]*))|example)"
+theorem_name_match = re.compile(theorem_name_regex, re.MULTILINE)
+
+def parse_theorem_name(thm_stmt: str) -> Optional[str]:
+    match = theorem_name_match.search(thm_stmt)
+    if match:
+        theorem_name = match.group(4)
+        return theorem_name
+    return None
+
 class TacticParser:
     """Parse tactics from Lean 4 code without compilation.
 
@@ -252,11 +267,6 @@ class TacticParser:
         self.process: Optional[subprocess.Popen] = None
         self._start()
 
-    def _build_if_needed(self):
-        """Build the tactic parser if not already built."""
-        if not is_tactic_parser_built():
-            build_lean4_project(get_path_to_tactic_parser_project(), self.logger)
-
     def _start(self):
         """Start the tactic parser process."""
         try:
@@ -270,7 +280,7 @@ class TacticParser:
                 working_dir = Path(self.parser_path).parent.parent.parent
                 self.logger.debug(f"Starting parser in standalone mode from: {working_dir}")
             # Ensure the parser is built
-            self._build_if_needed()
+            build_tactic_parser_if_needed(self.logger)
             path_to_tactic_parser_exec = get_path_to_tactic_parser_executable()
             assert os.path.isfile(path_to_tactic_parser_exec), f"Tactic parser executable not found at {path_to_tactic_parser_exec}, please build it first."
             cmds = ["lake", "env", path_to_tactic_parser_exec]
@@ -403,6 +413,12 @@ class TacticParser:
         for t in trees:
             assert t.start_pos is not None
             assert t.end_pos is not None
+            if t.decl_type is not None and (t.decl_type == "theorem" or t.decl_type == "lemma"):
+                # TODO: Fix the incorrect theorem/lemma name parsing from the underlying lean tool
+                actual_name = parse_theorem_name(t.text if t.text else "")
+                assert actual_name is not None, "Theorem/lemma name should not be None"
+                if t.name != actual_name:
+                    t.name = actual_name
             tactics.append(
                 LeanLineInfo(
                     text=t.text if t.text else "",
