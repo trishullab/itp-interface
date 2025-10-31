@@ -16,7 +16,8 @@ from itp_interface.lean_server.lean4_utils import Lean4Utils
 from itp_interface.tools.lean_parse_utils import LeanLineByLineReader
 from itp_interface.tools.theorem_details import TheoremDetails
 from itp_interface.tools.misc_defns import HammerMode
-from typing import Iterator, List, Optional, Tuple, OrderedDict, Dict
+from itp_interface.tools.iter_helpers import ClonableIterator
+from typing import List, Optional, Tuple, OrderedDict, Dict
 
 class SimpleLean4SyncExecutor:
     theorem_regex = r"((((theorem|lemma)[\s]+([^\s:]*))|example)([\S|\s]*?)(:=|=>)[\s]*?)[\s]+"
@@ -32,13 +33,13 @@ class SimpleLean4SyncExecutor:
         use_hammer: typing.Union[bool, HammerMode] = False, 
         timeout_in_sec: int = 60, 
         use_human_readable_proof_context: bool = True, 
-        proof_step_iter: Optional[Iterator[str]] = None, 
+        proof_step_iter: Optional[ClonableIterator] = None, 
         suppress_error_log: bool = False,  
         enable_search: bool = False,
         keep_local_context: bool = False,
         enforce_qed: bool = False,
         logger: Optional[logging.Logger] = None):
-        assert proof_step_iter is None or isinstance(proof_step_iter, Iterator), \
+        assert proof_step_iter is None or isinstance(proof_step_iter, ClonableIterator), \
             "proof_step_iter must be an iterator"
         assert main_file is not None or proof_step_iter is not None, \
             "Either main_file or proof_step_iter must be provided"
@@ -90,14 +91,12 @@ class SimpleLean4SyncExecutor:
         self._anon_theorem_count = 0
         self._debug_traces = []
         self.debug_enabled = False
-        self._last_tactics = {}
+        self._last_tactics : dict[int, str] = {}
         self.possible_proof_tactics = ""
         self._last_tactic_line_idx = None
         self._error_messages_so_far = set()
         self._error_messages_since_last_thm = {}
         self._run_exactly = False
-        self._lines_not_executed = []
-        self._extra_added: str | None = None
         if self._enable_search:
             pass
         pass
@@ -112,9 +111,9 @@ class SimpleLean4SyncExecutor:
         return self._run_exactly
 
     def reset(self,
-        proof_step_iter: Optional[Iterator[str]] = None):
+        proof_step_iter: Optional[ClonableIterator] = None):
         # Note: We CANNOT reset the main_file_iter as it is a generator
-        assert (proof_step_iter is not None and isinstance(proof_step_iter, Iterator)) or self.main_file is not None, \
+        assert (proof_step_iter is not None and isinstance(proof_step_iter, ClonableIterator)) or self.main_file is not None, \
             "Either proof_step_iter must be provided or main_file must be set"
         self.current_stmt = None
         self.line_num = 0
@@ -136,7 +135,7 @@ class SimpleLean4SyncExecutor:
         self._content_till_last_theorem_stmt: str|None = None
         self._last_theorem = None
         self._anon_theorem_count = 0
-        self._last_tactics = {}
+        self._last_tactics : dict[int, str] = {}
         self.possible_proof_tactics = ""
         self._last_tactic_line_idx = None
         self._debug_traces = []
@@ -163,31 +162,16 @@ class SimpleLean4SyncExecutor:
     def is_in_proof_mode(self):
         return True if self.proof_context else (len(self.lean_error_messages) > 0) # It is still in proof mode if we encountered a wrong proof
 
+    def needs_qed(self):
+        return self.proof_context is not None and len(self.proof_context.all_goals) == 0
+
+    def needs_cut_close(self):
+        return self.proof_context is not None and len(self.proof_context.fg_goals) == 0 and len(self.proof_context.all_goals) > 0
+
     def run_next(self) -> bool:
         try:
-            lines = []
-            scanned_new_line = False
-            if self.run_exactly():
-                if len(self._lines_not_executed) > 0:
-                    lines = self._lines_not_executed
-                    next_line = lines[-1]
-                    self._lines_not_executed = []
-                else:
-                    assert self.main_file_iter is not None, "main_file_iter should not be None"
-                    next_line = next(self.main_file_iter)
-                    lines.append(next_line)
-                    scanned_new_line = True
-                if self._extra_added is not None:
-                    # Check if the nextline begines with extra added ignoring space and tabs
-                    if next_line.strip().startswith(self._extra_added.strip()):
-                        # Remove the extra added in the next line and replace it with spaces
-                        next_line = next_line.replace(self._extra_added, " " * len(self._extra_added), 1)
-                    self._extra_added = None
-            else:
-                assert self.main_file_iter is not None, "main_file_iter should not be None"
-                next_line = next(self.main_file_iter)
-                lines.append(next_line)
-            stmt = "\n".join(lines)
+            assert self.main_file_iter is not None, "main_file_iter should not be None"
+            next_line = next(self.main_file_iter)
         except StopIteration:
             self.execution_complete = True
             return False
@@ -195,14 +179,14 @@ class SimpleLean4SyncExecutor:
         self.line_num += 1
         try:
             idx = len(self._lines_executed)
-            self._run_stmt_on_lean_server(idx, stmt)
+            self._run_stmt_on_lean_server(idx, self.current_stmt)
         except:
             if not self.suppress_error_log:
-                self.logger.error(f"Got an exception while running '{stmt}' on lean. File name: {self.main_file}")
+                self.logger.error(f"Got an exception while running '{self.current_stmt}' on lean. File name: {self.main_file}")
                 self.logger.exception(f"Exception Log")
             raise
-        if scanned_new_line:
-            self._lines_executed.append(next_line)
+        if self.run_exactly():
+            self._lines_executed.append(self.current_stmt)
         else:
             self._lines_executed.append("") # Add an empty line to keep the line numbers in sync
         return True
@@ -236,11 +220,22 @@ class SimpleLean4SyncExecutor:
 
     def _get_lean_code_with_tactics(self, idx: int, stmt: str):
         self._add_last_tactic(idx, stmt)
-        tactics_so_far = [(k, v) for k, v in self._last_tactics.items()]
-        tactics_so_far = sorted(tactics_so_far, key=lambda x: x[0])
-        tactics_so_far = [v for _, v in tactics_so_far]
+        temp_tactics_so_far = [(k, v) for k, v in self._last_tactics.items()]
+        temp_tactics_so_far = sorted(temp_tactics_so_far, key=lambda x: x[0])
+        tactics_so_far = [v for _, v in temp_tactics_so_far]
         assert self._content_till_last_theorem_stmt is not None, "Content till last theorem statement should not be None"
-        return self._content_till_last_theorem_stmt + "\n".join(tactics_so_far) + "\ndone"
+        assert len(tactics_so_far) > 0, "There should be at least one tactic so far"
+        last_tactic = tactics_so_far[-1]
+        # Caclulate the space padding for the last tactic
+        # see all the space tokens
+        space_tokens = []
+        for c in last_tactic:
+            if c.isspace():
+                space_tokens.append(c)
+            else:
+                break
+        done = f"{''.join(space_tokens)}done"
+        return self._content_till_last_theorem_stmt + "\n".join(tactics_so_far) + "\n" + done
 
     def _backtrack_tactic_line(self, idx: int):
         # identify the keys to remove
@@ -270,7 +265,7 @@ class SimpleLean4SyncExecutor:
         tactics_so_far = sorted(tactics_so_far, key=lambda x: x[0])
         tactics_so_far = [v for _, v in tactics_so_far]
         self.possible_proof_tactics += "\n".join(tactics_so_far)
-        self._last_tactics = {}
+        self._last_tactics : dict[int, str] = {}
         self._last_tactic_line_idx = None
         self._error_messages_since_last_thm = {}
         pass
@@ -300,6 +295,8 @@ class SimpleLean4SyncExecutor:
         for error in errors:
             if error.message.startswith(SimpleLean4SyncExecutor.unsolved_message):
                 proof_goal_message = error.message # Always take the last unsolved goals message
+            elif error.message.startswith(SimpleLean4SyncExecutor.no_goals):
+                proof_goal_message = error.message
             else:
                 # Make sure that it is after the last tactic
                 if error.position.line >= last_tactic.line:
@@ -311,12 +308,18 @@ class SimpleLean4SyncExecutor:
         goal_texts = []
         proof_is_running = False
         if proof_goal_message is not None:
-            goal_text = proof_goal_message[len(SimpleLean4SyncExecutor.unsolved_message):]
-            goal_texts.append(goal_text)
+            if not proof_goal_message.startswith(SimpleLean4SyncExecutor.no_goals):
+                assert proof_goal_message.startswith(SimpleLean4SyncExecutor.unsolved_message), \
+                    f"Unexpected proof goal message: {proof_goal_message}"
+                goal_text = proof_goal_message[len(SimpleLean4SyncExecutor.unsolved_message):]
+                goal_texts.append(goal_text)
             proof_is_running = True
         error_messages = []
         if last_error_message is not None:
             error_messages.append(last_error_message)
+        if proof_goal_message is None and len(error_messages) == 0:
+            assert len(goal_texts) == 0, "If there is no proof goal message, there should be no goal texts"
+            proof_is_running = True # It is about to finish
         if len(error_messages) == 0:
             assert proof_is_running, f"Proof is not running but no error message is present, errors:\n{errors}, \nlemma: \n{self.curr_lemma_name}, \nlemma_stmt: \n{self.curr_lemma}, \nline_num: \n{self.line_num}"
             self._proof_running = proof_is_running
@@ -385,7 +388,7 @@ class SimpleLean4SyncExecutor:
         found_theorem = False
         thm_namespace, given_theorem_name = parse_thm_name(theorem)
         # Scan the whole file first
-        lines = []
+        lines : list[str] = []
         assert self.main_file_iter is not None, "main_file_iter should not be None"
         assert self.tactic_parser is not None, "Tactic parser is not initialized"
         while True:
@@ -420,7 +423,6 @@ class SimpleLean4SyncExecutor:
                         break
         if not found_theorem:
             raise ValueError(f"The theorem '{theorem}' was not found in the file '{self.main_file}'")
-        
         assert line_num > 0, "Theorem line number should be greater than 0"
         self._lines_executed = lines[:line_num - 1]
         theorem_text = thm.text
@@ -444,11 +446,18 @@ class SimpleLean4SyncExecutor:
         self._content_till_last_theorem_stmt = content_until_before_theorem
         self._content_till_last_theorem_stmt = self._content_till_last_theorem_stmt.strip()
         assert self._content_till_last_theorem_stmt.endswith(':='), "Content till last theorem statement should end with ':='"
-        theorem_stmt = "\n".join(lines[line_num - 1:tactic_start_line] + [lines[tactic_start_line - 1][:tactic_start_col]])
+        theorem_stmt = "\n".join(lines[line_num - 1:tactic_start_line - 1] + [lines[tactic_start_line - 1][:tactic_start_col]])
         theorem_stmt = theorem_stmt.strip()
         self._last_theorem = (given_theorem_name, theorem_stmt, theorem_stmt)
         self._theorem_started = True
+        self._lines_executed.extend(lines[line_num - 1:tactic_start_line - 1] + [lines[tactic_start_line - 1][:tactic_start_col]])
         self._run_stmt_on_lean_server(tactic_start_line, "by", theorem_started=True)
+        self._lines_executed.append('by')
+        # Reset the iterator to the line of the theorem
+        if lines[tactic_start_line - 1].strip().endswith("by"):
+            self.main_file_iter.set_to_index(tactic_start_line)
+        else:
+            self.main_file_iter.set_to_index(tactic_start_line + 1)
 
     def _parse_proof_context(self, proof_goals: list) -> ProofContext:
         goals = []

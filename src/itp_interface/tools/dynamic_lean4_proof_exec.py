@@ -1,57 +1,17 @@
 #!/usr/bin/env python3
 
 import sys
-
-root_dir = f"{__file__.split('itp_interface')[0]}"
-if root_dir not in sys.path:
-    sys.path.append(root_dir)
 import typing
 import os
 import copy
 import enum
 import logging
-from itp_interface.tools.lean4_sync_executor import Lean4SyncExecutor
 from itp_interface.tools.simple_lean4_sync_executor import SimpleLean4SyncExecutor
 from itp_interface.tools.training_data_format import Goal, TrainingDataFormat
 from itp_interface.tools.lean_parse_utils import LeanLineByLineReader
 from itp_interface.tools.lean_context_helper import Lean3ContextHelper
 from itp_interface.tools.misc_defns import HammerMode
-
-class IntertwinedIterator(object):
-    def __init__(self, iterator: typing.Optional[typing.Iterator[str]] = None):
-        self.base_iterator = iterator
-        self.next_instruction: typing.Optional[str] = None
-        self.base_iterator_stopped = iterator is None # if the base iterator is None, then it is stopped
-    
-    def set_next_instruction(self, instruction: str):
-        assert self.next_instruction is None, "next_instruction must be None"
-        assert instruction is not None, "instruction must not be None"
-        self.next_instruction = instruction
-        
-    def __iter__(self):
-        return self
-    
-    def __next__(self):
-        if self.next_instruction is not None:
-            # Return the next instruction if it is set
-            next_instruction = self.next_instruction
-            self.next_instruction = None
-            return next_instruction
-        # Otherwise, get the next instruction from the base iterator
-        if self.base_iterator is not None and not self.base_iterator_stopped:
-            try:
-                instruction = next(self.base_iterator)
-                return instruction
-            except StopIteration:
-                self.base_iterator_stopped = True
-                raise
-        else:
-            raise StopIteration()
-    
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.base_iterator is not None:
-            self.base_iterator.close()
-        pass
+from itp_interface.tools.iter_helpers import IntertwinedIterator
 
 class DynamicProofExecutor(SimpleLean4SyncExecutor):
     class RunState(object):
@@ -150,44 +110,6 @@ class DynamicProofExecutor(SimpleLean4SyncExecutor):
             else:
                 training_data_format.goal_description = None
         return training_data_format
-    
-    def get_all_relevant_thms(self) -> TrainingDataFormat:
-        training_data_format = self.get_current_proof_state_as_training_data()
-        # self.lean_context_helper.set_all_type_matched_query_result(training_data_format, self, self.logger)
-        return training_data_format
-    
-    def get_all_relevant_thms_within_local_context(self) -> TrainingDataFormat:
-        training_data_format = self.get_current_proof_state_as_training_data()
-        self.lean_context_helper.set_local_thms_dfns(training_data_format, self, self.logger)
-        return training_data_format
-    
-    def get_all_relevant_defns(self) -> TrainingDataFormat:
-        training_data_format = self.get_current_proof_state_as_training_data()
-        self.lean_context_helper.set_relevant_defns_in_training_data_point(training_data_format, self, self.logger)
-        return training_data_format
-    
-    def get_all_relevant_defns_and_thms(self, should_print_symbol: bool = False, only_local: bool = False, only_proof_state: bool = False) -> TrainingDataFormat:
-        training_data_format = self.get_current_proof_state_as_training_data()
-        # self.lean_context_helper.set_relevant_defns_in_training_data_point(training_data_format, self, self.logger)
-        # if not only_proof_state:
-        #     self.lean_context_helper.set_all_type_matched_query_result(training_data_format, self, self.logger)
-        return training_data_format
-
-    def run_cmds(self, cmds: typing.List[str], raise_exception=False) -> typing.Tuple[int, bool]:
-        cmd_failed = False
-        start_line_num = self.line_num
-        for cmd in cmds:
-            self.tactic_switch_iterator.set_next_instruction(cmd)
-            try:
-                self.run_next()
-            except Exception:
-                self.line_num -= 1
-                cmd_failed = True
-                if raise_exception:
-                    raise
-                else:
-                    break
-        return start_line_num, not cmd_failed
 
     def run_tactics(self, tactics: typing.List[str]) -> typing.Tuple[int, bool]:
         tactic_failed = False

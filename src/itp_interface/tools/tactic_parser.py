@@ -537,3 +537,12 @@ b = 5:= by
         print_tactics(tactics8)
         if errors:
             print(f"Error: {errors}")
+    
+    with TacticParser(project_path=project_path) as parser:
+        # Example 9: Parse tactics just before `by`
+        print("\nParsing example 9 (theorem with just before `by`...)")
+        lean_code9 = "import Mathlib\ntheorem temp: 1 + 2 = 3 :=\nby\n    have h1: 1 + 1 = 2 := by\n        linarith\n        done"
+        tactics9, errors = parser.parse(lean_code9, fail_on_error=False)
+        print_tactics(tactics9)
+        if errors:
+            print(f"Error: {errors}")
