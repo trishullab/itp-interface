@@ -462,6 +462,7 @@ class SimpleLean4SyncExecutor:
             self.main_file_iter.set_to_index(tactic_start_line)
         else:
             self.main_file_iter.set_to_index(tactic_start_line + 1)
+        self.line_num = len(self._lines_executed)
 
     def _parse_proof_context(self, proof_goals: list) -> ProofContext:
         goals = []

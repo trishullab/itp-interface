@@ -1,20 +1,20 @@
 import unittest
+import os
+from itp_interface.tools.tactic_parser import build_lean4_project, build_tactic_parser_if_needed
 
 class Helper():
     def __init__(self):
         self.current_switch = None
     
     def build_lean4_project(self, project_folder):
-        import os
+        build_tactic_parser_if_needed()
         # Build the project
-        with os.popen(f"cd {project_folder} && lake exe cache get && lake build") as proc:
-            print("Building Lean4 project...")
-            print('-'*15 + 'Build Logs' + '-'*15)
-            print(proc.read())
-            print('-'*15 + 'End Build Logs' + '-'*15)
+        path_to_lake_folder = os.path.join(project_folder, ".lake")
+        if not os.path.exists(path_to_lake_folder):
+            build_lean4_project(project_folder)
+
 
     def build_coq_project(self, project_folder):
-        import os
         try:
             with os.popen("opam switch show") as proc:
                 self.current_switch = proc.read().strip()
@@ -44,7 +44,6 @@ class Helper():
             print('-'*15 + 'End Build Logs' + '-'*15)
 
     def switch_to_current_switch(self):
-        import os
         if self.current_switch is not None:
             try:
                 proc = os.popen(f"opam switch {self.current_switch} && eval $(opam env)")
@@ -66,7 +65,7 @@ class Lean4Test(unittest.TestCase):
         helper = Helper()
         helper.build_lean4_project(project_folder)
         language = ProofAction.Language.LEAN4
-        theorem_name = "test3"
+        theorem_name = '{\"namespace\":\"Lean4Proj2\",\"name\":\"test3\"}'
         # theorem test3 (p q : Prop) (hp : p) (hq : q)
         # : p ∧ q ∧ p :=
         proof_exec_callback = ProofExecutorCallback(
@@ -140,7 +139,7 @@ class Lean4Test(unittest.TestCase):
         helper = Helper()
         helper.build_lean4_project(project_folder)
         language = ProofAction.Language.LEAN4
-        theorem_name = "test3"
+        theorem_name = '{\"namespace\":\"Lean4Proj2\",\"name\":\"test3\"}'
         # theorem test3 (p q : Prop) (hp : p) (hq : q)
         # : p ∧ q ∧ p :=
         proof_exec_callback = ProofExecutorCallback(
@@ -447,7 +446,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
         helper = Helper()
         helper.build_lean4_project(project_folder)
         language = ProofAction.Language.LEAN4
-        theorem_name = "test3"
+        theorem_name = '{\"namespace\":\"Lean4Proj2\",\"name\":\"test3\"}'
         # theorem test3 (p q : Prop) (hp : p) (hq : q)
         # : p ∧ q ∧ p :=
         proof_exec_callback = ProofExecutorCallback(
@@ -516,7 +515,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
         helper = Helper()
         helper.build_lean4_project(project_folder)
         language = ProofAction.Language.LEAN4
-        theorem_name = "imo_1959_p1"
+        theorem_name = '{\"namespace\":\"Lean4Proj2\",\"name\":\"imo_1959_p1\"}'
         # theorem test3 (p q : Prop) (hp : p) (hq : q)
         # : p ∧ q ∧ p :=
         proof_exec_callback = ProofExecutorCallback(
