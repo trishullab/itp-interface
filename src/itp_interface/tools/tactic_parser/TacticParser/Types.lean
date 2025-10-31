@@ -145,6 +145,7 @@ instance : ToJson ParseResult where
 structure CheckpointedParseResult where
   parseResult : ParseResult
   chkptState : Option Command.State := none
+  lineNum : Option Nat := none
   deriving Inhabited
 
 /-- Custom Repr instance for CheckpointedParseResult -/

@@ -180,7 +180,7 @@ unsafe def parseInCurrentContext (input : String) (filePath : Option String := n
     catch e =>
       let errorInfo := ErrorInfo.mk (s!"Error during processing input: {e}") { line := 0, column := 0 }
       let parseResult : ParseResult := { trees := #[], errors := #[errorInfo] }
-      return { parseResult := parseResult, chkptState := chkptState }
+      return { parseResult := parseResult, chkptState := chkptState , lineNum := none }
 
 
     -- Print any messages
@@ -212,11 +212,12 @@ unsafe def parseInCurrentContext (input : String) (filePath : Option String := n
       let ans_d := ans.getD (.other #[])
       filterChildrenAtLevel ans_d level)
     let parseResult : ParseResult := { trees := transformed_trees, errors := errorInfos }
-    return { parseResult := parseResult, chkptState := cmdState }
+    let lineCount := input.splitOn "\n" |>.length
+    return { parseResult := parseResult, chkptState := cmdState , lineNum := lineCount }
   catch e =>
     let errorInfo := ErrorInfo.mk (s!"Error in parseInCurrentContext: {e}") { line := 0, column := 0 }
     let parseResult : ParseResult := { trees := #[], errors := #[errorInfo] }
-    return { parseResult := parseResult, chkptState := chkptState }
+    return { parseResult := parseResult, chkptState := chkptState , lineNum := none }
 
 /-- Parse Lean code WITH elaboration to get InfoTrees (lightweight, no compilation!)
 
@@ -232,7 +233,7 @@ unsafe def parseTacticsWithElaboration (input : String) (filePath : Option Strin
   catch e =>
     let errorInfo := ErrorInfo.mk (s!"Error in parseTacticsWithElaboration: {e}") { line := 0, column := 0 }
     let parseResult : ParseResult := { trees := #[], errors := #[errorInfo] }
-    return { parseResult := parseResult, chkptState := chkptState }
+    return { parseResult := parseResult, chkptState := chkptState , lineNum := none }
 
 /-- Parse Lean code and extract all tactics (uses elaboration-based approach) -/
 @[implemented_by parseTacticsWithElaboration]

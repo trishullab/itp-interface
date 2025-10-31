@@ -9,10 +9,8 @@ import TacticParser.Types
 import TacticParser.SyntaxWalker
 import TacticParser.LineParser
 import Lean
-import Lean.Elab.Frontend
 
 open Lean
-open Lean.Elab
 open TacticParser
 
 /-- Result of parsing tactics -/
@@ -81,7 +79,7 @@ theorem test1 (p q : Prop) (hp : p) (hq : q) : p ∧ q := by
 #eval! (FromStr.fromStr some_lean_code : Option UserParseRequest)
 
 /-- Process a single request and output JSON -/
-unsafe def processRequest (b64Input : String) (chkptState : Option Command.State := none) : IO  (Option Command.State) := do
+unsafe def processRequest (b64Input : String) (chkptState : Option CheckpointedParseResult := none) : IO  (Option CheckpointedParseResult) := do
   try
     -- Decode base64 to Lean code
     let parse_request_raw ← match Base64.decode b64Input with
@@ -106,7 +104,7 @@ unsafe def processRequest (b64Input : String) (chkptState : Option Command.State
 
     let mut result : ParseResult := { trees := #[], errors := #[] }
     -- Initialize new checkpoint state to the current one
-    let mut newchkptState : Option Command.State := chkptState
+    let mut newchkptState : Option CheckpointedParseResult := chkptState
     let is_of_tactics_type :=
       parse_request.requestType == ParseRequestType.parseTactics ∨
       parse_request.requestType == ParseRequestType.chkptTactics ∨
@@ -120,12 +118,59 @@ unsafe def processRequest (b64Input : String) (chkptState : Option Command.State
         -- First check if it is a breaking request, clear the last state
         newchkptState := none
       -- Parse tactics from Lean code
-      let chkpointParseResult ← parseTactics parse_request.content none newchkptState
+      let cmdState :=
+        match newchkptState with
+        | some chkpt => chkpt.chkptState
+        | none => none
+      let chkpointParseResult ← parseTactics parse_request.content none cmdState
       result := chkpointParseResult.parseResult
       --IO.println s!"Parsed tactics with {result.trees.size} trees and {repr result.errors} errors."
       if is_checkpoint_request then
         -- Only changes if the checkpoint is to be updated
-        newchkptState := chkpointParseResult.chkptState
+        let line_num := chkpointParseResult.lineNum.getD 0
+        let prev_line_num :=
+          match newchkptState with
+          | some chkpt => chkpt.lineNum.getD 0
+          | none => 0
+        -- Adjust line number based on previous checkpoint
+        newchkptState := some {
+          parseResult := chkpointParseResult.parseResult,
+          lineNum := some (line_num + prev_line_num),
+          chkptState := chkpointParseResult.chkptState
+        }
+      -- Additionally, adjust error positions based on previous checkpoint
+      let prev_line_num :=
+        match newchkptState with
+        | some chkpt => chkpt.lineNum.getD 0
+        | none => 0
+      if prev_line_num > 0 then
+        -- Adjust error line numbers
+        let adjusted_errors := result.errors.map (fun err =>
+          { err with
+            position := {
+              line := err.position.line + prev_line_num,
+              column := err.position.column
+            }
+          })
+        -- Adjust tree line numbers
+        let adjusted_trees := result.trees.map (fun opt_tree =>
+          opt_tree.map (fun tree =>
+            let rec adjust_tree (node : InfoTreeNode) : InfoTreeNode :=
+              match node with
+              | InfoTreeNode.context children =>
+                InfoTreeNode.context (adjust_tree children)
+              | InfoTreeNode.leanInfo declType name docString text startPos endPos namespc children =>
+                InfoTreeNode.leanInfo declType name docString text
+                  { line := startPos.line + prev_line_num, column := startPos.column }
+                  { line := endPos.line + prev_line_num, column := endPos.column }
+                  namespc
+                  (children.map adjust_tree)
+              | InfoTreeNode.other children =>
+                InfoTreeNode.other (children.map adjust_tree)
+              | InfoTreeNode.hole => InfoTreeNode.hole
+            adjust_tree tree
+          ))
+        result := { trees := adjusted_trees, errors := adjusted_errors }
     else
       -- Unsupported request type
       let temp_result ← parseDecls parse_request.content
@@ -148,7 +193,7 @@ unsafe def processRequest (b64Input : String) (chkptState : Option Command.State
     return none
 
 /-- Loop to process requests -/
-unsafe def loop (stdin : IO.FS.Stream) (stdout : IO.FS.Stream) (chkptState : Option Command.State := none) : IO Unit := do
+unsafe def loop (stdin : IO.FS.Stream) (stdout : IO.FS.Stream) (chkptState : Option CheckpointedParseResult := none) : IO Unit := do
   -- Read input from stdin (base64)
   let line ← stdin.getLine
   let line := line.trim
