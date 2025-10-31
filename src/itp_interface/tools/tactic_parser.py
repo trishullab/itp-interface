@@ -13,6 +13,7 @@ import os
 import subprocess
 import logging
 import re
+import shutil
 from enum import Enum
 from bisect import bisect_left
 from pydantic import BaseModel, field_validator
@@ -173,7 +174,7 @@ def is_tactic_parser_built() -> bool:
             # Replace the version in the toolchain file
             # The version should be like 4.x.y
             pattern = r'^4\.\d+\.\d+$'
-            if re.match(pattern, lean_version_needed):
+            if not re.match(pattern, lean_version_needed):
                 raise RuntimeError(f"Tactic parser built with Lean version {toolchain_content}, but version {lean_version_needed} is required." +
                 "Don't know how to build Lean which is not of the form 4.x.y. " +
                 "Please rebuild the tactic parser.")
@@ -182,12 +183,19 @@ def is_tactic_parser_built() -> bool:
                 f.write(toolchain_final)
             return False
 
-def build_lean4_project(project_folder, logger: Optional[logging.Logger] = None):
+def build_lean4_project(project_folder, logger: Optional[logging.Logger] = None, has_executable: bool = False):
     """Build the Lean4 project at the given folder."""
 
     logger = logger if logger else logging.getLogger(__name__)
+    lake_folder = os.path.join(project_folder, ".lake")
+    if os.path.exists(lake_folder):
+        logger.info(f"Cleaning existing .lake folder at {lake_folder} before build.")
+        shutil.rmtree(lake_folder)
     # Define the command
-    command = f"cd {project_folder} && lake exe cache get && lake build"
+    if has_executable:
+        command = f"cd {project_folder} && lake build"
+    else:
+        command = f"cd {project_folder} && lake exe cache get && lake build"
     
     logging.info(f"Building Lean4 project {project_folder}...")
 
@@ -222,7 +230,7 @@ def build_lean4_project(project_folder, logger: Optional[logging.Logger] = None)
 def build_tactic_parser_if_needed(logger: Optional[logging.Logger] = None):
     """Build the tactic parser if not already built."""
     if not is_tactic_parser_built():
-        build_lean4_project(get_path_to_tactic_parser_project(), logger)
+        build_lean4_project(get_path_to_tactic_parser_project(), logger, has_executable=True)
 
 theorem_name_regex = r"(((theorem|lemma)[\s]+([^\s:]*))|example)"
 theorem_name_match = re.compile(theorem_name_regex, re.MULTILINE)

@@ -132,7 +132,7 @@ unsafe def parseCommon
     commands := commands.push (startPos, stx)
 
     -- Check if we made progress or reached end
-    if pstate.pos == startPos || inputCtx.atEnd pstate.pos then
+    if pstate.pos == startPos then --|| inputCtx.atEnd pstate.pos then
       -- IO.println s!"  Stopping: pos unchanged={pstate.pos == startPos}, atEnd={inputCtx.atEnd pstate.pos}"
       done := true
 
