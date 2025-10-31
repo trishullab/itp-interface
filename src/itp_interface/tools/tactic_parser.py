@@ -53,9 +53,10 @@ class TreeNode(BaseModel):
     decl_type: Optional[str] = None
     name: Optional[str] = None
     doc_string: Optional[str] = None
-    text: Optional[str] = None
     start_pos: Optional[Position] = None
     end_pos: Optional[Position] = None
+    text: Optional[str] = None
+    namespace: Optional[str] = None
     children: List['TreeNode'] = []
 
     # Make sure to test the `type` field properly
@@ -112,6 +113,7 @@ class LeanLineInfo(BaseModel):
     decl_type: Optional[str] = None
     name: Optional[str] = None
     doc_string: Optional[str] = None
+    namespace: Optional[str] = None
 
     def __repr__(self) -> str:
         return f"LeanLineInfo(text={self.text!r}, line={self.line}, column={self.column})"
@@ -122,13 +124,19 @@ class LeanLineInfo(BaseModel):
             "line": self.line,
             "column": self.column,
             "endLine": self.end_line,
-            "endColumn": self.end_column
+            "endColumn": self.end_column,
+            "declType": self.decl_type,
+            "name": self.name,
+            "docString": self.doc_string,
+            "namespace": self.namespace
         }
 
 # Create an enum for parsing request type
 class RequestType(Enum):
     PARSE_TACTICS = "parse_tactics"
     PARSE_THEOREM = "parse_theorem"
+    CHKPT_TACTICS = "chkpt_tactics"
+    BREAK_CHCKPNT = "break_chckpnt"
 
 def get_path_to_tactic_parser_project() -> str:
     """Get the path to the tactic parser project directory."""
@@ -315,6 +323,9 @@ class TacticParser:
 
         return tactic_context
 
+    def _is_tactic_request(self, parse_type: RequestType) -> bool:
+        return parse_type == RequestType.PARSE_TACTICS or parse_type == RequestType.CHKPT_TACTICS or parse_type == RequestType.BREAK_CHCKPNT
+
     def parse(self, lean_code: str, fail_on_error: bool = True, parse_type: RequestType = RequestType.PARSE_TACTICS) -> tuple[List[LeanLineInfo], List[ErrorInfo]]:
         """
         Parse tactics from Lean 4 code.
@@ -339,7 +350,7 @@ class TacticParser:
             b64_input = base64.b64encode(final_code.encode('utf-8')).decode('ascii')
             self.logger.debug(f"Sending {len(final_code)} bytes of Lean code")
             self.logger.debug(f"Base64 encoded input length: {len(b64_input)}")
-            # self.logger.debug(f"Input (base64): {b64_input}")
+            self.logger.debug(f"Input (base64): {b64_input}")
 
             # Send to parser
             try:
@@ -385,7 +396,7 @@ class TacticParser:
         for t in response.get("trees", []):
             if t is not None:
                 tree = TreeNode.model_validate(t)
-                if parse_type == RequestType.PARSE_TACTICS:
+                if self._is_tactic_request(parse_type):
                     self._collect_tactics_from_tree(tree, trees)
                 else:
                     trees.append(tree)
@@ -401,7 +412,8 @@ class TacticParser:
                     end_column=t.end_pos.column,
                     decl_type=t.decl_type,
                     name=t.name,
-                    doc_string=t.doc_string
+                    doc_string=t.doc_string,
+                    namespace=t.namespace
                 )
             )
         self.logger.debug(f"Parsed {len(tactics)} tactics")
@@ -544,5 +556,43 @@ b = 5:= by
         lean_code9 = "import Mathlib\ntheorem temp: 1 + 2 = 3 :=\nby\n    have h1: 1 + 1 = 2 := by\n        linarith\n        done"
         tactics9, errors = parser.parse(lean_code9, fail_on_error=False)
         print_tactics(tactics9)
+        if errors:
+            print(f"Error: {errors}")
+    
+    with TacticParser(project_path=project_path) as parser:
+        # Example 10: Test checkpointing
+        print("\nParsing example 10 (checkpointing...)")
+        lean_code10 = """import Mathlib
+
+theorem temp: 1 + 2 = 3 :=
+by
+linarith
+
+theorem temp1: 3 = 1 + 1 + 1 :=
+by
+linarith
+"""
+        tactics10, errors = parser.parse(lean_code10, fail_on_error=True, parse_type=RequestType.CHKPT_TACTICS)
+        print_tactics(tactics10)
+        if errors:
+            print(f"Error: {errors}")
+        # Now just execute from the checkpoint
+        lean_code10b = """
+theorem temp2: 1 + 2 = 3 :=
+by
+have h_temp := temp1
+"""
+        print("\nContinuing from checkpoint...")
+        tactics10b, errors = parser.parse(lean_code10b, fail_on_error=False, parse_type=RequestType.PARSE_TACTICS)
+        print_tactics(tactics10b)
+        if errors:
+            # The error should contain h_temp
+            print(f"Error: {errors}")
+        
+        print("\nBreaking checkpoint...")
+        new_lean_code10c = lean_code10 + lean_code10b
+        tactics10c, errors = parser.parse(new_lean_code10c, fail_on_error=False, parse_type=RequestType.BREAK_CHCKPNT)
+        # ^This will reimport everything all run all theorems from scratch
+        print_tactics(tactics10c)
         if errors:
             print(f"Error: {errors}")

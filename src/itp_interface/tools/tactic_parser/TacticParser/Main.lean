@@ -105,24 +105,27 @@ unsafe def processRequest (b64Input : String) (chkptState : Option Command.State
     let parse_request := user_parse_request.get!
 
     let mut result : ParseResult := { trees := #[], errors := #[] }
-    let mut newchkptState : Option Command.State := none
+    -- Initialize new checkpoint state to the current one
+    let mut newchkptState : Option Command.State := chkptState
     let is_of_tactics_type :=
       parse_request.requestType == ParseRequestType.parseTactics ∨
-      parse_request.requestType == ParseRequestType.chkptTactics
+      parse_request.requestType == ParseRequestType.chkptTactics ∨
+      parse_request.requestType == ParseRequestType.breakChckpnt
     let is_checkpoint_request :=
       parse_request.requestType == ParseRequestType.chkptTactics
     let is_break_checkpoint_request :=
       parse_request.requestType == ParseRequestType.breakChckpnt
     if is_of_tactics_type then
-      -- Parse tactics from Lean code
-      let chkpointParseResult ← parseTactics parse_request.content none chkptState
-      result := chkpointParseResult.parseResult
-      if is_checkpoint_request then
-        newchkptState := chkpointParseResult.chkptState
-      else
-        newchkptState := chkptState
       if is_break_checkpoint_request then
+        -- First check if it is a breaking request, clear the last state
         newchkptState := none
+      -- Parse tactics from Lean code
+      let chkpointParseResult ← parseTactics parse_request.content none newchkptState
+      result := chkpointParseResult.parseResult
+      --IO.println s!"Parsed tactics with {result.trees.size} trees and {repr result.errors} errors."
+      if is_checkpoint_request then
+        -- Only changes if the checkpoint is to be updated
+        newchkptState := chkpointParseResult.chkptState
     else
       -- Unsupported request type
       let temp_result ← parseDecls parse_request.content

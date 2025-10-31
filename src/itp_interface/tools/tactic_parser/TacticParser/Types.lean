@@ -104,7 +104,7 @@ partial def InfoTreeNode.toJson : InfoTreeNode → Json
       ("text", Lean.ToJson.toJson text),
       ("start_pos", Lean.ToJson.toJson startPos),
       ("end_pos", Lean.ToJson.toJson endPos),
-      ("namespc", Lean.ToJson.toJson namespc),
+      ("namespace", Lean.ToJson.toJson namespc),
       ("children", Json.arr (children.map InfoTreeNode.toJson))
     ]
   | .other children =>
