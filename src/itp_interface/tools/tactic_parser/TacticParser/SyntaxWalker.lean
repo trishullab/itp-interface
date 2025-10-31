@@ -9,7 +9,6 @@ Can work in two modes:
 import Lean
 import Lean.Elab.Frontend
 import TacticParser.Types
-import Lean.Elab.Frontend
 
 open Lean Elab
 
@@ -127,7 +126,7 @@ partial def infoTreeToNode (input : String) (tree : InfoTree) : InfoTreeNode :=
       let text := tacInfo.stx.reprint.getD (toString tacInfo.stx) |>.trim
       let startPos := posToLineColumn input (tacInfo.stx.getPos?.getD 0)
       let endPos := posToLineColumn input (tacInfo.stx.getTailPos?.getD 0)
-      InfoTreeNode.leanInfo DeclType.tactic none none text startPos endPos filteredChildren
+      InfoTreeNode.leanInfo DeclType.tactic none none text startPos endPos none filteredChildren
     | _ => .other childNodes
   | .hole _ => .hole
 
@@ -137,9 +136,9 @@ partial def removeOtherAndHoles (node : InfoTreeNode) : Option InfoTreeNode :=
     match removeOtherAndHoles child with
     | some newChild => some (.context newChild)
     | none => none
-  | InfoTreeNode.leanInfo decType name docString text startPos endPos children =>
+  | InfoTreeNode.leanInfo decType name docString text startPos endPos namespc children =>
     let newChildren := children.map removeOtherAndHoles |>.filterMap id
-    some (InfoTreeNode.leanInfo decType name docString text startPos endPos newChildren)
+    some (InfoTreeNode.leanInfo decType name docString text startPos endPos namespc newChildren)
   | .other children =>
     let newChildren := children.map removeOtherAndHoles |>.filterMap id
     if newChildren.isEmpty then
@@ -154,14 +153,14 @@ partial def filterChildrenAtLevel (node : InfoTreeNode) (level : Nat) : Option I
     match filterChildrenAtLevel child level with
     | some newChild => some (.context newChild)
     | none => none
-  | InfoTreeNode.leanInfo decType name docString text startPos endPos children =>
+  | InfoTreeNode.leanInfo decType name docString text startPos endPos namespc children =>
     if level == 0 then
-      some (InfoTreeNode.leanInfo decType name docString text startPos endPos #[])
+      some (InfoTreeNode.leanInfo decType name docString text startPos endPos namespc #[])
     else
       let newChildren := children.map fun child =>
         filterChildrenAtLevel child (level - 1)
       let filteredChildren := newChildren.filterMap id
-      some (InfoTreeNode.leanInfo decType name docString text startPos endPos filteredChildren)
+      some (InfoTreeNode.leanInfo decType name docString text startPos endPos namespc filteredChildren)
   | .other children =>
     let newChildren := children.map fun child =>
       filterChildrenAtLevel child level
@@ -173,14 +172,15 @@ partial def filterChildrenAtLevel (node : InfoTreeNode) (level : Nat) : Option I
   | .hole => none
 
 /-- Helper: parse tactics in the current context -/
-unsafe def parseInCurrentContext (input : String) (filePath : Option String := none) : IO ParseResult := do
+unsafe def parseInCurrentContext (input : String) (filePath : Option String := none) (chkptState : Option Command.State := none) : IO CheckpointedParseResult := do
   try
     --let inputCtx := Parser.mkInputContext input "<input>"
     let (initialCmdState, cmdState, messages, trees) ← try
-      IO.processInput input none Options.empty filePath
+      IO.processInput input chkptState Options.empty filePath
     catch e =>
       let errorInfo := ErrorInfo.mk (s!"Error during processing input: {e}") { line := 0, column := 0 }
-      return { trees := #[], errors := #[errorInfo] }
+      let parseResult : ParseResult := { trees := #[], errors := #[errorInfo] }
+      return { parseResult := parseResult, chkptState := chkptState }
 
 
     -- Print any messages
@@ -211,29 +211,32 @@ unsafe def parseInCurrentContext (input : String) (filePath : Option String := n
       let ans := removeOtherAndHoles (infoTreeToNode input t)
       let ans_d := ans.getD (.other #[])
       filterChildrenAtLevel ans_d level)
-    return { trees := transformed_trees, errors := errorInfos }
+    let parseResult : ParseResult := { trees := transformed_trees, errors := errorInfos }
+    return { parseResult := parseResult, chkptState := cmdState }
   catch e =>
     let errorInfo := ErrorInfo.mk (s!"Error in parseInCurrentContext: {e}") { line := 0, column := 0 }
-    return { trees := #[], errors := #[errorInfo] }
+    let parseResult : ParseResult := { trees := #[], errors := #[errorInfo] }
+    return { parseResult := parseResult, chkptState := chkptState }
 
 /-- Parse Lean code WITH elaboration to get InfoTrees (lightweight, no compilation!)
 
     Initializes Lean from current working directory (finds .lake/build automatically).
     For project-specific parsing, start the process from the project directory.
 -/
-unsafe def parseTacticsWithElaboration (input : String) (filePath : Option String := none) : IO ParseResult := do
+unsafe def parseTacticsWithElaboration (input : String) (filePath : Option String := none) (chkptState : Option Command.State := none) : IO CheckpointedParseResult := do
   try
     -- Initialize Lean from current directory (finds .lake/build if present)
     Lean.initSearchPath (← Lean.findSysroot)
     Lean.enableInitializersExecution
-    return ← parseInCurrentContext input filePath
+    return ← parseInCurrentContext input filePath chkptState
   catch e =>
     let errorInfo := ErrorInfo.mk (s!"Error in parseTacticsWithElaboration: {e}") { line := 0, column := 0 }
-    return { trees := #[], errors := #[errorInfo] }
+    let parseResult : ParseResult := { trees := #[], errors := #[errorInfo] }
+    return { parseResult := parseResult, chkptState := chkptState }
 
 /-- Parse Lean code and extract all tactics (uses elaboration-based approach) -/
 @[implemented_by parseTacticsWithElaboration]
-opaque parseTactics (input : String) (filePath : Option String := none) : IO ParseResult
+opaque parseTactics (input : String) (filePath : Option String := none) (chkptState : Option Command.State := none) : IO CheckpointedParseResult
 
 -- -- Test case 1: Simple proof with apply and exact
 def simple_example := "theorem test (p q : Prop) (hp : p) (hq : q)
@@ -277,7 +280,7 @@ apply And.intro
 
 def wrong_tactic_example2 := "theorem wrong_decl : Nat := by assdfadfs"
 
-#eval parseTactics simple_example
+
 
 #eval parseTactics more_complex_example
 

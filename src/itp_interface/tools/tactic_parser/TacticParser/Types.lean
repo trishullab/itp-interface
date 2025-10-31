@@ -2,10 +2,12 @@
 Types for tactic information.
 -/
 import Lean
+import Lean.Elab.Frontend
 
 namespace TacticParser
 
 open Lean
+open Lean.Elab
 
 /-- Represents different types of Lean declarations -/
 inductive DeclType where
@@ -21,6 +23,8 @@ inductive DeclType where
   | lemma
   | unknown
   | tactic
+  | namespace
+  | end
   deriving Repr, BEq
 
 instance : ToString DeclType where
@@ -37,6 +41,8 @@ instance : ToString DeclType where
     | .lemma => "lemma"  -- lemma is treated as theorem
     | .unknown => "unknown"
     | .tactic => "tactic"
+    | .namespace => "namespace"
+    | .end => "end"
 
 /-- Information extracted from a declaration -/
 structure DeclInfo where
@@ -46,6 +52,7 @@ structure DeclInfo where
   endPos : Nat
   text : String
   docString : Option String  -- Extracted documentation comment
+  namespc : Option String  -- Current namespace
   deriving Repr
 
 /-- Position information for a tactic -/
@@ -76,6 +83,7 @@ inductive InfoTreeNode where
     (text: String)
     (startPos: Position)
     (endPos: Position)
+    (namespc: Option String)
     (children: Array InfoTreeNode) : InfoTreeNode
   | other : Array InfoTreeNode → InfoTreeNode
   | hole : InfoTreeNode
@@ -87,7 +95,7 @@ partial def InfoTreeNode.toJson : InfoTreeNode → Json
       ("type", "context"),
       ("children", child.toJson)
     ]
-  | leanInfo declType name docString text startPos endPos children =>
+  | leanInfo declType name docString text startPos endPos namespc children =>
     Json.mkObj [
       ("type", "leanInfo"),
       ("decl_type", ToString.toString declType),
@@ -96,6 +104,7 @@ partial def InfoTreeNode.toJson : InfoTreeNode → Json
       ("text", Lean.ToJson.toJson text),
       ("start_pos", Lean.ToJson.toJson startPos),
       ("end_pos", Lean.ToJson.toJson endPos),
+      ("namespc", Lean.ToJson.toJson namespc),
       ("children", Json.arr (children.map InfoTreeNode.toJson))
     ]
   | .other children =>
@@ -131,6 +140,16 @@ instance : ToJson ParseResult where
     ("trees", toJson r.trees),
     ("errors", toJson r.errors)
   ]
+
+/-- Storing ParseResult with a checkpointed state -/
+structure CheckpointedParseResult where
+  parseResult : ParseResult
+  chkptState : Option Command.State := none
+  deriving Inhabited
+
+/-- Custom Repr instance for CheckpointedParseResult -/
+instance : Repr CheckpointedParseResult where
+  reprPrec r _ := (repr r.parseResult)
 
 def get_position_from_char_pos (content : String) (charPos : Nat) : Position :=
   let before := content.extract ⟨0⟩ ⟨charPos⟩
