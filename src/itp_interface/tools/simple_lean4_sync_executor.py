@@ -802,6 +802,31 @@ def get_theorem_name_resembling(file_path: str, theorem_name: str, use_cache: bo
                 return json.dumps(dict_thm)
         raise ValueError(f"The theorem '{theorem_name}' was not found in the file '{file_path}'")
 
+def execute_lean_repl_on(file_path: str, project_root: str, theorem_name: str, logger: logging.Logger, with_print: bool=False):
+    pprint = lambda msg: print(msg) if with_print else None
+    with SimpleLean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger) as executor:
+        executor.set_run_exactly()
+        executor._skip_to_theorem(theorem_name)
+        assert executor.proof_context is not None, "Proof context should be present"
+        proof_exec = False
+        while not executor.execution_complete:
+            if executor.proof_context is not None:
+                proof_exec = True
+                for goal in executor.proof_context.all_goals:
+                    for hyp in goal.hypotheses:
+                        pprint(hyp)
+                    pprint('-'*10)
+                    pprint(goal.goal)
+                pprint('-'*20)
+            executor.run_next()
+            pprint(f"Current statement: {executor.current_stmt}")
+            if executor.proof_context is None and proof_exec:
+                proof_exec = False
+                pprint("Proof finished")
+                break
+            if executor.lean_error_messages:
+                pprint(f"Error messages:\n{executor.lean_error_messages}")
+
 if __name__ == "__main__":
     from itp_interface.tools.log_utils import setup_logger
     import datetime
@@ -815,70 +840,26 @@ if __name__ == "__main__":
     print("Finding all theorems in the file")
     all_theorems = get_all_theorems_in_file(file_path, use_cache=True)
     print(all_theorems)
-    theorems_similar_to_test = get_theorem_name_resembling(file_path, "Turing.TM1to1.tr_supports", use_cache=True)
-    print("Theorem similar to ", "Turing.TM1to1.tr_supports", " is ", theorems_similar_to_test)
-    project_root = 'data/test/lean4_proj/'
-    file_path = 'data/test/lean4_proj/Lean4Proj/Basic.lean'
-    theorem_name = "Lean4Proj2.test3"
-    theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
-    print("Theorem similar to ", "Lean4Proj2.test", " is ", theorems_similar_to_test)
-    # project_root = 'data/test/Mathlib/'
-    # # theorem_name = 'WeierstrassCurve.Jacobian.equiv_of_Z_eq_zero'
-    # # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/AlgebraicGeometry/EllipticCurve/Jacobian.lean'
-    # theorem_name = 'LieSubmodule.coe_toSubmodule_mk'
-    # file_path = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Algebra/Lie/Submodule.lean'
-    # theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
-    assert theorems_similar_to_test is not None, "Theorem similar to test should not be None"
     date_time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     lean_exec_log_folder = f'.log/lean4_sync_executor/{date_time}'
     os.makedirs(lean_exec_log_folder, exist_ok=True)
     lean_exec_log_file = os.path.join(lean_exec_log_folder, "lean4_sync_executor.log")
     logger = setup_logger("Lean4SyncExecutor", lean_exec_log_file, level=logging.DEBUG, format='')
-    # with Lean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger) as executor:
-    #     all_proofs = executor.get_all_proofs_in_file()
-    #     print(all_proofs)
-    with SimpleLean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger) as executor:
-        executor.set_run_exactly()
-        executor._skip_to_theorem(theorems_similar_to_test)
-        assert executor.proof_context is not None, "Proof context should be present"
-        proof_exec = False
-        while not executor.execution_complete:
-            if executor.proof_context is not None:
-                proof_exec = True
-                for goal in executor.proof_context.all_goals:
-                    for hyp in goal.hypotheses:
-                        print(hyp)
-                    print('-'*10)
-                    print(goal.goal)
-                print('-'*20)
-            executor.run_next()
-            print("Current statement:", executor.current_stmt)
-            if executor.proof_context is None and proof_exec:
-                proof_exec = False
-                print("Proof finished")
-                break
-            if executor.lean_error_messages:
-                print("Error messages:\n", executor.lean_error_messages)
-
+    theorems_similar_to_test = get_theorem_name_resembling(file_path, "Turing.TM1to1.tr_supports", use_cache=True)
+    assert theorems_similar_to_test is not None, "Theorem similar to test should not be None"
+    print("Theorem similar to ", "Turing.TM1to1.tr_supports", " is ", theorems_similar_to_test)
+    project_root = 'data/test/lean4_proj/'
+    file_path = 'data/test/lean4_proj/Lean4Proj/Basic.lean'
+    theorem_name = "Lean4Proj2.test3"
+    theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
+    assert theorems_similar_to_test is not None, "Theorem similar to test should not be None"
+    print("Theorem similar to ", "Lean4Proj2.test", " is ", theorems_similar_to_test)
+    execute_lean_repl_on(file_path, project_root, theorems_similar_to_test, logger, with_print=True)
     mathlib_test_file = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Data/Nat/Bits.lean'
     project_root = 'data/test/Mathlib'
     assert os.path.exists(mathlib_test_file), "Mathlib test file does not exist"
     assert os.path.exists(project_root), "Project root does not exist"
-    with SimpleLean4SyncExecutor(main_file=mathlib_test_file, project_root=project_root, timeout_in_sec=120) as executor:
-        executor._skip_to_theorem("one_bits")
-        assert executor.proof_context is not None, "Proof context should be present"
-        while not executor.execution_complete:
-            if executor.proof_context is not None:
-                for goal in executor.proof_context.all_goals:
-                    for hyp in goal.hypotheses:
-                        print(hyp)
-                    print('-'*10)
-                    print(goal.goal)
-                print('-'*20)
-            executor.run_next()
-            print("Current statement:", executor.current_stmt)
-            if executor.proof_context is None:
-                print("Proof finished")
-                break
-            if executor.lean_error_messages:
-                print("Error messages:\n", executor.lean_error_messages)
+    theorems_similar_to_test = get_theorem_name_resembling(mathlib_test_file, "one_bits", use_cache=True)
+    assert theorems_similar_to_test is not None, "Theorem similar to test should not be None"
+    print("Theorem similar to ", "one_bits", " is ", theorems_similar_to_test)
+    execute_lean_repl_on(mathlib_test_file, project_root, theorems_similar_to_test, logger, with_print=True)
