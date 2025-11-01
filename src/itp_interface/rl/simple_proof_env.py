@@ -73,7 +73,7 @@ class ProofEnv(Env):
         assert isinstance(max_proof_depth, int)
         assert isinstance(always_retrieve_thms, bool)
         self.dynamic_proof_executor_callback = dynamic_proof_executor_callback
-        self._dynamic_proof_executor : typing.Union[DynamicCoqProofExecutor, DynamicLeanProofExecutor, DynamicIsabelleProofExecutor] = None
+        self._dynamic_proof_executor : typing.Union[DynamicCoqProofExecutor, DynamicLeanProofExecutor, DynamicIsabelleProofExecutor, DynamicLean4ProofExecutor] = None
         self._loaded = False
         self._history : typing.List[typing.Tuple[ProofState, ProofAction, ProofState, float, bool, ProofEnvInfo]] = []
         self._name = name
@@ -230,6 +230,18 @@ class ProofEnv(Env):
         self.inferences_used += 1
         return self._history[-1][0], self._history[-1][1], self._history[-1][2], self._history[-1][3], self._history[-1][4], self._history[-1][5]
     
+    def validate_proof_completion(self, timeout_in_secs = 120, keep_validation_file = False) -> dict[str, typing.Any]:
+        assert self._loaded, "Env not loaded, call reset() first"
+        assert self.done, "Proof is not yet complete, cannot validate"
+        if self.language == ProofAction.Language.LEAN4:
+            assert isinstance(self._dynamic_proof_executor, DynamicLean4ProofExecutor), "Dynamic proof executor must be of type DynamicLean4ProofExecutor"
+            return self._dynamic_proof_executor.validate_proof(
+                timeout_sec=timeout_in_secs,
+                keep_temp_file=keep_validation_file
+            )
+        else:
+            return {}
+
     def checkpoint(self):
         return super().checkpoint()
     
