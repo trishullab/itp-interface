@@ -566,7 +566,7 @@ b = 5:= by
     with TacticParser(project_path=project_path) as parser:
         # Example 8: Parse tactics just before `by`
         print("\nParsing example 8 (theorem with just before `by`...)")
-        lean_code8 = "theorem temp: 1 + 2 = 3 :=\nby\ndone\ndone"
+        lean_code8 = "theorem temp: 1 + 2 = 3 :=\nby"
         tactics8, errors = parser.parse(lean_code8, fail_on_error=False)
         print_tactics(tactics8)
         if errors:

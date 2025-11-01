@@ -23,6 +23,7 @@ class SimpleLean4SyncExecutor:
     theorem_match = re.compile(theorem_regex, re.MULTILINE)
     unsolved_message = "unsolved goals"
     no_goals = "No goals to be solved"
+    missing_closure_message = "unexpected end of input; expected '{'"
     def __init__(self, 
         project_root: Optional[str] = None, 
         prefix: Optional[str] = None, 
@@ -223,18 +224,8 @@ class SimpleLean4SyncExecutor:
         temp_tactics_so_far = sorted(temp_tactics_so_far, key=lambda x: x[0])
         tactics_so_far = [v for _, v in temp_tactics_so_far]
         assert len(tactics_so_far) > 0, "There should be at least one tactic so far"
-        last_tactic = tactics_so_far[-1]
-        # Caclulate the space padding for the last tactic
-        # see all the space tokens
-        space_tokens = []
-        for c in last_tactic:
-            if c.isspace():
-                space_tokens.append(c)
-            else:
-                break
-        done = f"{''.join(space_tokens)}done"
         _ , _, theorem_stmt = self._last_theorem
-        return theorem_stmt + "\n".join(tactics_so_far) + "\n" + done
+        return theorem_stmt + "\n".join(tactics_so_far)
 
     def _backtrack_tactic_line(self, idx: int):
         # identify the keys to remove
@@ -285,49 +276,37 @@ class SimpleLean4SyncExecutor:
         return f"L {error_info.position.line}, C {error_info.position.column}: {error_info.message}"
     
     def _update_proof_context(self, idx, tactics: List[LeanLineInfo], errors: List[ErrorInfo]):
-        proof_goal_message: str|None = None
-        last_error_message: str|None = None
+        proof_goal_messages: list[str] = []
+        error_messages: list[str] = []
         assert len(tactics) >= 0, "Tactics should not be None"
-        last_tactic: LeanLineInfo = tactics[-1]
+        last_tactic: LeanLineInfo = tactics[0]
         if not tactics and not errors:
             raise ValueError(f"Response is None cannot update proof context for line number {idx}")
         for error in errors:
             if error.message.startswith(SimpleLean4SyncExecutor.unsolved_message):
-                proof_goal_message = error.message # Always take the last unsolved goals message
+                # Always take the last unsolved goals message
+                proof_goal_messages.append(error.message[len(SimpleLean4SyncExecutor.unsolved_message):]) 
             elif error.message.startswith(SimpleLean4SyncExecutor.no_goals):
-                proof_goal_message = error.message
+                proof_goal_messages.append(error.message)
             else:
-                # Make sure that it is after the last tactic
-                if error.position.line >= last_tactic.line:
-                    last_error_message = error.message # Always take the last error message
-                    self._error_messages_since_last_thm[idx] = self._format_error_message(error)
-                else:
-                    last_error_message = None
-                self._error_messages_so_far.add(self._format_error_message(error))
-        goal_texts = []
+                if not error.message.startswith(SimpleLean4SyncExecutor.missing_closure_message):
+                    if error.position.line >= last_tactic.line:
+                        self._error_messages_since_last_thm[idx] = self._format_error_message(error)
+                    error_messages.append(error.message) # Always take the last error message
+                    self._error_messages_so_far.add(self._format_error_message(error))
         proof_is_running = False
-        if proof_goal_message is not None:
-            if not proof_goal_message.startswith(SimpleLean4SyncExecutor.no_goals):
-                assert proof_goal_message.startswith(SimpleLean4SyncExecutor.unsolved_message), \
-                    f"Unexpected proof goal message: {proof_goal_message}"
-                goal_text = proof_goal_message[len(SimpleLean4SyncExecutor.unsolved_message):]
-                goal_texts.append(goal_text)
+        proof_goal_messages = [msg for msg in proof_goal_messages if not msg.startswith(SimpleLean4SyncExecutor.no_goals)]
+        if len(proof_goal_messages) >= 0 and len(error_messages) == 0:
             proof_is_running = True
-        error_messages = []
-        if last_error_message is not None:
-            error_messages.append(last_error_message)
-        if proof_goal_message is None and len(error_messages) == 0:
-            assert len(goal_texts) == 0, "If there is no proof goal message, there should be no goal texts"
-            proof_is_running = True # It is about to finish
         if len(error_messages) == 0:
             assert proof_is_running, f"Proof is not running but no error message is present, errors:\n{errors}, \nlemma: \n{self.curr_lemma_name}, \nlemma_stmt: \n{self.curr_lemma}, \nline_num: \n{self.line_num}"
             self._proof_running = proof_is_running
             if self._proof_running:
                 proof_goals = []
-                if len(goal_texts) == 0:
+                if len(proof_goal_messages) == 0:
                     proof_goals = []
                 else:
-                    proof_goals = [g_text for g_text in goal_texts 
+                    proof_goals = [g_text for g_text in proof_goal_messages
                     if g_text is not None and len(g_text) > 0]
                 self.proof_context = self._parse_proof_context(proof_goals)
                 if self.proof_context == ProofContext.empty():
