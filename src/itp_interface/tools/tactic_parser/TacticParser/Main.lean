@@ -153,33 +153,32 @@ unsafe def processRequest (b64Input : String) (chkptState : Option CheckpointedP
             }
           })
         -- Adjust tree line numbers
-        let adjusted_trees := result.trees.map (fun opt_tree =>
-          opt_tree.map (fun tree =>
-            let rec adjust_tree (node : InfoTreeNode) : InfoTreeNode :=
-              match node with
-              | InfoTreeNode.context children =>
-                InfoTreeNode.context (adjust_tree children)
-              | InfoTreeNode.leanInfo declType name docString text startPos endPos namespc children =>
-                InfoTreeNode.leanInfo declType name docString text
-                  { line := startPos.line + prev_line_num, column := startPos.column }
-                  { line := endPos.line + prev_line_num, column := endPos.column }
-                  namespc
-                  (children.map adjust_tree)
-              | InfoTreeNode.other children =>
-                InfoTreeNode.other (children.map adjust_tree)
-              | InfoTreeNode.hole => InfoTreeNode.hole
-            adjust_tree tree
-          ))
+        let adjusted_trees := result.trees.map (fun tree =>
+          let rec adjust_tree (node : InfoNodeStruct) : InfoNodeStruct :=
+          {
+            node with
+            startPos := {
+              line := node.startPos.line + prev_line_num,
+              column := node.startPos.column
+            },
+            endPos := {
+              line := node.endPos.line + prev_line_num,
+              column := node.endPos.column
+            },
+            children := node.children.map adjust_tree
+          }
+          adjust_tree tree
+        )
         result := { trees := adjusted_trees, errors := adjusted_errors }
     else
       -- Unsupported request type
       let temp_result ← parseDecls parse_request.content
-      let mut tree_list : Array (Option InfoTreeNode) := #[]
+      let mut tree_list : Array InfoNodeStruct := #[]
       for decl in temp_result do
         let start_pos ← pure (get_position_from_char_pos parse_request.content decl.startPos)
         let end_pos ← pure (get_position_from_char_pos parse_request.content decl.endPos)
-        let info_tree: InfoTreeNode ← pure (InfoTreeNode.leanInfo decl.declType decl.name decl.docString decl.text start_pos end_pos decl.namespc #[])
-        tree_list := tree_list.push (some info_tree)
+        let info_tree ← pure (InfoNodeStruct.mk decl.declType decl.name decl.docString decl.text start_pos end_pos decl.namespc #[])
+        tree_list := tree_list.push info_tree
       result := { trees := tree_list, errors := #[] }
 
     -- Output result as JSON

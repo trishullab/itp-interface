@@ -118,6 +118,65 @@ partial def InfoTreeNode.toJson : InfoTreeNode → Json
 instance : ToJson InfoTreeNode where
   toJson := InfoTreeNode.toJson
 
+structure InfoNodeStruct where
+  declType : DeclType
+  name : Option String
+  docString : Option String
+  text : String
+  startPos : Position
+  endPos : Position
+  namespc : Option String
+  children : Array InfoNodeStruct
+deriving Repr
+
+def defaultInfoNodeStruct : InfoNodeStruct :=
+  {
+    declType := .unknown,
+    name := none,
+    docString := none,
+    text := "",
+    startPos := { line := 0, column := 0 },
+    endPos := { line := 0, column := 0 },
+    namespc := none,
+    children := #[]
+  }
+
+instance : Inhabited InfoNodeStruct where
+  default := defaultInfoNodeStruct
+
+/-- toJson for InfoNodeStruct -/
+partial def InfoNodeStruct.toJson (n: InfoNodeStruct) : Json :=
+  Json.mkObj [
+    ("decl_type", ToString.toString n.declType),
+    ("name", Lean.ToJson.toJson n.name),
+    ("doc_string", Lean.ToJson.toJson n.docString),
+    ("text", Lean.ToJson.toJson n.text),
+    ("start_pos", Lean.ToJson.toJson n.startPos),
+    ("end_pos", Lean.ToJson.toJson n.endPos),
+    ("namespace", Lean.ToJson.toJson n.namespc),
+    ("children", Json.arr (n.children.map InfoNodeStruct.toJson))
+  ]
+
+instance : ToJson InfoNodeStruct where
+  toJson := InfoNodeStruct.toJson
+
+def getInfoNodeStruct (node : InfoTreeNode) : Option InfoNodeStruct :=
+  match node with
+  | .leanInfo declType name docString text startPos endPos namespc children =>
+    let childStructs := children.map getInfoNodeStruct
+    let filterSomes := childStructs.filterMap id
+    some {
+      declType,
+      name,
+      docString,
+      text,
+      startPos,
+      endPos,
+      namespc,
+      children := filterSomes
+    }
+  | _ => none
+
 structure ErrorInfo where
   message : String
   position : Position
@@ -131,7 +190,7 @@ instance : ToJson ErrorInfo where
 
 /-- Result of parsing tactics from Lean code -/
 structure ParseResult where
-  trees : Array (Option InfoTreeNode) := #[]
+  trees : Array InfoNodeStruct := #[]
   errors : Array ErrorInfo := #[]
   deriving Inhabited, Repr
 

@@ -171,6 +171,97 @@ partial def filterChildrenAtLevel (node : InfoTreeNode) (level : Nat) : Option I
       some (.other filteredChildren)
   | .hole => none
 
+def nodeIsHole (node : InfoTreeNode) : Bool :=
+  match node with
+  | .hole => true
+  | _ => false
+
+def nodeEndPos (node : InfoTreeNode) : Option Position :=
+  match node with
+  | InfoTreeNode.leanInfo _ _ _ _ _ endPos _ _ => some endPos
+  | _ => none
+
+def filterAllNodesWhichDontStartAndEndOnLine (node : InfoTreeNode) (line_num: Nat) : Array InfoTreeNode :=
+match node with
+| .context child =>
+  filterAllNodesWhichDontStartAndEndOnLine child line_num
+| InfoTreeNode.leanInfo decType name docString text startPos endPos namespc children =>
+  let newChildren := children.flatMap fun child =>
+    filterAllNodesWhichDontStartAndEndOnLine child line_num
+  if startPos.line != line_num ∨ endPos.line != line_num then
+    newChildren
+  else
+    -- Add self to the front of the list
+    #[InfoTreeNode.leanInfo decType name docString text startPos endPos namespc #[]] ++ newChildren
+| .other children =>
+  children.flatMap fun child =>
+    filterAllNodesWhichDontStartAndEndOnLine child line_num
+| .hole => #[]
+
+def getMaxLineExtent (node : InfoTreeNode) (line_num: Nat) : InfoTreeNode × Nat :=
+let all_possible_nodes := filterAllNodesWhichDontStartAndEndOnLine node line_num
+let arg_max := all_possible_nodes.foldl (fun (acc_node, acc_len) n =>
+  let len := (match n with
+    | InfoTreeNode.leanInfo _ _ _ _ startPos endPos _ _ =>
+      endPos.column - startPos.column
+    | _ => 0
+  )
+  if len > acc_len then
+    (n, len)
+  else
+    (acc_node, acc_len)
+) (InfoTreeNode.hole, 0)
+arg_max
+
+def getAllLinesInTree (node : InfoTreeNode) : Std.HashSet Nat :=
+  match node with
+  | .context child =>
+    getAllLinesInTree child
+  | InfoTreeNode.leanInfo _ _ _ _ startPos endPos _ children =>
+    let childrenLines := children.map getAllLinesInTree
+    (childrenLines.foldl (init := ({}: Std.HashSet Nat)) (fun acc lines =>
+      acc.union lines)).union {startPos.line, endPos.line}
+  | .other children =>
+    let childrenLines := children.map getAllLinesInTree
+    childrenLines.foldl (init := {}) (fun acc lines =>
+      acc.union lines)
+  | .hole => {}
+
+def getAllLineNumsFromTrees (trees : Array InfoTreeNode) : Array Nat :=
+(trees.foldl (init := ({}: Std.HashSet Nat)) (fun acc tree =>
+acc.union (getAllLinesInTree tree))).toArray.insertionSort
+
+def getAllExtents (trees : Array InfoTreeNode) : Array InfoTreeNode :=
+let line_nums := getAllLineNumsFromTrees trees
+(line_nums.flatMap (
+  fun line_num =>
+    (trees.foldl (fun acc tree =>
+      let (n, _) := getMaxLineExtent tree line_num
+      acc.push n
+    ) (#[] : Array InfoTreeNode)).insertionSort (fun n1 n2 =>
+      match (nodeEndPos n1, nodeEndPos n2) with
+      | (some pos1, some pos2) => pos1.column < pos2.column
+      | _ => false
+    )
+)).filter fun n => ¬ nodeIsHole n
+
+def getTextFromPosition (input : String) (startPos : Position) (endPos : Position) : String :=
+  let lines := input.splitOn "\n"
+  if startPos.line > lines.length ∨ startPos.line == 0 ∨ endPos.line == 0 then
+    ""
+  else
+    let relevantLines := (lines.take endPos.line).drop (startPos.line - 1)
+    let firstLine := relevantLines[0]!.drop startPos.column--.extract ⟨startPos.column⟩ ⟨relevantLines[0]!.length⟩
+    let lastLine := relevantLines[relevantLines.length - 1]!.take endPos.column
+    let middleLines := (relevantLines.take (relevantLines.length - 1)).drop 1
+    let actualLines := if relevantLines.length > 1 then [firstLine] ++ middleLines ++ [lastLine]  else [firstLine]
+    String.intercalate "\n" actualLines
+
+def dropNewLineAndCountSpaces (s : String) : String × String :=
+  let strWithoutSpace := s.dropRightWhile (fun c => c == '\t' || c == ' ')
+  let rightSpace := s.takeRightWhile (fun c => c == '\t' || c == ' ')
+  (strWithoutSpace.trimRight, rightSpace)
+
 /-- Helper: parse tactics in the current context -/
 unsafe def parseInCurrentContext (input : String) (filePath : Option String := none) (chkptState : Option Command.State := none) : IO CheckpointedParseResult := do
   try
@@ -206,13 +297,43 @@ unsafe def parseInCurrentContext (input : String) (filePath : Option String := n
     --   IO.println s!"[{severity}] {← msg.data.toString}"
     -- IO.println "=== End cmdState Messages ===\n"
 
-    let level := 4 -- Only keep direct children of tactics
-    let transformed_trees := trees.map (fun t =>
-      let ans := removeOtherAndHoles (infoTreeToNode input t)
-      let ans_d := ans.getD (.other #[])
-      filterChildrenAtLevel ans_d level)
-    let parseResult : ParseResult := { trees := transformed_trees, errors := errorInfos }
-    let lineCount := input.splitOn "\n" |>.length
+    let level := 0 -- Only keep direct children of tactics
+    -- let transformed_trees := trees.map (fun t =>
+    --   let ans := removeOtherAndHoles (infoTreeToNode input t)
+    --   let ans_d := ans.getD (.other #[])
+    --   filterChildrenAtLevel ans_d level)
+    let transformed_trees := trees.map (fun t => removeOtherAndHoles (infoTreeToNode input t))
+    let t_trees := transformed_trees.map (fun t => t.getD (.other #[]))
+    let lineExtents := getAllExtents t_trees
+    let extentStruct := lineExtents.map getInfoNodeStruct
+    -- Go over all line extents and reassign the end_pos of the next node
+    let mut adjusted_trees : Array InfoNodeStruct := #[]
+    for i in [1:lineExtents.size] do
+      let prev_node := extentStruct[i - 1]!.getD default
+      let curr_node := extentStruct[i]!.getD default
+      let new_prev_node := {prev_node with endPos := curr_node.startPos}
+      adjusted_trees := adjusted_trees.push new_prev_node
+
+    let mut last_node := extentStruct[extentStruct.size - 1]!.getD default
+    let lines := input.splitOn "\n"
+    let lineCount := lines.length
+    last_node := {last_node with endPos := { line := lineCount, column := lines.getLast!.length }}
+    adjusted_trees := adjusted_trees.push last_node
+    -- Fix the text fields based on updated positions
+    adjusted_trees := adjusted_trees.map fun node =>
+      let new_text := getTextFromPosition input node.startPos node.endPos
+      { node with text := new_text }
+    let mut (prev_text, right_space) := dropNewLineAndCountSpaces adjusted_trees[0]!.text
+    adjusted_trees := adjusted_trees.set! 0 {adjusted_trees[0]! with text := prev_text}
+    for i in [1:adjusted_trees.size] do
+      let curr_node := adjusted_trees[i]!
+      let mut (curr_text, curr_right_space) := dropNewLineAndCountSpaces curr_node.text
+      curr_text := right_space ++ curr_text
+      right_space := curr_right_space
+      adjusted_trees := adjusted_trees.set! i {curr_node with text := curr_text}
+
+    --   let new_prev_node := {prev_node with endPos := nodeEndPos curr_node.getD prev_node}
+    let parseResult : ParseResult := { trees := adjusted_trees, errors := errorInfos }
     return { parseResult := parseResult, chkptState := cmdState , lineNum := lineCount }
   catch e =>
     let errorInfo := ErrorInfo.mk (s!"Error in parseInCurrentContext: {e}") { line := 0, column := 0 }
@@ -253,7 +374,8 @@ exact hp
 
 def more_complex_example := "theorem test3 (p q : Prop) (hp : p) (hq : q)
 : p ∧ q ∧ p := by
-have htemp : p ∧ q := by
+have htemp : p ∧ q
+:= by
     apply And.intro
     exact hp
     exact hq
@@ -282,8 +404,10 @@ apply And.intro
 def wrong_tactic_example2 := "theorem wrong_decl : Nat := by assdfadfs"
 
 
+def temp := (parseTactics more_complex_example)
 
-#eval parseTactics more_complex_example
+#eval temp
+
 
 #eval parseTactics import_example
 
