@@ -6,6 +6,7 @@ root_dir = f"{__file__.split('itp_interface')[0]}"
 if root_dir not in sys.path:
     sys.path.append(root_dir)
 import typing
+from pydantic import BaseModel
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json
 from enum import Enum
@@ -75,9 +76,15 @@ class EvalFile(object):
 
 @dataclass_json
 @dataclass
+class ExtractFile(BaseModel):
+    path: str
+    declarations: typing.Union[str, typing.List[str]]
+
+@dataclass_json
+@dataclass
 class EvalDataset(object):
     project: str
-    files: typing.List[EvalFile]
+    files: typing.Union[typing.List[EvalFile], typing.List[ExtractFile]]
 
 @dataclass_json
 @dataclass
@@ -98,6 +105,7 @@ class Experiments(object):
     env_settings: EnvSettings
     run_settings: RunSettings
     benchmark: EvalBenchmark
+    is_extraction_request: bool
 
 @dataclass_json
 @dataclass
@@ -133,6 +141,7 @@ class EvalProofResults(object):
 
 
 def parse_config(cfg):
+    is_extraction_request = False
     env_settings_cfg = cfg["env_settings"]
     env_settings = EnvSettings(
         name=env_settings_cfg["name"],
@@ -167,14 +176,28 @@ def parse_config(cfg):
         files_cfg = list(dataset_cfg["files"])
         eval_files = []
         for file_cfg in files_cfg:
-            theorems = None
-            if type(file_cfg["theorems"]) == str:
-                theorems = file_cfg["theorems"]
+            if "theorems" in file_cfg:
+                theorems = None
+                if type(file_cfg["theorems"]) == str:
+                    theorems = file_cfg["theorems"]
+                else:
+                    theorems = list(file_cfg["theorems"])
+                eval_files.append(EvalFile(
+                    path=file_cfg["path"],
+                    theorems=theorems))
+                is_extraction_request = False
+            elif "declarations" in file_cfg:
+                declarations = None
+                if type(file_cfg["declarations"]) == str:
+                    declarations = file_cfg["declarations"]
+                else:
+                    declarations = list(file_cfg["declarations"])
+                eval_files.append(ExtractFile(
+                    path=file_cfg["path"],
+                    declarations=declarations))
+                is_extraction_request = True
             else:
-                theorems = list(file_cfg["theorems"])
-            eval_files.append(EvalFile(
-                path=file_cfg["path"],
-                theorems=theorems))
+                raise ValueError(f"File config must have either 'theorems' or 'declarations': {file_cfg}")
         eval_datasets.append(EvalDataset(
             project=dataset_cfg["project"],
             files=eval_files))
@@ -189,4 +212,4 @@ def parse_config(cfg):
         dfs_data_path_for_retrieval=benchmark_cfg["dfs_data_path_for_retrieval"],
         dfs_metadata_filename_for_retrieval=benchmark_cfg["dfs_metadata_filename_for_retrieval"],
         setup_cmds=benchmark_cfg["setup_cmds"] if "setup_cmds" in benchmark_cfg else [])
-    return Experiments(env_settings=env_settings, run_settings=eval_settings, benchmark=benchmark)
+    return Experiments(env_settings=env_settings, run_settings=eval_settings, benchmark=benchmark, is_extraction_request=is_extraction_request)
