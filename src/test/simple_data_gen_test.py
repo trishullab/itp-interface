@@ -2,6 +2,15 @@ import unittest
 import os
 import subprocess
 
+def pretty_print_file_contents(dir_path):
+    print(f"Printing all files in the directory: {dir_path}")
+    for f in os.listdir(dir_path):
+        file_path = os.path.join(dir_path, f)
+        print('-'*50)
+        print(f"Contents of {file_path}:")
+        with open(file_path, "r") as file:
+            print(file.read())
+
 class TestDataGen(unittest.TestCase):
     def test_proof_step_data_gen(self):
         """
@@ -47,6 +56,13 @@ class TestDataGen(unittest.TestCase):
         print("Train Directory Contents:", list_files)
         data_files = [f for f in list_files if f.endswith(".json") and f.startswith("local_data_")]
         print("Data Files:", data_files)
+        if len(data_files) == 0:
+            # Print the last directory contents again
+            pretty_print_file_contents(last_dir_path)
+            print('='*50)
+            # Open all the files in the train directory and print their contents for debugging
+            pretty_print_file_contents(train_data)
+               
         assert len(data_files) == 1, f"No files found in the train directory. Expected one file. Found: {data_files}"
         print(data_files[0])
         data_gen_file = os.path.join(train_data, data_files[0])
