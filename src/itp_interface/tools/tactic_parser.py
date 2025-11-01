@@ -50,7 +50,6 @@ class Position(BaseModel):
 
 class TreeNode(BaseModel):
     """Represents a node in the syntax tree."""
-    type: str
     decl_type: Optional[str] = None
     name: Optional[str] = None
     doc_string: Optional[str] = None
@@ -59,16 +58,6 @@ class TreeNode(BaseModel):
     text: Optional[str] = None
     namespace: Optional[str] = None
     children: List['TreeNode'] = []
-
-    # Make sure to test the `type` field properly
-    @field_validator('type')
-    def validate_type(cls, v):
-        if not isinstance(v, str) or not v:
-            raise ValueError("Type must be a non-empty string")
-        # the type must be `context`, `leanInfo`, `other`, or `hole`
-        if v not in {'context', 'leanInfo', 'other', 'hole'}:
-            raise ValueError(f"Invalid type: {v}")
-        return v
     
     def __lt__(self, other: 'TreeNode') -> bool:
         if self.start_pos is None or other.start_pos is None:
@@ -85,8 +74,7 @@ class TreeNode(BaseModel):
     def __eq__(self, value: object) -> bool:
         if not isinstance(value, TreeNode):
             return NotImplemented
-        return (self.type == value.type and
-                self.start_pos == value.start_pos and
+        return (self.start_pos == value.start_pos and
                 self.end_pos == value.end_pos)
     
     
@@ -232,6 +220,31 @@ def build_tactic_parser_if_needed(logger: Optional[logging.Logger] = None):
     if not is_tactic_parser_built():
         build_lean4_project(get_path_to_tactic_parser_project(), logger, has_executable=True)
 
+
+def get_from_original_text(code: str, lean_info: LeanLineInfo, relative_line_num : int = 1) -> str:
+    """Extract the text corresponding to a LeanLineInfo from the code."""
+    lines = code.splitlines()
+    start_line_idx = lean_info.line - relative_line_num
+    end_line_idx = lean_info.end_line - relative_line_num
+
+    if start_line_idx < 0 or end_line_idx >= len(lines):
+        raise ValueError("LeanLineInfo line numbers are out of bounds")
+
+    if start_line_idx == end_line_idx:
+        # Single line case
+        return lines[start_line_idx][lean_info.column:lean_info.end_column]
+    else:
+        # Multi-line case
+        extracted_lines = []
+        # First line
+        extracted_lines.append(lines[start_line_idx][lean_info.column:])
+        # Middle lines
+        for i in range(start_line_idx + 1, end_line_idx):
+            extracted_lines.append(lines[i])
+        # Last line
+        extracted_lines.append(lines[end_line_idx][:lean_info.end_column])
+        return '\n'.join(extracted_lines)
+
 theorem_name_regex = r"(((theorem|lemma)[\s]+([^\s:]*))|example)"
 theorem_name_match = re.compile(theorem_name_regex, re.MULTILINE)
 
@@ -314,33 +327,6 @@ class TacticParser:
             self.logger.warning("Tactic parser process died, restarting...")
             self._start()
 
-    def _add_overlapping_tactics(self, tactic_context: List[TreeNode], tree: TreeNode):
-        assert tree.type == "leanInfo"
-        assert tree.start_pos is not None
-        assert tree.end_pos is not None
-        # Find the tactic context that overlaps with the given position
-        idx = bisect_left(tactic_context, tree)
-        if len(tactic_context) == idx:
-            tactic_context.append(tree)
-            return
-
-        tree_idx = tactic_context[idx]
-        if tree.is_contained_in(tree_idx):
-            # Replace the tactic all together
-            tactic_context[idx] = tree
-        else:
-            tactic_context.insert(idx, tree)
-
-    def _collect_tactics_from_tree(self, tree: TreeNode, tactic_context: list = []) -> List[TreeNode]:
-        """Recursively extract leanInfo from the syntax tree."""
-        if tree.type == "leanInfo" and tree.text and tree.start_pos and tree.end_pos:
-            self._add_overlapping_tactics(tactic_context, tree)
-
-        for child in tree.children:
-            self._collect_tactics_from_tree(child, tactic_context)
-
-        return tactic_context
-
     def _is_tactic_request(self, parse_type: RequestType) -> bool:
         return parse_type == RequestType.PARSE_TACTICS or parse_type == RequestType.CHKPT_TACTICS or parse_type == RequestType.BREAK_CHCKPNT
 
@@ -414,10 +400,7 @@ class TacticParser:
         for t in response.get("trees", []):
             if t is not None:
                 tree = TreeNode.model_validate(t)
-                if self._is_tactic_request(parse_type):
-                    self._collect_tactics_from_tree(tree, trees)
-                else:
-                    trees.append(tree)
+                trees.append(tree)
         for t in trees:
             assert t.start_pos is not None
             assert t.end_pos is not None
@@ -495,6 +478,21 @@ if __name__ == "__main__":
 
         print("Parsing example 1...")
         tactics, errors = parser.parse(lean_code)
+        print_tactics(tactics)
+        if errors:
+            print(f"Error: {errors}")
+    
+    with TacticParser() as parser:
+        # Example 1b: Simple have proofs
+        # p \implies q and q \implies r then have p \implies r
+        lean_code = """
+example (p q r: Prop) (h1: p → q) (h2: q → r) : p → r := by
+    have h3: p → r := by
+    done
+"""
+
+        print("Parsing example 1b...")
+        tactics, errors = parser.parse(lean_code, fail_on_error=False)
         print_tactics(tactics)
         if errors:
             print(f"Error: {errors}")
