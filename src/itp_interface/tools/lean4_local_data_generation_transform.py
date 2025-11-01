@@ -6,7 +6,7 @@ if root_dir not in sys.path:
     sys.path.append(root_dir)
 import typing
 import uuid
-from itp_interface.tools.lean4_sync_executor import Lean4SyncExecutor
+from itp_interface.tools.simple_lean4_sync_executor import SimpleLean4SyncExecutor
 from itp_interface.tools.lean4_context_helper import Lean4ContextHelper
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
 from itp_interface.tools.training_data_format import MergableCollection, TrainingDataMetadataFormat, TrainingDataCollection, TrainingDataFormat
@@ -36,7 +36,7 @@ class Local4DataGenerationTransform(GenericTrainingDataGenerationTransform):
     def load_data_from_file(self, file_path) -> MergableCollection:
         return TrainingDataCollection.load_from_file(file_path, self.logger)
 
-    def __call__(self, training_data: TrainingData, project_id : str, lean_executor: Lean4SyncExecutor, print_coq_executor_callback: typing.Callable[[], Lean4SyncExecutor], theorems: typing.List[str] = None, other_args: dict = {}) -> TrainingData:
+    def __call__(self, training_data: TrainingData, project_id : str, lean_executor: SimpleLean4SyncExecutor, print_coq_executor_callback: typing.Callable[[], SimpleLean4SyncExecutor], theorems: typing.List[str] = None, other_args: dict = {}) -> TrainingData:
         print_lean_executor = print_coq_executor_callback()
         lean_context_helper = Lean4ContextHelper(print_lean_executor, self.depth, self.logger)
         lean_context_helper.__enter__()
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     logging.basicConfig(filename=log_file, level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
     logger = logging.getLogger(__name__)
     def _print_lean_executor_callback():
-        search_lean_exec = Lean4SyncExecutor(main_file=file_name, project_root=project_dir)
+        search_lean_exec = SimpleLean4SyncExecutor(main_file=file_name, project_root=project_dir)
         search_lean_exec.__enter__()
         return search_lean_exec
     transform = Local4DataGenerationTransform(0, buffer_size=1000)
@@ -116,7 +116,7 @@ if __name__ == "__main__":
         "training_metadata.json",
         training_meta=transform.get_meta_object(), 
         logger=logger)
-    with Lean4SyncExecutor(project_root=project_dir, main_file=file_name, use_human_readable_proof_context=True, suppress_error_log=True) as coq_exec:
+    with SimpleLean4SyncExecutor(project_root=project_dir, main_file=file_name, use_human_readable_proof_context=True, suppress_error_log=True) as coq_exec:
         transform(training_data, project_id, coq_exec, _print_lean_executor_callback, theorems=['{"namespace": "Lean4Proj1", "name": "test2"}'])
     save_info = training_data.save()
     logger.info(f"Saved training data to {save_info}")

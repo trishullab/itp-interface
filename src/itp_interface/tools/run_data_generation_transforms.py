@@ -25,7 +25,7 @@ except ImportError:
     RayUtils = None
 from itp_interface.tools.coq_executor import CoqExecutor
 from itp_interface.tools.lean_cmd_executor import Lean3Executor
-from itp_interface.tools.lean4_sync_executor import Lean4SyncExecutor
+from itp_interface.tools.simple_lean4_sync_executor import SimpleLean4SyncExecutor
 from itp_interface.tools.isabelle_executor import IsabelleExecutor
 from itp_interface.tools.coq_local_data_generation_transform import LocalDataGenerationTransform as CoqLocalDataGenerationTransform
 from itp_interface.tools.lean_local_data_generation_transform import LocalDataGenerationTransform as LeanLocalDataGenerationTransform
@@ -136,7 +136,7 @@ class RunDataGenerationTransforms(object):
             search_lean_exec.__enter__()
             return search_lean_exec
         def _print_lean4_callback():
-            search_lean4_exec = Lean4SyncExecutor(project_path, None, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
+            search_lean4_exec = SimpleLean4SyncExecutor(project_path, None, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
             search_lean4_exec.__enter__()
             return search_lean4_exec
         def _print_isabelle_callback():
@@ -157,7 +157,7 @@ class RunDataGenerationTransforms(object):
                 elif isinstance(transform, IsabelleLocalDataGenerationTransform):
                     exec = IsabelleExecutor(project_path, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error, port=port)
                 elif isinstance(transform, Lean4LocalDataGenerationTransform):
-                    exec = Lean4SyncExecutor(project_path, None, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
+                    exec = SimpleLean4SyncExecutor(project_path, None, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
                 else:
                     raise Exception("Unknown transform")
                 with exec:
