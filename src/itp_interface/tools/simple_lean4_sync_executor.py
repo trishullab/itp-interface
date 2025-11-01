@@ -431,7 +431,14 @@ class SimpleLean4SyncExecutor:
             if tactic_info.line >= line_num:
                 first_idx_after_theorem = idx
                 break
-        assert first_idx_after_theorem is not None, "Could not find the first tactic after the theorem"
+        if first_idx_after_theorem is None:
+            msg = "Could not find the first tactic after the theorem" + \
+            f" only tactic based proofs are supported. Theorem: '{theorem}' on line {line_num}, file: '{self.main_file}'" + \
+            " is probably not followed by any tactic based proof." + \
+            " All tactics parsed till now:\n" + \
+            "\n".join([f"L {t.line}, C {t.column}: {t.text}" for t in all_tactics_till_now]) + \
+            "\n^^^ Cannot see tactics for the theorem."
+            raise NotImplementedError(msg)
         start_tactic = all_tactics_till_now[first_idx_after_theorem]
         tactic_start_line = start_tactic.line
         tactic_start_col = start_tactic.column
@@ -806,7 +813,7 @@ if __name__ == "__main__":
     theorem_name = "Lean4Proj2.test3"
     theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
     assert theorems_similar_to_test is not None, "Theorem similar to test should not be None"
-    print("Theorem similar to ", "Lean4Proj2.test", " is ", theorems_similar_to_test)
+    print("Theorem similar to ", "Lean4Proj2.test3", " is ", theorems_similar_to_test)
     execute_thm_line_by_line(file_path, project_root, theorems_similar_to_test, logger, with_print=True)
     mathlib_test_file = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Data/Nat/Bits.lean'
     project_root = 'data/test/Mathlib'

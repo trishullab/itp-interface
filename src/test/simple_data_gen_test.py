@@ -6,10 +6,11 @@ def pretty_print_file_contents(dir_path):
     print(f"Printing all files in the directory: {dir_path}")
     for f in os.listdir(dir_path):
         file_path = os.path.join(dir_path, f)
-        print('-'*50)
-        print(f"Contents of {file_path}:")
-        with open(file_path, "r") as file:
-            print(file.read())
+        if os.path.isfile(file_path):
+            print('-'*50)
+            print(f"Contents of {file_path}:")
+            with open(file_path, "r") as file:
+                print(file.read())
 
 class TestDataGen(unittest.TestCase):
     def test_proof_step_data_gen(self):
