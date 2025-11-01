@@ -19,7 +19,7 @@ import traceback
 from typing import Optional, Dict, Any, List
 import json
 
-from itp_interface.tools.lean4_sync_executor import Lean4SyncExecutor
+from itp_interface.tools.simple_lean4_sync_executor import SimpleLean4SyncExecutor
 from itp_interface.lean_server.lean_context import ProofContext
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
@@ -49,6 +49,7 @@ def get_debug_info() -> Dict[str, Any]:
         return {}
 
     executor = executor_state['executor']
+    assert isinstance(executor, SimpleLean4SyncExecutor)
 
     # Format proof_context
     proof_context_info = None
@@ -82,12 +83,7 @@ def get_debug_info() -> Dict[str, Any]:
         'proof_start_idx': executor._proof_start_idx,
         'import_end_idx': executor._import_end_idx,
         'theorem_started': executor._theorem_started,
-        'last_env_idx': executor._last_env_idx,
-        'last_proof_state_idx': executor._last_proof_state_idx,
-        'in_tactic_mode': executor._in_tactic_mode,
-        'ready_to_accept_proof': executor._ready_to_accept_proof,
         'enforce_qed': executor._enforce_qed,
-        'namespaces': executor._namespaces,
         'anon_theorem_count': executor._anon_theorem_count,
 
         # Debug traces and proof tactics
@@ -174,7 +170,7 @@ def initialize():
                 pass
 
         # Initialize new executor
-        executor = Lean4SyncExecutor(
+        executor = SimpleLean4SyncExecutor(
             project_root=project_root,
             main_file=file_path,
             timeout_in_sec=60,
@@ -338,7 +334,7 @@ def validate_proof():
         keep_temp_file = data.get('keep_temp_file', True)  # Default to keeping the file
 
         # Run validation
-        validation_result = executor.validate_proof_with_lake(
+        validation_result = executor.validate_proof(
             timeout_sec=timeout_sec,
             keep_temp_file=keep_temp_file
         )

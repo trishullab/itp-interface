@@ -229,6 +229,7 @@ class SimpleLean4SyncExecutor:
 
     def _backtrack_tactic_line(self, idx: int):
         # identify the keys to remove
+        self._lines_executed = self._lines_executed[:idx]
         idx_to_remove = []
         backtracked = False
         for k in self._last_tactics.keys():
@@ -275,11 +276,18 @@ class SimpleLean4SyncExecutor:
     def _format_error_message(self, error_info: ErrorInfo) -> str:
         return f"L {error_info.position.line}, C {error_info.position.column}: {error_info.message}"
     
+    def _reset_proof_context(self):
+        self.proof_context = None
+        self.curr_lemma = None
+        self.curr_lemma_name = None
+        self._clear_tactics()
+        self._proof_running = False
+
     def _update_proof_context(self, idx, tactics: List[LeanLineInfo], errors: List[ErrorInfo]):
         proof_goal_messages: list[str] = []
         error_messages: list[str] = []
         assert len(tactics) >= 0, "Tactics should not be None"
-        last_tactic: LeanLineInfo = tactics[0]
+        last_tactic: LeanLineInfo = tactics[-1]
         if not tactics and not errors:
             raise ValueError(f"Response is None cannot update proof context for line number {idx}")
         for error in errors:
@@ -309,16 +317,16 @@ class SimpleLean4SyncExecutor:
                     proof_goals = [g_text for g_text in proof_goal_messages
                     if g_text is not None and len(g_text) > 0]
                 self.proof_context = self._parse_proof_context(proof_goals)
-                if self.proof_context == ProofContext.empty():
-                    self._proof_running = False
-                    self.proof_context : ProofContext | None = None
-                    self.curr_lemma = None
-                    self.curr_lemma_name = None
-                    self._clear_tactics()
+                if self.proof_context == ProofContext.empty() and \
+                    ((self._enforce_qed and last_tactic.text.strip() == "done") or not self._enforce_qed):
+                    self._reset_proof_context()
             else:
                 self.proof_context : ProofContext | None = None
+            self.lean_error_messages.clear()
         else:
             self.lean_error_messages = error_messages
+            # Rollback the last tactic if there was an error
+            self._backtrack_tactic_line(idx)
 
     def _run_stmt_on_lean_server(self, idx : int, stmt: str, theorem_started: bool = False):
         assert self.tactic_parser is not None, "Tactic parser is not initialized"
@@ -367,6 +375,11 @@ class SimpleLean4SyncExecutor:
                 parse_type=RequestType.PARSE_TACTICS)
             code_was_executed = True
             self._update_proof_context(idx, tactics, error_info)
+            if self.debug_enabled:
+                tactics_json = [tactic.to_json() for tactic in tactics]
+                errors_json = [error.to_json() for error in error_info]
+                trace = ("<br/>\n" + "-"*20 + "\n").join(tactics_json + errors_json)
+                self._debug_traces.append(trace)
         pass
 
     def _skip_to_theorem(self, theorem: str):
@@ -455,13 +468,12 @@ class SimpleLean4SyncExecutor:
         else:
             return ProofContext(goals, [], [], [])
 
-    def validate_proof_with_lake(self, theorem_name: Optional[str] = None, timeout_sec: int = 30, keep_temp_file: bool = True) -> typing.Dict[str, typing.Any]:
+    def validate_proof(self, timeout_sec: int = 30, keep_temp_file: bool = True) -> typing.Dict[str, typing.Any]:
         """
         Validate the current proof state by running 'lake lean' on a temporary file.
-        This provides an independent verification without relying on the REPL.
+        This provides an independent verification without relying on the TacticParser.
 
         Args:
-            theorem_name: Name of the theorem to validate (optional, for logging only)
             timeout_sec: Timeout in seconds for the lake lean process
             keep_temp_file: If True, keeps the temporary file after validation (default: True)
 
@@ -479,31 +491,13 @@ class SimpleLean4SyncExecutor:
         """
 
         # Get theorem name for logging/reporting, but don't require it
-        if theorem_name is None:
-            theorem_name = self.curr_lemma_name or "unknown"
+        assert self._last_theorem is not None, "Either last theorem should not be None or there should be some executed lines"
+        assert self._content_till_last_theorem_stmt is not None, "Content till last theorem statement should not be None"
+        theorem_name, _, full_thm_stmt = self._last_theorem
+        code_before_thm = self._content_till_last_theorem_stmt
 
         # Create the Lean code with all executed lines up to current point
-        lines_executed_str = '\n'.join(self._lines_executed)
-
-        if not lines_executed_str or not lines_executed_str.strip():
-            return {
-                'success': False,
-                'compilation_ok': False,
-                'has_sorries': False,
-                'error_message': 'No code to validate',
-                'errors': [],
-                'lean_code': '',
-                'theorem_name': theorem_name,
-                'full_output': 'No code available to validate',
-                'stdout': '',
-                'stderr': '',
-                'return_code': -1,
-                'temp_filename': 'N/A',
-                'temp_file_path': 'N/A',
-                'temp_file_kept': False,
-                'debug_traces': list(self._debug_traces),
-                'possible_proof_tactics': self.possible_proof_tactics
-            }
+        lines_before_thm = code_before_thm + "\n" + full_thm_stmt + "\n"
 
         # Build the complete Lean code with actual proof tactics
         # The proof tactics are accumulated in self.possible_proof_tactics
@@ -524,32 +518,7 @@ class SimpleLean4SyncExecutor:
                 raise ValueError("No proof tactics available. Neither 'possible_proof_tactics' nor '_last_tactics' contain any proof steps.")
 
         # Now build the Lean code with the proof tactics
-        if proof_tactics_source and proof_tactics_source.strip():
-            # Find the last ':=' in lines_executed
-            last_assign_idx = lines_executed_str.rfind(':=')
-            if last_assign_idx != -1:
-                # Take everything up to and including the last ':=' from lines_executed
-                code_prefix = lines_executed_str[:last_assign_idx + 2]
-
-                # In proof_tactics_source, find the first ':= by' (with flexible whitespace)
-                # Use regex to find ':=' followed by optional whitespace and 'by'
-                assign_by_match = re.search(r':=\s+by', proof_tactics_source)
-
-                if assign_by_match:
-                    # Extract everything after ':= <whitespace> by' (excluding the match itself)
-                    match_end_idx = assign_by_match.end()
-                    actual_proof = proof_tactics_source[match_end_idx:].strip()
-                    lean_code = code_prefix + ' by\n' + actual_proof
-                else:
-                    # No ':= by' found, use proof_tactics_source as-is
-                    actual_proof = proof_tactics_source.strip()
-                    lean_code = code_prefix + ' by\n' + actual_proof
-            else:
-                # No ':=' found, just use lines_executed as-is
-                lean_code = lines_executed_str
-        else:
-            # No proof tactics available, use lines_executed as-is
-            lean_code = lines_executed_str
+        lean_code = lines_before_thm.rstrip() + "\n" + proof_tactics_source.strip() + "\n"
 
         # Create a unique temporary file
         temp_filename = f"validation_{self.ticks}_{self.random_num}.lean"
@@ -786,7 +755,7 @@ def get_theorem_name_resembling(file_path: str, theorem_name: str, use_cache: bo
                 return json.dumps(dict_thm)
         raise ValueError(f"The theorem '{theorem_name}' was not found in the file '{file_path}'")
 
-def execute_lean_repl_on(file_path: str, project_root: str, theorem_name: str, logger: logging.Logger, with_print: bool=False):
+def execute_thm_line_by_line(file_path: str, project_root: str, theorem_name: str, logger: logging.Logger, with_print: bool=False):
     pprint = lambda msg: print(msg) if with_print else None
     with SimpleLean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger) as executor:
         executor.set_run_exactly()
@@ -838,7 +807,7 @@ if __name__ == "__main__":
     theorems_similar_to_test = get_theorem_name_resembling(file_path, theorem_name, use_cache=True)
     assert theorems_similar_to_test is not None, "Theorem similar to test should not be None"
     print("Theorem similar to ", "Lean4Proj2.test", " is ", theorems_similar_to_test)
-    execute_lean_repl_on(file_path, project_root, theorems_similar_to_test, logger, with_print=True)
+    execute_thm_line_by_line(file_path, project_root, theorems_similar_to_test, logger, with_print=True)
     mathlib_test_file = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Data/Nat/Bits.lean'
     project_root = 'data/test/Mathlib'
     assert os.path.exists(mathlib_test_file), "Mathlib test file does not exist"
@@ -846,4 +815,4 @@ if __name__ == "__main__":
     theorems_similar_to_test = get_theorem_name_resembling(mathlib_test_file, "one_bits", use_cache=True)
     assert theorems_similar_to_test is not None, "Theorem similar to test should not be None"
     print("Theorem similar to ", "one_bits", " is ", theorems_similar_to_test)
-    execute_lean_repl_on(mathlib_test_file, project_root, theorems_similar_to_test, logger, with_print=True)
+    execute_thm_line_by_line(mathlib_test_file, project_root, theorems_similar_to_test, logger, with_print=True)

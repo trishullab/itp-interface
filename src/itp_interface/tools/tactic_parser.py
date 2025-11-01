@@ -92,6 +92,10 @@ class ErrorInfo(BaseModel):
     message: str
     position: Position
 
+    def to_json(self) -> str:
+        # Use pydantic's built-in json method
+        return ErrorInfo.model_dump_json(self)
+
 class LeanLineInfo(BaseModel):
     """Information about a single tactic."""
     text: str
@@ -119,6 +123,10 @@ class LeanLineInfo(BaseModel):
             "docString": self.doc_string,
             "namespace": self.namespace
         }
+
+    def to_json(self) -> str:
+        # Use pydantic's built-in json method
+        return LeanLineInfo.model_dump_json(self)
 
 # Create an enum for parsing request type
 class RequestType(Enum):
