@@ -97,6 +97,7 @@ class EvalBenchmark(object):
     few_shot_metadata_filename_for_retrieval: str = None
     dfs_data_path_for_retrieval: str = None
     dfs_metadata_filename_for_retrieval: str = None
+    is_extraction_request: bool = False
     setup_cmds: typing.List[str] = field(default_factory=list)
 
 @dataclass_json
@@ -105,7 +106,6 @@ class Experiments(object):
     env_settings: EnvSettings
     run_settings: RunSettings
     benchmark: EvalBenchmark
-    is_extraction_request: bool
 
 @dataclass_json
 @dataclass
@@ -211,5 +211,6 @@ def parse_config(cfg):
         few_shot_metadata_filename_for_retrieval=benchmark_cfg["few_shot_metadata_filename_for_retrieval"],
         dfs_data_path_for_retrieval=benchmark_cfg["dfs_data_path_for_retrieval"],
         dfs_metadata_filename_for_retrieval=benchmark_cfg["dfs_metadata_filename_for_retrieval"],
+        is_extraction_request=is_extraction_request and benchmark_cfg.get("is_extraction_request", False),
         setup_cmds=benchmark_cfg["setup_cmds"] if "setup_cmds" in benchmark_cfg else [])
-    return Experiments(env_settings=env_settings, run_settings=eval_settings, benchmark=benchmark, is_extraction_request=is_extraction_request)
+    return Experiments(env_settings=env_settings, run_settings=eval_settings, benchmark=benchmark)
