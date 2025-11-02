@@ -10,7 +10,7 @@ from itp_interface.rl.proof_state import ProofState
 from itp_interface.rl.proof_action import ProofAction
 from itp_interface.rl.abstraction import State, Action, Env
 from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
-from itp_interface.tools.training_data_format import TrainingDataFormat
+from itp_interface.tools.training_data_format import TheoremProvingTrainingDataFormat
 from itp_interface.tools.dynamic_coq_proof_exec import DynamicProofExecutor as DynamicCoqProofExecutor
 from itp_interface.tools.dynamic_lean_proof_exec import DynamicProofExecutor as DynamicLeanProofExecutor
 from itp_interface.tools.dynamic_lean4_proof_exec import DynamicProofExecutor as DynamicLean4ProofExecutor
@@ -290,7 +290,7 @@ class ProofEnv(Env):
         assert self._loaded, "Env not loaded, call reset() first"
         self.goal_end_time = time.time()
         self.time_taken = self.goal_end_time - self.goal_start_time
-        proof_steps = [TrainingDataFormat(proof_steps=tactic.proof_steps) for _, tactic in self._p_tree.tactics]
+        proof_steps = [TheoremProvingTrainingDataFormat(proof_steps=tactic.proof_steps) for _, tactic in self._p_tree.tactics]
         additional_info = additional_info if additional_info is not None else {}
         self.proof_search_res = ProofSearchResult(
             self._dynamic_proof_executor.main_file, 

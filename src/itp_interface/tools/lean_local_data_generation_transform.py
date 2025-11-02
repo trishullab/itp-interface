@@ -9,7 +9,7 @@ import uuid
 from itp_interface.tools.lean_cmd_executor import Lean3Executor
 from itp_interface.tools.lean_context_helper import Lean3ContextHelper
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
-from itp_interface.tools.training_data_format import Goal, MergableCollection, TrainingDataMetadataFormat, TheoremProvingTrainingDataCollection, TrainingDataFormat
+from itp_interface.tools.training_data_format import Goal, MergableCollection, TrainingDataMetadataFormat, TheoremProvingTrainingDataCollection, TheoremProvingTrainingDataFormat
 from itp_interface.tools.training_data import TrainingData
 
 class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
@@ -61,7 +61,7 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
                 prev_goal : typing.List[Goal] = [Goal(goal.hypotheses, goal.goal) for goal in prev_goal]
                 next_goal : typing.List[Goal] = lean_context_helper.get_focussed_goals(lean_executor)
                 if len(prev_goal) > 0:
-                    training_data_format = TrainingDataFormat(
+                    training_data_format = TheoremProvingTrainingDataFormat(
                         proof_id=proof_id,
                         all_useful_defns_theorems=[],
                         start_goals=prev_goal,

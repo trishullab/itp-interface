@@ -8,7 +8,7 @@ if root_dir not in sys.path:
 import logging
 import typing
 from itp_interface.tools.lean4_sync_executor import Lean4SyncExecutor, ProofContext
-from itp_interface.tools.training_data_format import Goal, LemmaRefWithScore, LemmaReferences, TrainingDataFormat
+from itp_interface.tools.training_data_format import Goal, LemmaRefWithScore, LemmaReferences, TheoremProvingTrainingDataFormat
 from typing import List
 
 class Lean4ContextHelper(object):
@@ -44,11 +44,11 @@ class Lean4ContextHelper(object):
         raise Exception("Search is not supported in Lean as of now")
 
 
-    def set_relevant_defns_in_training_data_point(self, training_data_point: TrainingDataFormat, lean_executor: Lean4SyncExecutor, logger: logging.Logger = None, depth: int = None):
+    def set_relevant_defns_in_training_data_point(self, training_data_point: TheoremProvingTrainingDataFormat, lean_executor: Lean4SyncExecutor, logger: logging.Logger = None, depth: int = None):
         # Search is not supported in Lean as of now
         raise Exception("Search is not supported in Lean as of now")
 
-    def set_all_type_matched_query_result(self, training_data_point: TrainingDataFormat, lean_executor: Lean4SyncExecutor, logger: logging.Logger = None, depth: int = None):
+    def set_all_type_matched_query_result(self, training_data_point: TheoremProvingTrainingDataFormat, lean_executor: Lean4SyncExecutor, logger: logging.Logger = None, depth: int = None):
         unique_thms = {defn.lemma_name: idx for idx, defn in enumerate(training_data_point.all_useful_defns_theorems)}
         # query = training_data_point.get_human_readable_serialized_goal(idx, skip_special_tokens=True)
         relevant_thms = self.search_executor.search_type_matching_defns("") # Here the search simply returns everything
@@ -63,10 +63,10 @@ class Lean4ContextHelper(object):
             goal.possible_useful_theorems_external = [LemmaRefWithScore(unique_thms[f"{thm.namespace}.{thm.name}"], 1.0) for thm in relevant_thms]
             goal.possible_useful_theorems_local = []
 
-    def set_useful_defns_theorems_for_training_data_generation(self, current_stmt: str, training_data_point: TrainingDataFormat, lean_executor: Lean4SyncExecutor, logger: logging.Logger = None, depth: int = None, max_search_res: typing.Optional[int] = None):
+    def set_useful_defns_theorems_for_training_data_generation(self, current_stmt: str, training_data_point: TheoremProvingTrainingDataFormat, lean_executor: Lean4SyncExecutor, logger: logging.Logger = None, depth: int = None, max_search_res: typing.Optional[int] = None):
         # Search is not supported in Lean as of now
         raise Exception("Search is not supported in Lean as of now")
 
-    def set_local_thms_dfns(self, training_data_point: TrainingDataFormat, lean_executor: Lean4SyncExecutor, logger: logging.Logger = None):
+    def set_local_thms_dfns(self, training_data_point: TheoremProvingTrainingDataFormat, lean_executor: Lean4SyncExecutor, logger: logging.Logger = None):
         # Search is not supported in Lean as of now
         raise Exception("Search is not supported in Lean as of now")        

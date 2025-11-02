@@ -12,7 +12,7 @@ import yaml
 from itp_interface.lean_server.lean_context import ProofContext
 from itp_interface.lean_server.lean4_utils import Lean4Utils
 from itp_interface.tools.training_data import TrainingData
-from itp_interface.tools.training_data_format import Goal, MergableCollection, TheoremProvingTrainingDataCollection, TrainingDataFormat, TrainingDataMetadataFormat
+from itp_interface.tools.training_data_format import Goal, MergableCollection, TheoremProvingTrainingDataCollection, TheoremProvingTrainingDataFormat, TrainingDataMetadataFormat
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
 
 class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
@@ -148,7 +148,7 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
                     raise
                 if len(start_goals.all_goals) > 0:
                     # Create a training data object
-                    training_data_format = TrainingDataFormat(
+                    training_data_format = TheoremProvingTrainingDataFormat(
                         proof_id=theorem_id,
                         start_goals=[Goal(goal.hypotheses, goal.goal) for goal in start_goals.all_goals],
                         end_goals=[Goal(goal.hypotheses, goal.goal) for goal in end_goals.all_goals],

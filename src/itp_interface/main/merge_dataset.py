@@ -11,7 +11,7 @@ import os
 import typing
 import copy
 from itp_interface.tools.log_utils import setup_logger
-from itp_interface.tools.training_data import TrainingData, TrainingDataFormat
+from itp_interface.tools.training_data import TrainingData, TheoremProvingTrainingDataFormat
 
 def filter_training_data(training_data: TrainingData, max_distance_to_good: int = 10):
 
@@ -42,7 +42,7 @@ def filter_training_data(training_data: TrainingData, max_distance_to_good: int 
             if end_state not in good_state_ids:
                 bad_state_ids.add(end_state)
     
-    def _reconstruct_prev_state_id_map(training_datas: typing.List[TrainingDataFormat]) -> typing.Tuple[typing.Dict[int, int], int]:
+    def _reconstruct_prev_state_id_map(training_datas: typing.List[TheoremProvingTrainingDataFormat]) -> typing.Tuple[typing.Dict[int, int], int]:
             prev_state_id_map = {}
             done_state = None
             for training_data in training_datas:
@@ -57,11 +57,11 @@ def filter_training_data(training_data: TrainingData, max_distance_to_good: int 
                         done_state = end_state
             return prev_state_id_map, done_state
     
-    filtered_training_data : typing.List[TrainingDataFormat] = []
-    proof_id_maps : typing.Dict[str, typing.List[TrainingDataFormat]] = {}
+    filtered_training_data : typing.List[TheoremProvingTrainingDataFormat] = []
+    proof_id_maps : typing.Dict[str, typing.List[TheoremProvingTrainingDataFormat]] = {}
     for idx in range(len(training_data)):
         example = training_data[idx]
-        training_datas : typing.List[TrainingDataFormat] = proof_id_maps.get(example.proof_id, [])
+        training_datas : typing.List[TheoremProvingTrainingDataFormat] = proof_id_maps.get(example.proof_id, [])
         training_datas.append(example)
         proof_id_maps[example.proof_id] = training_datas
     for proof_id, training_datas in proof_id_maps.items():
@@ -136,7 +136,7 @@ def merge_datasets(datasets, metafilenames, output, max_parallelism=8, logger=No
         logger.info(f"Start loading {td.folder} ...")
         td.load()
 
-        filtered_training_data_points : typing.List[TrainingDataFormat] = None
+        filtered_training_data_points : typing.List[TheoremProvingTrainingDataFormat] = None
         if should_filter_data and td.folder != datasets[0]:
             # TODO: move to the right location
             filtered_training_data_points = filter_training_data(td)

@@ -10,7 +10,7 @@ import typing
 import os
 import enum
 import logging
-from itp_interface.tools.training_data_format import Goal, TrainingDataFormat
+from itp_interface.tools.training_data_format import Goal, TheoremProvingTrainingDataFormat
 from itp_interface.tools.coq_parse_utils import CoqLineByLineReader
 from itp_interface.tools.coq_executor import CoqExecutor
 from itp_interface.tools.coq_context_helper import CoqContextHelper
@@ -120,43 +120,43 @@ class DynamicProofExecutor(CoqExecutor):
             return []
         return self.coq_context_helper.get_unfocussed_goals(self)
 
-    def get_current_proof_state_as_training_data(self) -> TrainingDataFormat:
+    def get_current_proof_state_as_training_data(self) -> TheoremProvingTrainingDataFormat:
         # get the current goal
         if self.needs_cut_close():
             current_goals = self.get_unfocussed_goals()
-            training_data_format = TrainingDataFormat(start_goals=current_goals)
+            training_data_format = TheoremProvingTrainingDataFormat(start_goals=current_goals)
             training_data_format.goal_description = DynamicProofExecutor.UnfocussedGoalsDescription
         elif not self.is_in_proof_mode():
             current_goals = self.get_focussed_goals()
-            training_data_format = TrainingDataFormat(start_goals=current_goals)
+            training_data_format = TheoremProvingTrainingDataFormat(start_goals=current_goals)
             training_data_format.goal_description = DynamicProofExecutor.NotInProofModeDescription
         elif self.needs_qed():
             current_goals = self.get_focussed_goals()
             assert len(current_goals) == 0, "There should be no goals when needs_qed is True"
-            training_data_format = TrainingDataFormat(start_goals=current_goals)
+            training_data_format = TheoremProvingTrainingDataFormat(start_goals=current_goals)
             training_data_format.goal_description = DynamicProofExecutor.ProofFinishedDescription
         else:
             current_goals = self.get_focussed_goals()
-            training_data_format = TrainingDataFormat(start_goals=current_goals)
+            training_data_format = TheoremProvingTrainingDataFormat(start_goals=current_goals)
             training_data_format.goal_description = None
         return training_data_format
     
-    def get_all_relevant_thms(self, should_print_symbol: bool = False) -> TrainingDataFormat:
+    def get_all_relevant_thms(self, should_print_symbol: bool = False) -> TheoremProvingTrainingDataFormat:
         training_data_format = self.get_current_proof_state_as_training_data()
         self.coq_context_helper.set_all_type_matched_query_result(training_data_format, self, self.logger, should_print_symbol=should_print_symbol)
         return training_data_format
     
-    def get_all_relevant_thms_within_local_context(self) -> TrainingDataFormat:
+    def get_all_relevant_thms_within_local_context(self) -> TheoremProvingTrainingDataFormat:
         training_data_format = self.get_current_proof_state_as_training_data()
         self.coq_context_helper.set_local_thms_dfns(training_data_format, self, self.logger)
         return training_data_format
     
-    def get_all_relevant_defns(self) -> TrainingDataFormat:
+    def get_all_relevant_defns(self) -> TheoremProvingTrainingDataFormat:
         training_data_format = self.get_current_proof_state_as_training_data()
         self.coq_context_helper.set_relevant_defns_in_training_data_point(training_data_format, self, self.logger)
         return training_data_format
     
-    def get_all_relevant_defns_and_thms(self, should_print_symbol: bool = False, only_local: bool = False, only_proof_state: bool = False) -> TrainingDataFormat:
+    def get_all_relevant_defns_and_thms(self, should_print_symbol: bool = False, only_local: bool = False, only_proof_state: bool = False) -> TheoremProvingTrainingDataFormat:
         training_data_format = self.get_current_proof_state_as_training_data()
         if not only_proof_state:
             self.coq_context_helper.set_relevant_defns_in_training_data_point(training_data_format, self, self.logger, should_print_symbol=should_print_symbol, only_local=only_local)

@@ -15,6 +15,21 @@ from pydantic import BaseModel
 from itp_interface.tools.tactic_parser import LeanLineInfo
 
 @runtime_checkable
+class TrainingDataFormat(Protocol):
+    
+    def to_json(self, indent=0) -> str:
+        raise NotImplementedError("to_json must be implemented by the child class")
+
+    @staticmethod
+    def load_from_file(file_path: str):
+        raise NotImplementedError("load_from_file must be implemented by the child class")
+    
+    @staticmethod
+    def load_from_string(json_text: str):
+        raise NotImplementedError("load_from_string must be implemented by the child class")
+
+
+@runtime_checkable
 class MergableCollection(Protocol):
     def merge(self, __o: object):
         raise NotImplementedError("merge must be implemented by the child class")
@@ -24,6 +39,32 @@ class MergableCollection(Protocol):
 
     def __len__(self) -> int:
         raise NotImplementedError("__len__ must be implemented by the child class")
+
+
+@runtime_checkable
+class TrainingDataCollection(Protocol):
+    training_data: list
+
+    def merge(self, __o: object):
+        raise NotImplementedError("merge must be implemented by the child class")
+    
+    def undo_merge(self, size: int = 1, start_idx = 0) -> object:
+        raise NotImplementedError("undo_merge must be implemented by the child class")
+
+    def __len__(self) -> int:
+        return len(self.training_data)
+    
+    def to_json(self, indent=0) -> str:
+        raise NotImplementedError("to_json must be implemented by the child class")
+
+    @staticmethod
+    def load_from_file(file_path: str, logger: logging.Logger = None):
+        raise NotImplementedError("load_from_file must be implemented by the child class")
+
+    @staticmethod
+    def load_from_string(json_text: str, logger: logging.Logger = None):
+        raise NotImplementedError("load_from_string must be implemented by the child class")
+
 
 @dataclass_json
 @dataclass
@@ -82,6 +123,9 @@ class Goal(object):
     def __gt__(self, __o: object) -> bool:
         return self != __o and self >= __o
     
+    def to_json(self, indent=0) -> str:
+        return Goal.schema().dumps(self, indent=indent)
+
     @staticmethod
     def load_from_file(file_path: str):
         assert os.path.exists(file_path), "file_path must be a valid path to a file"
@@ -97,7 +141,50 @@ class Goal(object):
 
 @dataclass_json
 @dataclass
-class TrainingDataFormat(object):
+class LemmaReferences(object):
+    """Class to store the lemma references."""
+    lemma_idx: int
+    lemma_name: str
+    lemma_defn: str
+    ref_count: int = 0
+    
+    def __eq__(self, __o: object) -> bool:
+        if not isinstance(__o, LemmaReferences):
+            return False
+        return self.lemma_name == __o.lemma_name and self.lemma_defn == __o.lemma_defn
+    
+    def __hash__(self) -> int:
+        return hash((self.lemma_name, self.lemma_defn))
+    
+    def __str__(self) -> str:
+        return f"{self.lemma_name} : {self.lemma_defn}"
+#        return f"{self.lemma_defn} : {self.lemma_name}"
+
+    def clone(self, idx : Optional[int] = None):
+        new_copy = copy.deepcopy(self)
+        if idx is not None:
+            new_copy.lemma_idx = idx
+        return new_copy
+    
+    def to_json(self, indent=0) -> str:
+        return LemmaReferences.schema().dumps(self, indent=indent)
+    
+    @staticmethod
+    def load_from_file(file_path: str):
+        assert os.path.exists(file_path), "file_path must be a valid path to a file"
+        json_text = None
+        with open(file_path, "r") as f:
+            json_text = f.read()
+        return LemmaReferences.load_from_string(json_text)
+    
+    @staticmethod
+    def load_from_string(json_text: str):
+        assert json_text is not None, "json_text cannot be None"
+        return LemmaReferences.schema().loads(json_text)
+
+@dataclass_json
+@dataclass
+class TheoremProvingTrainingDataFormat(object):
     """Class to format the training data for coq based automatic theorem provers.
     This class is responsible for formatting the training data for coq based automatic theorem provers.
     """
@@ -114,7 +201,7 @@ class TrainingDataFormat(object):
     theorem_name: Optional[str] = None # The name of the theorem.
 
     def __eq__(self, __o: object) -> bool:
-        if not isinstance(__o, TrainingDataFormat):
+        if not isinstance(__o, TheoremProvingTrainingDataFormat):
             return False
         goal_set_a = set([goal.goal for goal in self.start_goals])
         goal_set_b = set([goal.goal for goal in __o.start_goals])
@@ -154,7 +241,7 @@ class TrainingDataFormat(object):
     
     def __le__(self, __o: object) -> bool:
         # TrainingDataFormat 'a' is less (hard) than TrainingDataFormat 'b' iff all goals in 'a' are subset of goals in 'b'
-        if not isinstance(__o, TrainingDataFormat):
+        if not isinstance(__o, TheoremProvingTrainingDataFormat):
             raise TypeError(f"Cannot compare TrainingDataFormat with {type(__o)}")
         goal_set_a = set([goal.goal for goal in self.start_goals])
         goal_set_b = set([goal.goal for goal in __o.start_goals])
@@ -210,7 +297,7 @@ class TrainingDataFormat(object):
     
     def __ge__(self, __o: object) -> bool:
         # TrainingDataFormat 'a' is more (hard) than TrainingDataFormat 'b' iff all goals in 'b' are subset of goals in 'a'
-        if not isinstance(__o, TrainingDataFormat):
+        if not isinstance(__o, TheoremProvingTrainingDataFormat):
             raise TypeError(f"Cannot compare TrainingDataFormat with {type(__o)}")
         goal_set_a = set([goal.goal for goal in self.start_goals])
         goal_set_b = set([goal.goal for goal in __o.start_goals])
@@ -267,7 +354,7 @@ class TrainingDataFormat(object):
         return hash(tuple(goal_set))
 
     def have_same_proof_steps(self, __o: object) -> bool:
-        if not isinstance(__o, TrainingDataFormat):
+        if not isinstance(__o, TheoremProvingTrainingDataFormat):
             raise TypeError(f"Cannot compare TrainingDataFormat with {type(__o)}")
         return len(self.proof_steps) == len(__o.proof_steps) and all([p_a == p_b for p_a, p_b in zip(self.proof_steps, __o.proof_steps)])
 
@@ -280,70 +367,25 @@ class TrainingDataFormat(object):
 {hyps}
 """
 
+    def to_json(self, indent=0) -> str:
+        return TheoremProvingTrainingDataFormat.schema().dumps(self, indent=indent)
+
     @staticmethod
     def load_from_file(file_path: str):
         assert os.path.exists(file_path), "file_path must be a valid path to a file"
         json_text = None
         with open(file_path, "r") as f:
             json_text = f.read()
-        return TrainingDataFormat.load_from_string(json_text)
+        return TheoremProvingTrainingDataFormat.load_from_string(json_text)
     
     @staticmethod
     def load_from_string(json_text: str):
         assert json_text is not None, "json_text cannot be None"
-        return TrainingDataFormat.schema().loads(json_text)
-
-@runtime_checkable
-class TrainingDataCollection(Protocol):
-    training_data: List[TrainingDataFormat]
-
-    def merge(self, __o: object):
-        raise NotImplementedError("merge must be implemented by the child class")
-    
-    def undo_merge(self, size: int = 1, start_idx = 0) -> object:
-        raise NotImplementedError("undo_merge must be implemented by the child class")
-
-    def __len__(self) -> int:
-        raise NotImplementedError("__len__ must be implemented by the child class")
-    
-    @staticmethod
-    def load_from_file(file_path: str, logger: logging.Logger = None):
-        raise NotImplementedError("load_from_file must be implemented by the child class")
-
-    @staticmethod
-    def load_from_string(json_text: str, logger: logging.Logger = None):
-        raise NotImplementedError("load_from_string must be implemented by the child class")
+        return TheoremProvingTrainingDataFormat.schema().loads(json_text)    
 
 @dataclass_json
 @dataclass
-class LemmaReferences(object):
-    """Class to store the lemma references."""
-    lemma_idx: int
-    lemma_name: str
-    lemma_defn: str
-    ref_count: int = 0
-    
-    def __eq__(self, __o: object) -> bool:
-        if not isinstance(__o, LemmaReferences):
-            return False
-        return self.lemma_name == __o.lemma_name and self.lemma_defn == __o.lemma_defn
-    
-    def __hash__(self) -> int:
-        return hash((self.lemma_name, self.lemma_defn))
-    
-    def __str__(self) -> str:
-        return f"{self.lemma_name} : {self.lemma_defn}"
-#        return f"{self.lemma_defn} : {self.lemma_name}"
-
-    def clone(self, idx : Optional[int] = None):
-        new_copy = copy.deepcopy(self)
-        if idx is not None:
-            new_copy.lemma_idx = idx
-        return new_copy
-
-@dataclass_json
-@dataclass
-class LemmaReferencesCollection(MergableCollection):
+class LemmaReferencesCollection(TrainingDataCollection):
     """Class to store the lemma references."""
     training_data: list[LemmaReferences] = field(default_factory=list)
     
@@ -387,16 +429,16 @@ class LemmaReferencesCollection(MergableCollection):
         assert start_idx < len(self.training_data), f"can only cut-down from idx < {len(self.training_data)}"
         fraction = self.training_data[start_idx: size]
         return LemmaReferencesCollection(training_data=fraction)
-
-    def __len__(self) -> int:
-        return len(self.training_data)
     
     def __iter__(self):
         return iter(self.training_data)
     
     def __getitem__(self, idx: int) -> LemmaReferences:
         return self.training_data[idx]
-    
+
+    def to_json(self, indent=0) -> str:
+        return LemmaReferencesCollection.schema().dumps(self, indent=indent)
+
     @staticmethod
     def load_from_file(file_path: str, logger: logging.Logger = None):
         assert os.path.exists(file_path), f"file_path:{file_path} must be a valid path to a file"
@@ -419,11 +461,10 @@ class LemmaReferencesCollection(MergableCollection):
             logger.info(f"Deserialized json data from string of length {len(json_text)} characters")
         return deserialized
 
-
 @dataclass_json
 @dataclass
-class TheoremProvingTrainingDataCollection(MergableCollection):
-    training_data: List[TrainingDataFormat] = field(default_factory=list) # The list of training data.
+class TheoremProvingTrainingDataCollection(TrainingDataCollection):
+    training_data: list[TheoremProvingTrainingDataFormat] = field(default_factory=list) # The list of training data.
 
     def merge(self, __o: object):
         assert isinstance(__o, TheoremProvingTrainingDataCollection)
@@ -435,6 +476,9 @@ class TheoremProvingTrainingDataCollection(MergableCollection):
         assert start_idx < len(self.training_data), f"can only cut-down from idx < {len(self.training_data)}"
         fraction = self.training_data[start_idx: size]
         return TheoremProvingTrainingDataCollection(training_data=fraction)
+
+    def to_json(self, indent=0) -> str:
+        return TheoremProvingTrainingDataCollection.schema().dumps(self, indent=indent)
 
     @staticmethod
     def load_from_file(file_path: str, logger: logging.Logger = None):
@@ -457,15 +501,12 @@ class TheoremProvingTrainingDataCollection(MergableCollection):
         if logger is not None:
             logger.info(f"Deserialized json data from string of length {len(json_text)} characters")
         return deserialized
-    
-    def __len__(self) -> int:
-        return len(self.training_data)
 
-class ExtractionDataCollection(BaseModel, MergableCollection):
+class ExtractionDataCollection(BaseModel, TrainingDataCollection):
     training_data: list[LeanLineInfo] = []
 
-    def to_json(self) -> str:
-        return self.model_dump_json()
+    def to_json(self, indent=0) -> str:
+        return self.model_dump_json(indent=indent)
 
     def merge(self, __o: object):
         assert isinstance(__o, ExtractionDataCollection)
@@ -490,9 +531,6 @@ class ExtractionDataCollection(BaseModel, MergableCollection):
         with open(file_path, "r") as f:
             json_text = f.read()
         return ExtractionDataCollection.load_from_string(json_text)
-
-    def __len__(self) -> int:
-        return len(self.training_data)
 
 @dataclass_json
 @dataclass
@@ -528,6 +566,9 @@ class TrainingDataMetadataFormat(MergableCollection):
     def __len__(self) -> int:
         return 0
 
+    def to_json(self, indent=0) -> str:
+        return TrainingDataMetadataFormat.schema().dumps(self, indent=indent)
+
     @staticmethod
     def load_from_file(file_path: str):
         assert os.path.exists(file_path), "file_path must be a valid path to a file"
@@ -550,15 +591,15 @@ class TrainingDataFormatLayout(object):
     def get_layout_format_name(self) -> str:
         raise NotImplementedError("get_layout_format_name must be implemented in derived classes")
 
-    def layout_training_data(self, training_data_format: TrainingDataFormat) -> Union[str, tuple[str, str]]:
+    def layout_training_data(self, training_data_format: TheoremProvingTrainingDataFormat) -> Union[str, tuple[str, str]]:
         raise NotImplementedError("get_formatted_training_data must be implemented in derived classes")
     
-    def get_training_data_from_layout(self, formatted_training_data: str) -> TrainingDataFormat:
+    def get_training_data_from_layout(self, formatted_training_data: str) -> TheoremProvingTrainingDataFormat:
         raise NotImplementedError("get_training_data_format must be implemented in derived classes")
     
 if __name__ == "__main__":
     # Test the training data collection
-    training_data_format1 = TrainingDataFormat(
+    training_data_format1 = TheoremProvingTrainingDataFormat(
         proof_id="proof_id",
         start_goals=[
             Goal(hypotheses=[], goal="forall e : expr, size (constant_fold e) <= size e"),
@@ -574,7 +615,7 @@ if __name__ == "__main__":
         addition_state_info={}
     )
 
-    training_data_format2 = TrainingDataFormat(
+    training_data_format2 = TheoremProvingTrainingDataFormat(
         proof_id="proof_id",
         start_goals=[
             Goal(hypotheses=[], goal="forall e : expr, size (constant_fold e) <= size e"),
@@ -590,7 +631,7 @@ if __name__ == "__main__":
         addition_state_info={}
     )
 
-    training_data_format3 = TrainingDataFormat(
+    training_data_format3 = TheoremProvingTrainingDataFormat(
         proof_id="proof_id",
         start_goals=[
             Goal(hypotheses=[], goal="forall e : expr, size (constant_fold e) <= size e"),
@@ -605,7 +646,7 @@ if __name__ == "__main__":
         addition_state_info={}
     )
 
-    training_data_format4 = TrainingDataFormat(
+    training_data_format4 = TheoremProvingTrainingDataFormat(
         proof_id="proof_id",
         start_goals=[
             Goal(hypotheses=[], goal="forall e : expr, size (constant_fold e) <= size e"),
@@ -620,7 +661,7 @@ if __name__ == "__main__":
         addition_state_info={}
     )
 
-    training_data_format5 = TrainingDataFormat(
+    training_data_format5 = TheoremProvingTrainingDataFormat(
         proof_id="proof_id",
         start_goals=[
             Goal(hypotheses=[], goal="forall e : expr, size (constant_fold e) <= size e"),
@@ -634,7 +675,7 @@ if __name__ == "__main__":
         addition_state_info={}
     )
 
-    training_data_format6 = TrainingDataFormat(
+    training_data_format6 = TheoremProvingTrainingDataFormat(
         proof_id="proof_id",
         start_goals=[
             Goal(hypotheses=[], goal="forall e : expr, size (constant_fold e) <= size e"),
@@ -647,7 +688,7 @@ if __name__ == "__main__":
         addition_state_info={}
     )
 
-    training_data_format7 = TrainingDataFormat(
+    training_data_format7 = TheoremProvingTrainingDataFormat(
         proof_id="proof_id",
         start_goals=[
             Goal(hypotheses=[], goal="forall e : expr, size (constant_fold e) <= size e"),

@@ -17,8 +17,9 @@ from itp_interface.tools.training_data_format import (
     LemmaRefWithScore, LemmaReferencesCollection, MergableCollection, 
     TrainingDataCollection, 
     TheoremProvingTrainingDataCollection, 
-    ExtractionDataCollection, 
+    ExtractionDataCollection,
     TrainingDataFormat, 
+    TheoremProvingTrainingDataFormat, 
     TrainingDataMetadataFormat)
 
 # Conditional Ray import
@@ -418,11 +419,19 @@ class TrainingData(MergableCollection):
             last_training_data_collection = self.training_data_collections[-1]
         TrainingData._merge_training_data_collection(last_training_data_collection, [other], new_lemma_ref_idx)
         # Update the metadata
-        self.meta.last_proof_id = other.proof_id
-        self.meta.last_training_data += 1
-        self.meta.external_theorems_used_cnt += sum([len(goal.used_theorems_external) for goal in other.start_goals])
-        self.meta.local_theorems_used_cnt += sum([len(goal.used_theorems_local) for goal in other.start_goals])
-        self.meta.total_data_count += len(other.proof_steps)
+        self._update_meta(other)
+    
+    def _update_meta(self, other: TrainingDataFormat):
+        assert isinstance(other, TrainingDataFormat), "other must be a TrainingDataFormat"
+        if isinstance(other, TheoremProvingTrainingDataFormat):
+            self.meta.last_proof_id = other.proof_id
+            self.meta.last_training_data += 1
+            self.meta.external_theorems_used_cnt += sum([len(goal.used_theorems_external) for goal in other.start_goals])
+            self.meta.local_theorems_used_cnt += sum([len(goal.used_theorems_local) for goal in other.start_goals])
+            self.meta.total_data_count += len(other.proof_steps)
+        else:
+            raise NotImplementedError("Meta update for this TrainingDataFormat is not implemented yet")
+
 
     # Define Ray remote methods conditionally
     if HAS_RAY:
@@ -470,14 +479,11 @@ class TrainingData(MergableCollection):
             ray.logger.info(f"[TrainingData] Saved {filepath} in {save_end_time - save_start_time}s")
             return i, filepath
 
-    def _merge_training_data_collection(other: TrainingDataCollection, training_data_points: typing.List[TrainingDataFormat], new_lemma_ref_idx: typing.List[int]):
-        assert isinstance(other, TrainingDataCollection), "other must be a TrainingDataFormat or TrainingDataCollection"
-        assert isinstance(training_data_points, list), "training_data_points must be a list"
-        assert isinstance(new_lemma_ref_idx, list), "new_lemma_ref_idx must be a list"
-        new_tdps : typing.List[TrainingDataFormat] = []
-        for tdp in training_data_points:
-            assert isinstance(tdp, TrainingDataFormat), "training_data_points must contain TrainingDataFormat objects"
-            new_tdp = TrainingDataFormat(
+    @staticmethod
+    def _clone_tdp(tdp: TrainingDataFormat, new_lemma_ref_idx: typing.List[int]) -> TrainingDataFormat:
+        assert isinstance(tdp, TrainingDataFormat), "training_data_points must contain TrainingDataFormat objects"
+        if isinstance(tdp, TheoremProvingTrainingDataFormat):
+            new_tdp = TheoremProvingTrainingDataFormat(
                 tdp.proof_id,
                 all_useful_defns_theorems=[],
                 start_goals=tdp.start_goals,
@@ -495,5 +501,17 @@ class TrainingData(MergableCollection):
                 goal.used_theorems_external = [LemmaRefWithScore(new_lemma_ref_idx[lemma_ref.lemma_idx], lemma_ref.score) for lemma_ref in goal.used_theorems_external]
                 goal.possible_useful_theorems_local = [LemmaRefWithScore(new_lemma_ref_idx[lemma_ref.lemma_idx], lemma_ref.score) for lemma_ref in goal.possible_useful_theorems_local]
                 goal.possible_useful_theorems_external = [LemmaRefWithScore(new_lemma_ref_idx[lemma_ref.lemma_idx], lemma_ref.score) for lemma_ref in goal.possible_useful_theorems_external]
+        else:
+            raise NotImplementedError("Cloning for this TrainingDataFormat is not implemented yet")
+        return new_tdp
+
+    @staticmethod
+    def _merge_training_data_collection(other: TrainingDataCollection, training_data_points: typing.List[TrainingDataFormat], new_lemma_ref_idx: typing.List[int]):
+        assert isinstance(other, TrainingDataCollection), "other must be a TrainingDataFormat or TrainingDataCollection"
+        assert isinstance(training_data_points, list), "training_data_points must be a list"
+        assert isinstance(new_lemma_ref_idx, list), "new_lemma_ref_idx must be a list"
+        new_tdps : typing.List[TrainingDataFormat] = []
+        for tdp in training_data_points:
+            new_tdp = TrainingData._clone_tdp(tdp, new_lemma_ref_idx)
             new_tdps.append(new_tdp)
         other.training_data.extend(new_tdps)

@@ -8,7 +8,7 @@ if root_dir not in sys.path:
 import typing
 import logging
 import enum
-from itp_interface.tools.training_data_format import MergableCollection, TrainingDataFormat
+from itp_interface.tools.training_data_format import MergableCollection, TheoremProvingTrainingDataFormat
 logger = logging.getLogger("CoqTrainingGenerator")
 
 class TrainingDataGenerationType(enum.Enum):
@@ -24,7 +24,7 @@ class GenericTheoremRetriever:
         self.logger = None
         pass
 
-    def filter_best_context(self, partial_data: TrainingDataFormat) -> TrainingDataFormat:
+    def filter_best_context(self, partial_data: TheoremProvingTrainingDataFormat) -> TheoremProvingTrainingDataFormat:
         raise NotImplementedError("retrieve_best_context must be implemented")
 
     def set_logger(self, logger: logging.Logger):

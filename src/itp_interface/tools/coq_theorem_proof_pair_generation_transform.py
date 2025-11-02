@@ -9,7 +9,7 @@ if root_dir not in sys.path:
 import typing
 from itp_interface.tools.coq_context_helper import CoqContextHelper
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
-from itp_interface.tools.training_data_format import Goal, MergableCollection, TrainingDataMetadataFormat, TheoremProvingTrainingDataCollection, TrainingDataFormat
+from itp_interface.tools.training_data_format import Goal, MergableCollection, TrainingDataMetadataFormat, TheoremProvingTrainingDataCollection, TheoremProvingTrainingDataFormat
 from itp_interface.tools.coq_executor import CoqExecutor
 from itp_interface.tools.training_data import TrainingData
 
@@ -60,7 +60,7 @@ class LocalTheoremProofPairGenerationTransform(GenericTrainingDataGenerationTran
                 prev_goal : typing.List[Goal] = [Goal(goal.hypotheses, goal.goal) for goal in prev_goal]
                 next_goal : typing.List[Goal] = coq_context_helper.get_focussed_goals(coq_executor)
                 if len(prev_goal) > 0 and cmd_exec != "Proof.":
-                    training_data_format = TrainingDataFormat(
+                    training_data_format = TheoremProvingTrainingDataFormat(
                         proof_id=proof_id,
                         all_useful_defns_theorems=[],
                         start_goals=prev_goal,

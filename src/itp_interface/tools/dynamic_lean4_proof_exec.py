@@ -7,7 +7,7 @@ import copy
 import enum
 import logging
 from itp_interface.tools.simple_lean4_sync_executor import SimpleLean4SyncExecutor
-from itp_interface.tools.training_data_format import Goal, TrainingDataFormat
+from itp_interface.tools.training_data_format import Goal, TheoremProvingTrainingDataFormat
 from itp_interface.tools.lean_parse_utils import LeanLineByLineReader
 from itp_interface.tools.lean_context_helper import Lean3ContextHelper
 from itp_interface.tools.misc_defns import HammerMode
@@ -87,24 +87,24 @@ class DynamicProofExecutor(SimpleLean4SyncExecutor):
             return []
         return self.lean_context_helper.get_unfocussed_goals(self)
 
-    def get_current_proof_state_as_training_data(self) -> TrainingDataFormat:
+    def get_current_proof_state_as_training_data(self) -> TheoremProvingTrainingDataFormat:
         # get the current goal
         if self.needs_cut_close():
             current_goals = self.get_unfocussed_goals()
-            training_data_format = TrainingDataFormat(start_goals=current_goals)
+            training_data_format = TheoremProvingTrainingDataFormat(start_goals=current_goals)
             training_data_format.goal_description = DynamicProofExecutor.UnfocussedGoalsDescription
         elif not self.is_in_proof_mode():
             current_goals = self.get_focussed_goals()
-            training_data_format = TrainingDataFormat(start_goals=current_goals)
+            training_data_format = TheoremProvingTrainingDataFormat(start_goals=current_goals)
             training_data_format.goal_description = DynamicProofExecutor.NotInProofModeDescription
         elif self.needs_qed():
             current_goals = self.get_focussed_goals()
             assert len(current_goals) == 0, "There should be no goals when needs_qed is True"
-            training_data_format = TrainingDataFormat(start_goals=current_goals)
+            training_data_format = TheoremProvingTrainingDataFormat(start_goals=current_goals)
             training_data_format.goal_description = DynamicProofExecutor.ProofFinishedDescription
         else:
             current_goals = self.get_focussed_goals()
-            training_data_format = TrainingDataFormat(start_goals=current_goals)
+            training_data_format = TheoremProvingTrainingDataFormat(start_goals=current_goals)
             if len(self.lean_error_messages) > 0:
                 training_data_format.goal_description = '\n'.join(self.lean_error_messages)
             else:

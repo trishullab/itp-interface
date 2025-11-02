@@ -9,7 +9,7 @@ import uuid
 from itp_interface.tools.simple_lean4_sync_executor import SimpleLean4SyncExecutor
 from itp_interface.tools.lean4_context_helper import Lean4ContextHelper
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
-from itp_interface.tools.training_data_format import MergableCollection, TrainingDataMetadataFormat, TheoremProvingTrainingDataCollection, TrainingDataFormat
+from itp_interface.tools.training_data_format import MergableCollection, TrainingDataMetadataFormat, TheoremProvingTrainingDataCollection, TheoremProvingTrainingDataFormat
 from itp_interface.tools.training_data import TrainingData
 
 class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
@@ -63,7 +63,7 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
                     end_goals = []
                 if len(start_goals) > 0 and \
                     (len(start_goals) != len(end_goals) or not all(s_g == e_g for s_g, e_g in zip(start_goals, end_goals))):
-                    tdf = TrainingDataFormat(
+                    tdf = TheoremProvingTrainingDataFormat(
                         proof_id=proof_id,
                         all_useful_defns_theorems=[],
                         start_goals=start_goals,

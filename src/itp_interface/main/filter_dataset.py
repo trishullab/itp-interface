@@ -11,9 +11,9 @@ import os
 import typing
 import copy
 from itp_interface.tools.log_utils import setup_logger
-from itp_interface.tools.training_data import TrainingData, TrainingDataFormat
+from itp_interface.tools.training_data import TrainingData, TheoremProvingTrainingDataFormat
 
-def filter_keyword(tdf: TrainingDataFormat, keywords: typing.List[str]) -> bool:
+def filter_keyword(tdf: TheoremProvingTrainingDataFormat, keywords: typing.List[str]) -> bool:
     """
     Filter out the training data format if it contains any of the keywords
     """
