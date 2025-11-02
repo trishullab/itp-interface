@@ -48,7 +48,10 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
         file_namespace = lean_executor.main_file.replace('/', '.')
         self.logger.info(f"=========================Processing {file_namespace}=========================")
         theorem_id = str(uuid.uuid4())
-        theorems = set(theorems) if theorems is not None else None
+        if isinstance(theorems, list) and len(theorems) == 1 and theorems[0] == "*":
+            theorems = None
+        else:
+            theorems = set(theorems) if theorems is not None else None
         cnt = 0
         with lean_executor:
             lean_executor.set_run_exactly()
@@ -92,6 +95,6 @@ if __name__ == "__main__":
         logger=logger,
         layout=DataLayoutFormat.DECLARATION_EXTRACTION)
     with SimpleLean4SyncExecutor(project_root=project_dir, main_file=file_name, use_human_readable_proof_context=True, suppress_error_log=True) as coq_exec:
-        transform(training_data, project_id, coq_exec, _print_lean_executor_callback, theorems=["test2", "test", "test1"])
+        transform(training_data, project_id, coq_exec, _print_lean_executor_callback, theorems=["*"])
     save_info = training_data.save()
     logger.info(f"Saved training data to {save_info}")

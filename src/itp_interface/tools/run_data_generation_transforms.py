@@ -10,7 +10,6 @@ import logging
 import typing
 import shutil
 import gc
-import threading
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from itp_interface.tools.training_data import TrainingData, DataLayoutFormat
 

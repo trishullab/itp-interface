@@ -279,6 +279,29 @@ class TrainingData(MergableCollection):
             assert len(self._training_data_filenames) == len(self.training_data_collections), "Invalid length"
             assert len(self._training_data_filenames) == len(training_data.training_data_collections), "Invalid length"
 
+    def _return_tdp(self, tdp: TrainingDataFormat) -> TrainingDataFormat:
+        training_data = copy.deepcopy(tdp)
+        if isinstance(training_data, TheoremProvingTrainingDataFormat):
+            lemma_refs : typing.Set[int] = set()
+            for goal in training_data.start_goals:
+                lemma_refs.update([ref.lemma_idx for ref in goal.relevant_defns])
+                lemma_refs.update([ref.lemma_idx for ref in goal.used_theorems_local])
+                lemma_refs.update([ref.lemma_idx for ref in goal.used_theorems_external])
+                lemma_refs.update([ref.lemma_idx for ref in goal.possible_useful_theorems_local])
+                lemma_refs.update([ref.lemma_idx for ref in goal.possible_useful_theorems_external])
+            ordered_lemma_refs = sorted(list(lemma_refs))
+            lemma_ref_map = {lemma_ref: idx for idx, lemma_ref in enumerate(ordered_lemma_refs)}
+            training_data.all_useful_defns_theorems = [self.lemma_ref_collection.training_data[lemma_idx].clone(idx) for idx, lemma_idx in enumerate(ordered_lemma_refs)]
+            # Change the lemma references
+            for goal in training_data.start_goals:
+                goal.relevant_defns = [LemmaRefWithScore(lemma_ref_map[lemma_ref.lemma_idx], lemma_ref.score) for lemma_ref in goal.relevant_defns]
+                goal.used_theorems_local = [LemmaRefWithScore(lemma_ref_map[lemma_ref.lemma_idx], lemma_ref.score) for lemma_ref in goal.used_theorems_local]
+                goal.used_theorems_external = [LemmaRefWithScore(lemma_ref_map[lemma_ref.lemma_idx], lemma_ref.score) for lemma_ref in goal.used_theorems_external]
+                goal.possible_useful_theorems_local = [LemmaRefWithScore(lemma_ref_map[lemma_ref.lemma_idx], lemma_ref.score) for lemma_ref in goal.possible_useful_theorems_local]
+                goal.possible_useful_theorems_external = [LemmaRefWithScore(lemma_ref_map[lemma_ref.lemma_idx], lemma_ref.score) for lemma_ref in goal.possible_useful_theorems_external]
+            return training_data
+        return training_data
+
     def __getitem__(self, idx: int) -> TrainingDataFormat:
         tdc_idx = idx // self.meta.training_data_buffer_size
         idx_in_tdc = idx % self.meta.training_data_buffer_size
@@ -287,24 +310,7 @@ class TrainingData(MergableCollection):
         tdc = self.training_data_collections[tdc_idx]
         if idx_in_tdc >= len(tdc):
             raise IndexError(f"Index out of range (len(self.training_data_collections)={len(self.training_data_collections)},buffer={self.meta.training_data_buffer_size}, range idx={idx}, tdc_idx={tdc_idx}, idx_in_tdc={idx_in_tdc}, len(tdc)={len(tdc)})")
-        training_data = copy.deepcopy(tdc.training_data[idx_in_tdc])
-        lemma_refs : typing.Set[int] = set()
-        for goal in training_data.start_goals:
-            lemma_refs.update([ref.lemma_idx for ref in goal.relevant_defns])
-            lemma_refs.update([ref.lemma_idx for ref in goal.used_theorems_local])
-            lemma_refs.update([ref.lemma_idx for ref in goal.used_theorems_external])
-            lemma_refs.update([ref.lemma_idx for ref in goal.possible_useful_theorems_local])
-            lemma_refs.update([ref.lemma_idx for ref in goal.possible_useful_theorems_external])
-        ordered_lemma_refs = sorted(list(lemma_refs))
-        lemma_ref_map = {lemma_ref: idx for idx, lemma_ref in enumerate(ordered_lemma_refs)}
-        training_data.all_useful_defns_theorems = [self.lemma_ref_collection.training_data[lemma_idx].clone(idx) for idx, lemma_idx in enumerate(ordered_lemma_refs)]
-        # Change the lemma references
-        for goal in training_data.start_goals:
-            goal.relevant_defns = [LemmaRefWithScore(lemma_ref_map[lemma_ref.lemma_idx], lemma_ref.score) for lemma_ref in goal.relevant_defns]
-            goal.used_theorems_local = [LemmaRefWithScore(lemma_ref_map[lemma_ref.lemma_idx], lemma_ref.score) for lemma_ref in goal.used_theorems_local]
-            goal.used_theorems_external = [LemmaRefWithScore(lemma_ref_map[lemma_ref.lemma_idx], lemma_ref.score) for lemma_ref in goal.used_theorems_external]
-            goal.possible_useful_theorems_local = [LemmaRefWithScore(lemma_ref_map[lemma_ref.lemma_idx], lemma_ref.score) for lemma_ref in goal.possible_useful_theorems_local]
-            goal.possible_useful_theorems_external = [LemmaRefWithScore(lemma_ref_map[lemma_ref.lemma_idx], lemma_ref.score) for lemma_ref in goal.possible_useful_theorems_external]
+        training_data = self._return_tdp(tdc.training_data[idx_in_tdc])
         return training_data
 
     def save(self) -> str:

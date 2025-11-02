@@ -37,7 +37,7 @@ from itp_interface.tools.lean4_local_data_extraction_transform import Local4Data
 from itp_interface.tools.isabelle_local_data_generation_transform import LocalDataGenerationTransform as IsabelleLocalDataGenerationTransform
 from itp_interface.tools.run_data_generation_transforms import RunDataGenerationTransforms
 from itp_interface.tools.log_utils import setup_logger
-from itp_interface.main.config import EvalFile, ExtractFile, Experiments, EvalRunCheckpointInfo, TransformType, parse_config
+from itp_interface.main.config import EvalFile, ExtractFile, Experiments, EvalRunCheckpointInfo, EvalBenchmark, TransformType, parse_config
 from itp_interface.tools.dynamic_coq_proof_exec import DynamicProofExecutor as DynamicCoqProofExecutor
 from itp_interface.tools.dynamic_lean_proof_exec import DynamicProofExecutor as DynamicLeanProofExecutor
 from itp_interface.tools.dynamic_lean4_proof_exec import DynamicProofExecutor as DynamicLean4ProofExecutor
@@ -147,6 +147,7 @@ def partition_data(project_to_theorems: typing.Dict[str, typing.Dict[str, typing
         # Go over each project and classify into three categories
         proj_file_to_theorems_named_tuple = typing.NamedTuple("proj_file_to_theorems", [("project", str), ("file", str), ("theorems", typing.List[str])])
         proj_file_thms = []
+        logger.info(f"Partitioning: {project_to_theorems}")
         for project, file_to_theorems in project_to_theorems.items():
             for file, theorems in file_to_theorems.items():
                 # Generate a random number between 0 and 1
@@ -219,7 +220,8 @@ def partition_data(project_to_theorems: typing.Dict[str, typing.Dict[str, typing
             logger.info(f"Actual division Train: {train_cnt}, Eval: {eval_cnt}, Test: {test_cnt}")
         return train_project_to_theorems, eval_project_to_theorems, test_project_to_theorems
 
-def create_yaml(project_to_theorems, name, language, output_file):
+def create_yaml(project_to_theorems, name, eval_benchmark: EvalBenchmark, output_file):
+    language = eval_benchmark.language
     data = {
         "name": name,
         "num_files": 0,
@@ -227,6 +229,7 @@ def create_yaml(project_to_theorems, name, language, output_file):
         "few_shot_data_path_for_retrieval": None,
         "few_shot_metadata_filename_for_retrieval": None,
         "dfs_data_path_for_retrieval": None,
+        "is_extraction_request": eval_benchmark.is_extraction_request,
         "dfs_metadata_filename_for_retrieval": "local.meta.json",
         "theorem_cnt": 0,
         "datasets": []
@@ -236,7 +239,10 @@ def create_yaml(project_to_theorems, name, language, output_file):
         for file_path, theorems in file_dict.items():
             data["num_files"] += 1
             data["theorem_cnt"] += len(theorems)
-            dataset["files"].append({"path": file_path, "theorems": theorems}) 
+            if eval_benchmark.is_extraction_request:
+                dataset["files"].append({"path": file_path, "declarations": theorems})
+            else:
+                dataset["files"].append({"path": file_path, "theorems": theorems}) 
         data["datasets"].append(dataset)
 
     with open(output_file, 'w') as yaml_file:
@@ -312,59 +318,74 @@ def get_decl_lemmas_to_parse(
         file_to_theorems = project_to_theorems[dataset.project]
         file_args = other_args[dataset.project]
         if experiment.benchmark.language == ProofAction.Language.LEAN4 \
-            and experiment.benchmark.is_extraction_request and len(dataset.files) == 0:
-            # List all the files recursively in the project folder
-            files_in_dataset = _get_all_lean_files_in_folder_recursively(dataset.project)
-            for file_path in files_in_dataset:
-                file_to_theorems[file_path] = []
-                file_args[file_path] = {}
-
-        for file_idx, file in enumerate(dataset.files):
-            if file.path not in file_to_theorems:
-                file_to_theorems[file.path] = []
-                file_args[file.path] = {}
-            decls_or_thms = []
-            if isinstance(file, EvalFile):
-                assert not experiment.benchmark.is_extraction_request, "Extraction request must be false for EvalFile"
-                decls_or_thms = file.theorems
+            and experiment.benchmark.is_extraction_request:
+            if len(dataset.files) == 0:
+                # List all the files recursively in the project folder
+                files_in_dataset = _get_all_lean_files_in_folder_recursively(dataset.project)
+                for file_path in files_in_dataset:
+                    file_to_theorems[file_path] = ["*"]
+                    file_args[file_path] = {}
             else:
-                assert isinstance(file, ExtractFile)
-                assert experiment.benchmark.is_extraction_request, "Extraction request must be true for ExtractFile"
-                decls_or_thms = file.declarations
-            if isinstance(decls_or_thms, list):
-                # if language is Lean4 then change the theorem names to fully qualified names
-                if experiment.benchmark.language == ProofAction.Language.LEAN4:
-                    full_file_path = os.path.join(dataset.project, file.path)
-                    if experiment.benchmark.is_extraction_request:
-                        theorems_in_file = decls_or_thms
+                for file in dataset.files:
+                    if file.path not in file_to_theorems:
+                        file_to_theorems[file.path] = []
+                        file_args[file.path] = {}
+                    decls_or_thms = []
+                    assert isinstance(file, ExtractFile)
+                    assert experiment.benchmark.is_extraction_request, "Extraction request must be true for ExtractFile"
+                    decls_or_thms = file.declarations
+                    if isinstance(decls_or_thms, list):
+                        file_to_theorems[file.path].extend(decls_or_thms)
                     else:
-                        theorems_in_file = [get_theorem_name_resembling_lean4(full_file_path, theorem, use_cache=True) for theorem in decls_or_thms]
+                        assert isinstance(decls_or_thms, str) and decls_or_thms.strip() == "*", "Only '*' is supported for Lean4 extraction request"
+                        file_to_theorems[file.path].append("*")
+        else:
+            for file_idx, file in enumerate(dataset.files):
+                if file.path not in file_to_theorems:
+                    file_to_theorems[file.path] = []
+                    file_args[file.path] = {}
+                decls_or_thms = []
+                if isinstance(file, EvalFile):
+                    assert not experiment.benchmark.is_extraction_request, "Extraction request must be false for EvalFile"
+                    decls_or_thms = file.theorems
                 else:
-                    assert not experiment.benchmark.is_extraction_request, "Extraction request with list of declarations is not supported"
-                    theorems_in_file = decls_or_thms
-                file_to_theorems[file.path].extend(theorems_in_file)
-            else:
-                if not experiment.benchmark.is_extraction_request:
-                    discover_log_file = os.path.join(log_dir, f"discover{idx}_{file_idx}.log")
-                    if HAS_RAY:
-                        timed_exec = TimedRayExec.remote(get_all_lemmas, kwargs=dict(
-                            project_folder=dataset.project,
-                            file_path=os.path.join(dataset.project, file.path),
-                            language=experiment.benchmark.language,
-                            use_hammer=False,
-                            timeout_in_secs=experiment.run_settings.timeout_in_secs,
-                            use_human_readable_proof_context=experiment.run_settings.use_human_readable,
-                            suppress_error_log=True,
-                            always_use_retrieval=False,
-                            setup_cmds=experiment.benchmark.setup_cmds,
-                            log_file=discover_log_file))
-                        timeout_in_secs = experiment.run_settings.timeout_in_secs * 100
-                        timed_exec_remote = timed_exec.execute_with_timeout.remote(timeout=timeout_in_secs)
-                        lemma_discovery_remotes.append(timed_exec_remote)
+                    assert isinstance(file, ExtractFile)
+                    assert experiment.benchmark.is_extraction_request, "Extraction request must be true for ExtractFile"
+                    decls_or_thms = file.declarations
+                if isinstance(decls_or_thms, list):
+                    # if language is Lean4 then change the theorem names to fully qualified names
+                    if experiment.benchmark.language == ProofAction.Language.LEAN4:
+                        full_file_path = os.path.join(dataset.project, file.path)
+                        if experiment.benchmark.is_extraction_request:
+                            theorems_in_file = decls_or_thms
+                        else:
+                            theorems_in_file = [get_theorem_name_resembling_lean4(full_file_path, theorem, use_cache=True) for theorem in decls_or_thms]
                     else:
-                        # Thread-based execution
-                        lemma_discovery_remotes.append((dataset.project, file.path, discover_log_file))
-            pass
+                        assert not experiment.benchmark.is_extraction_request, "Extraction request with list of declarations is not supported"
+                        theorems_in_file = decls_or_thms
+                    file_to_theorems[file.path].extend(theorems_in_file)
+                else:
+                    if not experiment.benchmark.is_extraction_request:
+                        discover_log_file = os.path.join(log_dir, f"discover{idx}_{file_idx}.log")
+                        if HAS_RAY:
+                            timed_exec = TimedRayExec.remote(get_all_lemmas, kwargs=dict(
+                                project_folder=dataset.project,
+                                file_path=os.path.join(dataset.project, file.path),
+                                language=experiment.benchmark.language,
+                                use_hammer=False,
+                                timeout_in_secs=experiment.run_settings.timeout_in_secs,
+                                use_human_readable_proof_context=experiment.run_settings.use_human_readable,
+                                suppress_error_log=True,
+                                always_use_retrieval=False,
+                                setup_cmds=experiment.benchmark.setup_cmds,
+                                log_file=discover_log_file))
+                            timeout_in_secs = experiment.run_settings.timeout_in_secs * 100
+                            timed_exec_remote = timed_exec.execute_with_timeout.remote(timeout=timeout_in_secs)
+                            lemma_discovery_remotes.append(timed_exec_remote)
+                        else:
+                            # Thread-based execution
+                            lemma_discovery_remotes.append((dataset.project, file.path, discover_log_file))
+                pass
     if len(lemma_discovery_remotes) > 0:
         assert not experiment.benchmark.is_extraction_request, "Lemma discovery is not needed for extraction request"
         if HAS_RAY:
@@ -466,7 +487,7 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
             # dump a yaml file with the partition
             partition_name = f"{experiment.benchmark.name}_{dataset_partition}"
             yaml_file = os.path.join(new_output_dir, f"{partition_name}.yaml")
-            create_yaml(partition_project_to_theorems, partition_name, experiment.benchmark.language, yaml_file)
+            create_yaml(partition_project_to_theorems, partition_name, experiment.benchmark, yaml_file)
             if len(partition_project_to_theorems) == 0:
                 logger.info(f"==============================>No projects to process for {dataset_partition}<==============================")
                 continue
