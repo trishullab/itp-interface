@@ -13,7 +13,6 @@ import typing
 import numpy as np
 import yaml
 import uuid
-import threading
 from concurrent.futures import ThreadPoolExecutor
 
 # Conditional Ray import
@@ -34,15 +33,14 @@ from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
 from itp_interface.tools.coq_local_data_generation_transform import LocalDataGenerationTransform as CoqLocalDataGenerationTransform
 from itp_interface.tools.lean_local_data_generation_transform import LocalDataGenerationTransform as LeanLocalDataGenerationTransform
 from itp_interface.tools.lean4_local_data_generation_transform import Local4DataGenerationTransform
+from itp_interface.tools.lean4_local_data_extraction_transform import Local4DataExtractionTransform
 from itp_interface.tools.isabelle_local_data_generation_transform import LocalDataGenerationTransform as IsabelleLocalDataGenerationTransform
 from itp_interface.tools.run_data_generation_transforms import RunDataGenerationTransforms
 from itp_interface.tools.log_utils import setup_logger
 from itp_interface.main.config import EvalFile, ExtractFile, Experiments, EvalRunCheckpointInfo, TransformType, parse_config
-from itp_interface.tools.isabelle_executor import IsabelleExecutor
 from itp_interface.tools.dynamic_coq_proof_exec import DynamicProofExecutor as DynamicCoqProofExecutor
 from itp_interface.tools.dynamic_lean_proof_exec import DynamicProofExecutor as DynamicLeanProofExecutor
 from itp_interface.tools.dynamic_lean4_proof_exec import DynamicProofExecutor as DynamicLean4ProofExecutor
-from itp_interface.tools.dynamic_isabelle_proof_exec import DynamicProofExecutor as DynamicIsabelleProofExecutor
 from itp_interface.tools.coq_executor import get_all_lemmas_in_file as get_all_lemmas_coq
 from itp_interface.tools.lean4_sync_executor import get_all_theorems_in_file as get_all_lemmas_lean4, get_fully_qualified_theorem_name as get_fully_qualified_theorem_name_lean4, get_theorem_name_resembling as get_theorem_name_resembling_lean4
 from itp_interface.tools.isabelle_executor import get_all_lemmas_in_file as get_all_lemmas_isabelle
@@ -255,11 +253,17 @@ def add_transform(experiment: Experiments, clone_dir: str, resources: list, tran
                 logger=logger)
             os.makedirs(clone_dir, exist_ok=True)
         elif experiment.benchmark.language == ProofAction.Language.LEAN4:
-            transform = Local4DataGenerationTransform(
-                experiment.run_settings.dep_depth, 
-                max_search_results=experiment.run_settings.max_search_results, 
-                buffer_size=experiment.run_settings.buffer_size, 
-                logger=logger)
+            if experiment.benchmark.is_extraction_request:
+                transform = Local4DataExtractionTransform(
+                    experiment.run_settings.dep_depth, 
+                    buffer_size=experiment.run_settings.buffer_size, 
+                    logger=logger)
+            else:
+                transform = Local4DataGenerationTransform(
+                    experiment.run_settings.dep_depth, 
+                    max_search_results=experiment.run_settings.max_search_results, 
+                    buffer_size=experiment.run_settings.buffer_size, 
+                    logger=logger)
             clone_dir = None
         elif experiment.benchmark.language == ProofAction.Language.COQ:
             only_proof_state = experiment.env_settings.retrieval_strategy == ProofEnvReRankStrategy.NO_RE_RANK
@@ -292,7 +296,7 @@ def add_transform(experiment: Experiments, clone_dir: str, resources: list, tran
         transforms.append(transform)
     else:
         raise ValueError(f"Unexpected transform_type: {experiment.run_settings.transform_type}")
-    pass
+    return clone_dir
 
 def get_decl_lemmas_to_parse(
     experiment: Experiments, 
@@ -434,7 +438,7 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
         transforms = []
         str_time = time.strftime("%Y%m%d-%H%M%S")
         clone_dir = os.path.join(experiment.run_settings.output_dir, "clone{}".format(str_time))
-        add_transform(experiment, clone_dir, resources, transforms, logger)
+        clone_dir = add_transform(experiment, clone_dir, resources, transforms, logger)
         # Find all the lemmas to prove
         project_to_theorems = {}
         other_args = {}

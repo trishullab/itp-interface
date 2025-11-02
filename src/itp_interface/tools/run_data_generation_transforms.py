@@ -12,7 +12,7 @@ import shutil
 import gc
 import threading
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
-from itp_interface.tools.training_data import TrainingData
+from itp_interface.tools.training_data import TrainingData, DataLayoutFormat
 
 # Conditional Ray import
 try:
@@ -30,6 +30,7 @@ from itp_interface.tools.isabelle_executor import IsabelleExecutor
 from itp_interface.tools.coq_local_data_generation_transform import LocalDataGenerationTransform as CoqLocalDataGenerationTransform
 from itp_interface.tools.lean_local_data_generation_transform import LocalDataGenerationTransform as LeanLocalDataGenerationTransform
 from itp_interface.tools.lean4_local_data_generation_transform import Local4DataGenerationTransform as Lean4LocalDataGenerationTransform
+from itp_interface.tools.lean4_local_data_extraction_transform import Local4DataExtractionTransform as Lean4LocalDataExtractionTransform
 from itp_interface.tools.isabelle_local_data_generation_transform import LocalDataGenerationTransform as IsabelleLocalDataGenerationTransform
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
 
@@ -144,7 +145,11 @@ class RunDataGenerationTransforms(object):
             search_isabelle_exec = IsabelleExecutor(project_path, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error, port=port)
             search_isabelle_exec.__enter__()
             return search_isabelle_exec
-        if isinstance(transform, CoqLocalDataGenerationTransform) or isinstance(transform, LeanLocalDataGenerationTransform) or isinstance(transform, IsabelleLocalDataGenerationTransform) or isinstance(transform, Lean4LocalDataGenerationTransform):
+        if isinstance(transform, CoqLocalDataGenerationTransform) or \
+            isinstance(transform, LeanLocalDataGenerationTransform) or \
+            isinstance(transform, IsabelleLocalDataGenerationTransform) or \
+            isinstance(transform, Lean4LocalDataGenerationTransform) or \
+            isinstance(transform, Lean4LocalDataExtractionTransform):
             if isinstance(transform, IsabelleLocalDataGenerationTransform) and transform.ray_resource_pool is not None:
                 # This is a blocking call
                 port = ray.get(transform.ray_resource_pool.wait_and_acquire.remote(1))[0]
@@ -158,6 +163,8 @@ class RunDataGenerationTransforms(object):
                     exec = IsabelleExecutor(project_path, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error, port=port)
                 elif isinstance(transform, Lean4LocalDataGenerationTransform):
                     exec = SimpleLean4SyncExecutor(project_path, None, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
+                elif isinstance(transform, Lean4LocalDataExtractionTransform):
+                    exec = SimpleLean4SyncExecutor(project_path, None, file_path, use_human_readable_proof_context=use_human_readable, suppress_error_log=log_error)
                 else:
                     raise Exception("Unknown transform")
                 with exec:
@@ -169,6 +176,8 @@ class RunDataGenerationTransforms(object):
                     elif isinstance(transform, IsabelleLocalDataGenerationTransform):
                         transform(training_data, project_id, exec, _print_isabelle_callback, theorems, other_args)
                     elif isinstance(transform, Lean4LocalDataGenerationTransform):
+                        transform(training_data, project_id, exec, _print_lean4_callback, theorems, other_args)
+                    elif isinstance(transform, Lean4LocalDataExtractionTransform):
                         transform(training_data, project_id, exec, _print_lean4_callback, theorems, other_args)
                     else:
                         raise Exception("Unknown transform")
@@ -195,13 +204,18 @@ class RunDataGenerationTransforms(object):
         metadata.data_filename_suffix = RunDataGenerationTransforms.get_data_filename_suffix(transform)
         metadata.lemma_ref_filename_prefix = RunDataGenerationTransforms.get_lemma_ref_filename_prefix(transform)
         metadata.lemma_ref_filename_suffix = RunDataGenerationTransforms.get_lemma_ref_filename_suffix(transform)
+        if isinstance(transform, Lean4LocalDataExtractionTransform):
+            layout = DataLayoutFormat.DECLARATION_EXTRACTION
+        else:
+            layout = DataLayoutFormat.THEOREM_PROVING
         training_data = TrainingData(
             output_dir,
             RunDataGenerationTransforms.get_meta_file_name(transform),
             metadata,
             transform.max_parallelism,
             remove_from_store_after_loading=True,
-            logger=logger)
+            logger=logger,
+            layout=layout)
         return training_data
 
     @staticmethod
@@ -296,7 +310,7 @@ class RunDataGenerationTransforms(object):
                 os.makedirs(temp_file_dir, exist_ok=True)
                 log_file = os.path.join(self.logging_dir, f"{relative_file_path}.log")
                 theorems = projects[project][file_path]
-                if isinstance(transform, Lean4LocalDataGenerationTransform):
+                if isinstance(transform, Lean4LocalDataGenerationTransform) or isinstance(transform, Lean4LocalDataExtractionTransform):
                     # For every theorem we need to create a separate job
                     for _idx, theorem in enumerate(theorems):
                         log_file = os.path.join(self.logging_dir, f"{relative_file_path}-{_idx}.log")
@@ -317,13 +331,18 @@ class RunDataGenerationTransforms(object):
         final_training_meta.data_filename_suffix = RunDataGenerationTransforms.get_data_filename_suffix(transform)
         final_training_meta.lemma_ref_filename_prefix = RunDataGenerationTransforms.get_lemma_ref_filename_prefix(transform)
         final_training_meta.lemma_ref_filename_suffix = RunDataGenerationTransforms.get_lemma_ref_filename_suffix(transform)
+        if isinstance(transform, Lean4LocalDataExtractionTransform):
+            layout = DataLayoutFormat.DECLARATION_EXTRACTION
+        else:
+            layout = DataLayoutFormat.THEOREM_PROVING
         final_training_data = TrainingData(
             new_output_dir,
             RunDataGenerationTransforms.get_meta_file_name(transform),
             final_training_meta,
             transform.max_parallelism,
             remove_from_store_after_loading=True,
-            logger=self.logger)
+            logger=self.logger,
+            layout=layout)
         last_job_idx = 0
         tds = [None]*len(job_spec)
         num_theorems = 0

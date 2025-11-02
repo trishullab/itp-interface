@@ -126,7 +126,10 @@ class LeanLineInfo(BaseModel):
 
 
     def to_json(self, indent=0) -> str:
-        return LeanLineInfo.model_dump_json(self, indent=indent)
+        if indent == 0:
+            return self.model_dump_json()
+        else:
+            return self.model_dump_json(indent=indent)
 
     @staticmethod
     def load_from_file(file_path: str):

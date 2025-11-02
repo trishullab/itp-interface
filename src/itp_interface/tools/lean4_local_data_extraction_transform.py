@@ -7,10 +7,9 @@ if root_dir not in sys.path:
 import typing
 import uuid
 from itp_interface.tools.simple_lean4_sync_executor import SimpleLean4SyncExecutor
-from itp_interface.tools.lean4_context_helper import Lean4ContextHelper
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
-from itp_interface.tools.training_data_format import MergableCollection, TrainingDataMetadataFormat, TheoremProvingTrainingDataCollection, TheoremProvingTrainingDataFormat
-from itp_interface.tools.training_data import TrainingData
+from itp_interface.tools.training_data_format import MergableCollection, TrainingDataMetadataFormat, ExtractionDataCollection, TheoremProvingTrainingDataFormat
+from itp_interface.tools.training_data import TrainingData, DataLayoutFormat
 
 class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
     def __init__(self,
@@ -24,70 +23,45 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
         self.max_search_results = max_search_results
         self.max_parallelism = max_parallelism
 
-    def get_meta_object(self) -> MergableCollection:
-        return TrainingDataMetadataFormat(training_data_buffer_size=self.buffer_size)
+    def get_meta_object(self) -> TrainingDataMetadataFormat:
+        return TrainingDataMetadataFormat(
+            training_data_buffer_size=self.buffer_size,
+            data_filename_prefix="extraction_data_",
+            lemma_ref_filename_prefix="extraction_lemma_refs_")
 
     def get_data_collection_object(self) -> MergableCollection:
-        return TheoremProvingTrainingDataCollection()
+        return ExtractionDataCollection()
     
     def load_meta_from_file(self, file_path) -> MergableCollection:
         return TrainingDataMetadataFormat.load_from_file(file_path)
     
     def load_data_from_file(self, file_path) -> MergableCollection:
-        return TheoremProvingTrainingDataCollection.load_from_file(file_path, self.logger)
+        return ExtractionDataCollection.load_from_file(file_path, self.logger)
 
-    def __call__(self, training_data: TrainingData, project_id : str, lean_executor: SimpleLean4SyncExecutor, print_coq_executor_callback: typing.Callable[[], SimpleLean4SyncExecutor], theorems: typing.List[str] = None, other_args: dict = {}) -> TrainingData:
-        print_lean_executor = print_coq_executor_callback()
-        lean_context_helper = Lean4ContextHelper(print_lean_executor, self.depth, self.logger)
-        lean_context_helper.__enter__()
+    def __call__(self, 
+        training_data: TrainingData, 
+        project_id : str, 
+        lean_executor: SimpleLean4SyncExecutor, 
+        print_coq_executor_callback: typing.Callable[[], SimpleLean4SyncExecutor], 
+        theorems: typing.List[str] = None, 
+        other_args: dict = {}) -> TrainingData:
         file_namespace = lean_executor.main_file.replace('/', '.')
         self.logger.info(f"=========================Processing {file_namespace}=========================")
         theorem_id = str(uuid.uuid4())
         theorems = set(theorems) if theorems is not None else None
-        assert len(theorems) == 1, "Only one theorem can be processed at a time"
+        cnt = 0
         with lean_executor:
             lean_executor.set_run_exactly()
-            lean_executor._skip_to_theorem(theorems.pop())
-            start_goals = lean_context_helper.get_focussed_goals_from_proof_context(lean_executor.proof_context)
-            ran_next = lean_executor.run_next()
-            cmd_ran = lean_executor.current_stmt
-            try:
-                theorem_id = theorem_id + "/" + lean_executor.get_current_lemma_name()
-            except:
-                pass
-            proof_id = theorem_id
-            while not lean_executor.execution_complete and ran_next:
-                if lean_executor.is_in_proof_mode():
-                    end_goals = lean_context_helper.get_focussed_goals_from_proof_context(lean_executor.proof_context)
-                else:
-                    end_goals = []
-                if len(start_goals) > 0 and \
-                    (len(start_goals) != len(end_goals) or not all(s_g == e_g for s_g, e_g in zip(start_goals, end_goals))):
-                    tdf = TheoremProvingTrainingDataFormat(
-                        proof_id=proof_id,
-                        all_useful_defns_theorems=[],
-                        start_goals=start_goals,
-                        end_goals=end_goals,
-                        proof_steps=[cmd_ran],
-                        simplified_goals=[],
-                        addition_state_info={},
-                        file_path=lean_executor.main_file,
-                        theorem_name=proof_id,
-                        project_id=project_id)
-                    training_data.merge(tdf)
-                if lean_executor.is_in_proof_mode():
-                    start_goals = end_goals
-                    ran_next = lean_executor.run_next()
-                    cmd_ran = lean_executor.current_stmt
-                else:
-                    ran_next = False
-        training_data.meta.num_theorems += 1
+            line_infos = lean_executor.extract_all_theorems_and_definitions()
+            for line_info in line_infos:
+                if theorems is not None and line_info.name not in theorems:
+                    continue
+                training_data.merge(line_info)
+                cnt += 1
+        training_data.meta.last_proof_id = theorem_id
         self.logger.info(f"===============Finished processing {file_namespace}=====================")
-        self.logger.info(f"Total theorems processed in this transform: 1")
-        try:
-            lean_context_helper.__exit__(None, None, None)
-        except:
-            pass
+        self.logger.info(f"Total declarations processed in this transform: {cnt}")
+        return training_data
 
 
 if __name__ == "__main__":
@@ -110,13 +84,14 @@ if __name__ == "__main__":
         search_lean_exec = SimpleLean4SyncExecutor(main_file=file_name, project_root=project_dir)
         search_lean_exec.__enter__()
         return search_lean_exec
-    transform = Local4DataGenerationTransform(0, buffer_size=1000)
+    transform = Local4DataExtractionTransform(0, buffer_size=1000)
     training_data = TrainingData(
         output_path, 
         "training_metadata.json",
         training_meta=transform.get_meta_object(), 
-        logger=logger)
+        logger=logger,
+        layout=DataLayoutFormat.DECLARATION_EXTRACTION)
     with SimpleLean4SyncExecutor(project_root=project_dir, main_file=file_name, use_human_readable_proof_context=True, suppress_error_log=True) as coq_exec:
-        transform(training_data, project_id, coq_exec, _print_lean_executor_callback, theorems=['{"namespace": "Lean4Proj1", "name": "test2"}'])
+        transform(training_data, project_id, coq_exec, _print_lean_executor_callback, theorems=["test2", "test", "test1"])
     save_info = training_data.save()
     logger.info(f"Saved training data to {save_info}")

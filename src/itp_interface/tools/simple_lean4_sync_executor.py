@@ -189,7 +189,18 @@ class SimpleLean4SyncExecutor:
         else:
             self._lines_executed.append("") # Add an empty line to keep the line numbers in sync
         return True
-            
+
+    def extract_all_theorems_and_definitions(self) -> List[LeanLineInfo]:
+        assert self.main_file is not None, "main_file must be set to extract theorems and definitions"
+        assert self.tactic_parser is not None, "tactic_parser must be initialized to extract theorems and definitions"
+        with open(self.main_file, 'r', encoding='utf-8') as f:
+            file_content = f.read()
+        lean_line_infos, _ = self.tactic_parser.parse(
+            file_content, 
+            fail_on_error=False, 
+            parse_type=RequestType.PARSE_THEOREM)
+        return lean_line_infos
+
     def get_lemma_name_if_running(self) -> Optional[str]:
         if not self.is_in_proof_mode():
             return None

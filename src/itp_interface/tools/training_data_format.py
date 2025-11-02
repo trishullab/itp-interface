@@ -509,7 +509,10 @@ class ExtractionDataCollection(BaseModel):
         return len(self.training_data)
 
     def to_json(self, indent=0) -> str:
-        return self.model_dump_json(indent=indent)
+        if indent == 0:
+            return self.model_dump_json()
+        else:
+            return self.model_dump_json(indent=indent)
 
     def merge(self, __o: object):
         assert isinstance(__o, ExtractionDataCollection)
@@ -564,7 +567,9 @@ class TrainingDataMetadataFormat(MergableCollection):
         self.external_theorems_used_cnt += __o.external_theorems_used_cnt
         self.local_theorems_used_cnt += __o.local_theorems_used_cnt
         self.num_theorems += __o.num_theorems
-
+    
+    def undo_merge(self, size: int = 1, start_idx=0) -> object:
+        raise NotImplementedError("undo_merge is not implemented for TrainingDataMetadataFormat")
     
     def __len__(self) -> int:
         return 0

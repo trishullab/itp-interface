@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 
-import sys
-
-root_dir = f"{__file__.split('itp_interface')[0]}"
-if root_dir not in sys.path:
-    sys.path.append(root_dir)
 import typing
-from pydantic import BaseModel
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json
 from enum import Enum
@@ -76,7 +70,7 @@ class EvalFile(object):
 
 @dataclass_json
 @dataclass
-class ExtractFile(BaseModel):
+class ExtractFile(object):
     path: str
     declarations: typing.Union[str, typing.List[str]]
 

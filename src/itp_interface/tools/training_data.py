@@ -410,8 +410,11 @@ class TrainingData(MergableCollection):
         assert isinstance(other, TrainingDataFormat), "other must be a TrainingDataFormat"
         assert self.lemma_ref_collection is not None, "Lemma ref collection is None"
         if new_lemma_ref_idx is None:
-            new_lemma_ref_idx : typing.List[int] = self.lemma_ref_collection.merge(other.all_useful_defns_theorems)
-            assert len(new_lemma_ref_idx) == len(other.all_useful_defns_theorems), "Invalid lemma ref idx"
+            if isinstance(other, TheoremProvingTrainingDataFormat):
+                new_lemma_ref_idx : typing.List[int] = self.lemma_ref_collection.merge(other.all_useful_defns_theorems)
+                assert len(new_lemma_ref_idx) == len(other.all_useful_defns_theorems), "Invalid lemma ref idx"
+            else:
+                new_lemma_ref_idx : typing.List[int] = []
         if len(self.training_data_collections) == 0:
             self.training_data_collections.append(self._training_data_collection())
         last_training_data_collection = self.training_data_collections[-1]
@@ -471,12 +474,21 @@ class TrainingData(MergableCollection):
 
         @staticmethod
         @ray.remote(max_retries=-1)
-        def _save_object(i : int, obj: typing.Union[TrainingDataCollection, TrainingDataMetadataFormat, LemmaReferencesCollection], filepath: str):
+        def _save_object(i : int, obj: typing.Union[
+                TrainingDataCollection, 
+                TrainingDataMetadataFormat, 
+                LemmaReferencesCollection, 
+                ExtractionDataCollection], filepath: str):
             save_start_time = time.time()
             ray.logger.info(f"[TrainingData] Saving {filepath}")
             with open(filepath, 'w') as f:
                 # serialize the current metadata
-                json_str = obj.to_json()
+                if isinstance(obj, ExtractionDataCollection):
+                    # TODO [HACK]: The dynamic dispatching does not work well with Ray remote functions
+                    json_str = ExtractionDataCollection.to_json(obj)
+                else:
+                    ray.logger.info(f"[TrainingData] Serializing object of type {type(obj)}")
+                    json_str = obj.to_json()
                 # update the metadata in the file
                 f.write(json_str)
             save_end_time = time.time()
