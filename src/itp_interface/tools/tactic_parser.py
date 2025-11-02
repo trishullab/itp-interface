@@ -124,9 +124,18 @@ class LeanLineInfo(BaseModel):
             "namespace": self.namespace
         }
 
-    def to_json(self) -> str:
-        # Use pydantic's built-in json method
-        return LeanLineInfo.model_dump_json(self)
+
+    def to_json(self, indent=0) -> str:
+        return LeanLineInfo.model_dump_json(self, indent=indent)
+
+    @staticmethod
+    def load_from_file(file_path: str):
+        raise NotImplementedError("load_from_file must be implemented by the child class")
+    
+    @staticmethod
+    def load_from_string(json_text: str):
+        raise NotImplementedError("load_from_string must be implemented by the child class")
+
 
 # Create an enum for parsing request type
 class RequestType(Enum):

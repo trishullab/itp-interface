@@ -615,6 +615,17 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
 
 def main():
     unittest.main()
+    # Run only the Lean 4 tests
+    # t = Lean4Test()
+    # t.test_simple_lean4()
+    # t.test_lean4_backtracking()
+    # t.test_simple_lean4_done_test()
+    # t.test_simple_lean_calc()
+    # t.test_simple_lean_calc_with_validation()
+    # t.test_simple_lean4_with_error()
+    # t.test_simple_lean4_have_test()
+    # t.test_simple_lean_enforce_done_test()
+
 
 if __name__ == '__main__':
     main()

@@ -502,8 +502,11 @@ class TheoremProvingTrainingDataCollection(TrainingDataCollection):
             logger.info(f"Deserialized json data from string of length {len(json_text)} characters")
         return deserialized
 
-class ExtractionDataCollection(BaseModel, TrainingDataCollection):
+class ExtractionDataCollection(BaseModel):
     training_data: list[LeanLineInfo] = []
+
+    def __len__(self) -> int:
+        return len(self.training_data)
 
     def to_json(self, indent=0) -> str:
         return self.model_dump_json(indent=indent)
@@ -520,17 +523,17 @@ class ExtractionDataCollection(BaseModel, TrainingDataCollection):
         return ExtractionDataCollection(training_data=fraction)
     
     @staticmethod
-    def load_from_string(json_text: str):
+    def load_from_string(json_text: str, logger: logging.Logger = None):
         assert json_text is not None, "json_text cannot be None"
         return ExtractionDataCollection.model_validate_json(json_text)
 
     @staticmethod
-    def load_from_file(file_path: str):
+    def load_from_file(file_path: str, logger: logging.Logger = None):
         assert os.path.exists(file_path), "file_path must be a valid path to a file"
         json_text = None
         with open(file_path, "r") as f:
             json_text = f.read()
-        return ExtractionDataCollection.load_from_string(json_text)
+        return ExtractionDataCollection.load_from_string(json_text, logger=logger)
 
 @dataclass_json
 @dataclass
