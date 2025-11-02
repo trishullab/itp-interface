@@ -118,12 +118,12 @@ def merge_datasets(datasets, metafilenames, output, max_parallelism=8, logger=No
         logger.info(f"Inited training data for {dataset}")
     metadata = copy.deepcopy(tds[-1].meta)
     for td in tds[:-1]:
-        metadata.total_proof_step_cnt += td.meta.total_proof_step_cnt
+        metadata.total_data_count += td.meta.total_data_count
         metadata.last_training_data += td.meta.last_training_data
     logger.info(f"Merged metadata:\n {metadata}")
     logger.info(f"Start merging datasets")
     cloned_metadata = copy.deepcopy(metadata)
-    cloned_metadata.total_proof_step_cnt = 0
+    cloned_metadata.total_data_count = 0
     cloned_metadata.last_training_data = 0
     merged_td = TrainingData(
         folder=output,
@@ -166,7 +166,7 @@ def merge_datasets(datasets, metafilenames, output, max_parallelism=8, logger=No
     )
     if not should_filter_data:
         new_merged_td.load()
-        assert len(new_merged_td) == metadata.total_proof_step_cnt, "Merged dataset is not correct"
+        assert len(new_merged_td) == metadata.total_data_count, "Merged dataset is not correct"
         assert new_merged_td.meta.last_training_data == metadata.last_training_data, "Merged dataset is not correct"
         assert new_merged_td.meta.last_proof_id == metadata.last_proof_id, "Merged dataset is not correct"
         logger.info("Merged dataset is correct.")

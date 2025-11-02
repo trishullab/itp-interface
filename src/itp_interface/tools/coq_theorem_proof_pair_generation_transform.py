@@ -9,7 +9,7 @@ if root_dir not in sys.path:
 import typing
 from itp_interface.tools.coq_context_helper import CoqContextHelper
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
-from itp_interface.tools.training_data_format import Goal, MergableCollection, TrainingDataMetadataFormat, TrainingDataCollection, TrainingDataFormat
+from itp_interface.tools.training_data_format import Goal, MergableCollection, TrainingDataMetadataFormat, TheoremProvingTrainingDataCollection, TrainingDataFormat
 from itp_interface.tools.coq_executor import CoqExecutor
 from itp_interface.tools.training_data import TrainingData
 
@@ -29,13 +29,13 @@ class LocalTheoremProofPairGenerationTransform(GenericTrainingDataGenerationTran
         return TrainingDataMetadataFormat(training_data_buffer_size=self.buffer_size)
 
     def get_data_collection_object(self) -> MergableCollection:
-        return TrainingDataCollection()
+        return TheoremProvingTrainingDataCollection()
     
     def load_meta_from_file(self, file_path) -> MergableCollection:
         return TrainingDataMetadataFormat.load_from_file(file_path)
     
     def load_data_from_file(self, file_path) -> MergableCollection:
-        return TrainingDataCollection.load_from_file(file_path, self.logger)
+        return TheoremProvingTrainingDataCollection.load_from_file(file_path, self.logger)
 
     def __call__(self, training_data: TrainingData, project_id : str, coq_executor: CoqExecutor, print_coq_executor_callback: typing.Callable[[], CoqExecutor]) -> TrainingData:
         print_coq_executor = print_coq_executor_callback()

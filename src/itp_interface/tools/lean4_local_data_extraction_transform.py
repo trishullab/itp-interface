@@ -12,7 +12,7 @@ from itp_interface.tools.coq_training_data_generator import GenericTrainingDataG
 from itp_interface.tools.training_data_format import MergableCollection, TrainingDataMetadataFormat, TheoremProvingTrainingDataCollection, TrainingDataFormat
 from itp_interface.tools.training_data import TrainingData
 
-class Local4DataGenerationTransform(GenericTrainingDataGenerationTransform):
+class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
     def __init__(self,
                 depth = None,
                 max_search_results = None,

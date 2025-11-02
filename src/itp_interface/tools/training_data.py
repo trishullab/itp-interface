@@ -12,7 +12,14 @@ import typing
 import logging
 import time
 import threading
-from itp_interface.tools.training_data_format import LemmaRefWithScore, LemmaReferencesCollection, MergableCollection, TrainingDataCollection, TrainingDataFormat, TrainingDataMetadataFormat
+from enum import Enum
+from itp_interface.tools.training_data_format import (
+    LemmaRefWithScore, LemmaReferencesCollection, MergableCollection, 
+    TrainingDataCollection, 
+    TheoremProvingTrainingDataCollection, 
+    ExtractionDataCollection, 
+    TrainingDataFormat, 
+    TrainingDataMetadataFormat)
 
 # Conditional Ray import
 try:
@@ -33,6 +40,20 @@ class NoOpLock:
     def __exit__(self, exc_type, exc_val, exc_tb):
         return False
 
+# Define Enum for DataLayoutFormat
+class DataLayoutFormat(Enum):
+    THEOREM_PROVING = "theorem_proving"
+    DECLARATION_EXTRACTION = "declaration_extraction"
+    LEMMA_REF_EXTRACTION = "lemma_ref_extraction"
+
+
+def get_training_data_collection(layout: DataLayoutFormat) -> type[TrainingDataCollection]:
+    if layout == DataLayoutFormat.THEOREM_PROVING:
+        return TheoremProvingTrainingDataCollection
+    elif layout == DataLayoutFormat.LEMMA_REF_EXTRACTION:
+        return LemmaReferencesCollection
+    else:
+        return ExtractionDataCollection
 
 class TrainingData(MergableCollection):
     def __init__(
@@ -43,7 +64,8 @@ class TrainingData(MergableCollection):
             max_parallelism: int = 4,
             remove_from_store_after_loading: bool = True,
             logger: logging.Logger = None,
-            use_ray: bool = None):
+            use_ray: bool = None,
+            layout: DataLayoutFormat = DataLayoutFormat.THEOREM_PROVING):
         assert os.path.exists(folder), f"Folder {folder} does not exist"
         assert os.path.isdir(folder), f"Folder {folder} is not a directory"
         assert training_meta_filename is not None, "Training meta filename cannot be None"
@@ -59,6 +81,8 @@ class TrainingData(MergableCollection):
         self.logger = logger if logger is not None else logging.getLogger(__name__)
         self.remove_from_store_after_loading = remove_from_store_after_loading
         self._meta_loaded = False
+        self._layout = layout
+        self._training_data_collection = get_training_data_collection(layout)
         # Determine if Ray should be used
         if use_ray is None:
             self._use_ray = HAS_RAY
@@ -78,7 +102,7 @@ class TrainingData(MergableCollection):
 
     def __len__(self) -> int:
         assert self.meta is not None, "Training meta is not set"
-        return self.meta.total_proof_step_cnt
+        return self.meta.total_data_count
 
     @property
     def is_readonly(self) -> bool:
@@ -139,7 +163,7 @@ class TrainingData(MergableCollection):
             for i, filename in enumerate(filenames):
                 self.logger.info(f"[TrainingData] Starting the loading of [{base_idx + i}] {filename}...")
                 collection_fn = TrainingData._get_lemma_ref_collection if filename == self._lemma_ref_filename else TrainingData._get_training_data_collection
-                remotes.append(collection_fn.remote(base_idx + i, self.folder, filename))
+                remotes.append(collection_fn.remote(base_idx + i, self.folder, filename, self._layout))
             return remotes
 
         def _transform_remote(results):
@@ -182,7 +206,7 @@ class TrainingData(MergableCollection):
                 self.lemma_ref_collection = LemmaReferencesCollection.load_from_file(file_path)
                 self.logger.info(f"[TrainingData] Finished loading {self._lemma_ref_filename}")
             else:
-                tdc = TrainingDataCollection.load_from_file(file_path)
+                tdc = self._training_data_collection.load_from_file(file_path)
                 self.training_data_collections[idx - 2] = tdc
                 self.logger.info(f"[TrainingData] Finished loading {idx}")
 
@@ -195,6 +219,9 @@ class TrainingData(MergableCollection):
             self._is_loaded = False
             # Reload the metadata
             self.load_meta()
+
+    def undo_merge(self, size: int = 1, start_idx=0) -> object:
+        return NotImplementedError("undo_merge is not implemented yet")
 
     def merge(self, __o: object, new_lemma_ref_idx: typing.List[int] = None):
         with self._lock:
@@ -219,7 +246,7 @@ class TrainingData(MergableCollection):
             assert isinstance(training_data, TrainingData), "Invalid type"
             assert not self._meta_loaded, "Training metadata is already loaded"
             self.meta.training_data_buffer_size = training_data.meta.training_data_buffer_size
-            self.meta.total_proof_step_cnt = training_data.meta.total_proof_step_cnt
+            self.meta.total_data_count = training_data.meta.total_data_count
             self.meta.external_theorems_used_cnt = training_data.meta.external_theorems_used_cnt
             self.meta.local_theorems_used_cnt = training_data.meta.local_theorems_used_cnt
             self.meta.last_proof_id = training_data.meta.last_proof_id
@@ -268,7 +295,7 @@ class TrainingData(MergableCollection):
             lemma_refs.update([ref.lemma_idx for ref in goal.possible_useful_theorems_external])
         ordered_lemma_refs = sorted(list(lemma_refs))
         lemma_ref_map = {lemma_ref: idx for idx, lemma_ref in enumerate(ordered_lemma_refs)}
-        training_data.all_useful_defns_theorems = [self.lemma_ref_collection.lemma_references[lemma_idx].clone(idx) for idx, lemma_idx in enumerate(ordered_lemma_refs)]
+        training_data.all_useful_defns_theorems = [self.lemma_ref_collection.training_data[lemma_idx].clone(idx) for idx, lemma_idx in enumerate(ordered_lemma_refs)]
         # Change the lemma references
         for goal in training_data.start_goals:
             goal.relevant_defns = [LemmaRefWithScore(lemma_ref_map[lemma_ref.lemma_idx], lemma_ref.score) for lemma_ref in goal.relevant_defns]
@@ -384,10 +411,10 @@ class TrainingData(MergableCollection):
             new_lemma_ref_idx : typing.List[int] = self.lemma_ref_collection.merge(other.all_useful_defns_theorems)
             assert len(new_lemma_ref_idx) == len(other.all_useful_defns_theorems), "Invalid lemma ref idx"
         if len(self.training_data_collections) == 0:
-            self.training_data_collections.append(TrainingDataCollection())
+            self.training_data_collections.append(self._training_data_collection())
         last_training_data_collection = self.training_data_collections[-1]
         if len(last_training_data_collection) + 1 > self.meta.training_data_buffer_size:
-            self.training_data_collections.append(TrainingDataCollection())
+            self.training_data_collections.append(self._training_data_collection())
             last_training_data_collection = self.training_data_collections[-1]
         TrainingData._merge_training_data_collection(last_training_data_collection, [other], new_lemma_ref_idx)
         # Update the metadata
@@ -395,28 +422,36 @@ class TrainingData(MergableCollection):
         self.meta.last_training_data += 1
         self.meta.external_theorems_used_cnt += sum([len(goal.used_theorems_external) for goal in other.start_goals])
         self.meta.local_theorems_used_cnt += sum([len(goal.used_theorems_local) for goal in other.start_goals])
-        self.meta.total_proof_step_cnt += len(other.proof_steps)
+        self.meta.total_data_count += len(other.proof_steps)
 
     # Define Ray remote methods conditionally
     if HAS_RAY:
         @staticmethod
         @ray.remote(max_retries=-1)
-        def _get_training_data_collection(idx : int, folder: str, filename: str) -> typing.Tuple[int, typing.Any]:
+        def _get_training_data_collection(
+            idx : int, folder: str, filename: str, 
+            data_layout: DataLayoutFormat) -> typing.Tuple[int, typing.Any]:
             file_path = os.path.join(folder, filename)
             start_time = time.time()
             ray.logger.info(f"[TrainingData] Trying to load {file_path}")
-            tdc = TrainingDataCollection.load_from_file(file_path)
+            training_data_collection = get_training_data_collection(data_layout)
+            tdc = training_data_collection.load_from_file(file_path)
             end_time = time.time()
             ray.logger.info(f"[TrainingData] Loaded {file_path} in {end_time - start_time} seconds")
             return idx, tdc
 
         @staticmethod
         @ray.remote(max_retries=-1)
-        def _get_lemma_ref_collection(idx : int, folder: str, filename: str) -> typing.Tuple[int, typing.Any]:
+        def _get_lemma_ref_collection(
+            idx : int, 
+            folder: str, 
+            filename: str, 
+            data_layout: DataLayoutFormat) -> typing.Tuple[int, typing.Any]:
             file_path = os.path.join(folder, filename)
             start_time = time.time()
             ray.logger.info(f"[TrainingData] Trying to load {file_path}")
-            res = LemmaReferencesCollection.load_from_file(file_path)
+            lemma_ref_collection = get_training_data_collection(DataLayoutFormat.LEMMA_REF_EXTRACTION)
+            res = lemma_ref_collection.load_from_file(file_path)
             end_time = time.time()
             ray.logger.info(f"[TrainingData] Loaded {file_path} in {end_time - start_time} seconds")
             return idx, res

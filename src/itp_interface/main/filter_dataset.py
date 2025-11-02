@@ -40,7 +40,7 @@ def filter_dataset(dataset, metafilename, output, keywords, max_parallelism=8, l
     metadata = copy.deepcopy(training_data.meta)
     logger.info(f"Start filtering datasets")
     cloned_metadata = copy.deepcopy(metadata)
-    cloned_metadata.total_proof_step_cnt = 0
+    cloned_metadata.total_data_count = 0
     cloned_metadata.last_training_data = 0
     logger.info(f"Cloned metadata:\n {cloned_metadata}")
     filtered_td = TrainingData(
@@ -67,7 +67,7 @@ def filter_dataset(dataset, metafilename, output, keywords, max_parallelism=8, l
         total_data_points += 1
     logger.info(f"In total, skipped {skipped_cnt} data points.")
     logger.info(f"Total data points: {total_data_points}")
-    logger.info(f"Total proof steps: {metadata.total_proof_step_cnt}")
+    logger.info(f"Total data points so far: {metadata.total_data_count}")
     logger.info(f"Lenght of filtered dataset: {len(filtered_td)}")
     logger.info(f"Length of training data: {len(training_data)}")
     logger.info("Finished filtering dataset.")
@@ -83,7 +83,7 @@ def filter_dataset(dataset, metafilename, output, keywords, max_parallelism=8, l
         logger=logger
     )
     new_merged_td.load()
-    assert len(new_merged_td) == metadata.total_proof_step_cnt - skipped_cnt, "Filtered dataset is not correct"
+    assert len(new_merged_td) == metadata.total_data_count - skipped_cnt, "Filtered dataset is not correct"
     logger.info("Verified the filtered dataset.")
     pass
 
