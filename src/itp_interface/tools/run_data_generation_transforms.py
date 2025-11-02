@@ -276,9 +276,12 @@ class RunDataGenerationTransforms(object):
 
         # Initialize backend
         if self._use_ray:
-            object_store_memory_in_gb = 100
-            memory_in_gb = 5
-            ray_dashboard = RayUtils.init_ray(num_of_cpus=pool_size, object_store_memory_in_gb=object_store_memory_in_gb)
+            if not RayUtils.is_ray_initialized():
+                object_store_memory_in_gb = 100
+                memory_in_gb = 5
+                ray_dashboard = RayUtils.init_ray(num_of_cpus=pool_size, object_store_memory_in_gb=object_store_memory_in_gb, memory_in_gb=memory_in_gb)
+            else:
+                ray_dashboard = "Ray already initialized"
             self.logger.info(f"==============================>[{transform.name}] Ray initialized with {transform.max_parallelism} CPUs, Memory=({memory_in_gb} GiB, Object Memory = {object_store_memory_in_gb} GiB)<==============================")
             self.logger.info(f"Ray Context:\n {ray_dashboard}")
         else:

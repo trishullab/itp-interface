@@ -21,6 +21,10 @@ class RayUtils(object):
         return ray.init(num_cpus=num_of_cpus, object_store_memory=object_store_memory, _memory=memory, ignore_reinit_error=True, runtime_env=runtime_env)
 
     @staticmethod
+    def is_ray_initialized() -> bool:
+        return ray.is_initialized()
+
+    @staticmethod
     def ray_run_within_parallel_limits(
         max_parallel: int,
         num_objects: int,

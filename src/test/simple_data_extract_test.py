@@ -1,6 +1,17 @@
 import unittest
 import os
 import subprocess
+try:
+    import ray
+    from itp_interface.tools.ray_utils import RayResourcePoolActor, TimedRayExec, RayUtils
+    HAS_RAY = True
+except ImportError:
+    HAS_RAY = False
+    ray = None
+    RayResourcePoolActor = None
+    TimedRayExec = None
+    RayUtils = None
+
 
 def pretty_print_file_contents(dir_path):
     print(f"Printing all files in the directory: {dir_path}")
@@ -75,4 +86,11 @@ def main():
     unittest.main()
 
 if __name__ == '__main__':
+    if HAS_RAY:
+        object_store_memory_in_gb = 34
+        memory_in_gb = 1
+        ray_dashboard = RayUtils.init_ray(
+            num_of_cpus=2, 
+            object_store_memory_in_gb=object_store_memory_in_gb, 
+            memory_in_gb=memory_in_gb)
     main()
