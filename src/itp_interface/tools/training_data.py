@@ -21,6 +21,7 @@ from itp_interface.tools.training_data_format import (
     TrainingDataFormat, 
     TheoremProvingTrainingDataFormat, 
     TrainingDataMetadataFormat)
+from itp_interface.tools.tactic_parser import LeanLineInfo
 
 # Conditional Ray import
 try:
@@ -429,6 +430,9 @@ class TrainingData(MergableCollection):
             self.meta.external_theorems_used_cnt += sum([len(goal.used_theorems_external) for goal in other.start_goals])
             self.meta.local_theorems_used_cnt += sum([len(goal.used_theorems_local) for goal in other.start_goals])
             self.meta.total_data_count += len(other.proof_steps)
+        elif isinstance(other, LeanLineInfo):
+            self.meta.last_training_data += 1
+            self.meta.total_data_count += 1
         else:
             raise NotImplementedError("Meta update for this TrainingDataFormat is not implemented yet")
 
@@ -501,6 +505,8 @@ class TrainingData(MergableCollection):
                 goal.used_theorems_external = [LemmaRefWithScore(new_lemma_ref_idx[lemma_ref.lemma_idx], lemma_ref.score) for lemma_ref in goal.used_theorems_external]
                 goal.possible_useful_theorems_local = [LemmaRefWithScore(new_lemma_ref_idx[lemma_ref.lemma_idx], lemma_ref.score) for lemma_ref in goal.possible_useful_theorems_local]
                 goal.possible_useful_theorems_external = [LemmaRefWithScore(new_lemma_ref_idx[lemma_ref.lemma_idx], lemma_ref.score) for lemma_ref in goal.possible_useful_theorems_external]
+        elif isinstance(tdp, LeanLineInfo):
+            new_tdp = copy.deepcopy(tdp)
         else:
             raise NotImplementedError("Cloning for this TrainingDataFormat is not implemented yet")
         return new_tdp
