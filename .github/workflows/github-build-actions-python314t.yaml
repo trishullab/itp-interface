@@ -117,3 +117,12 @@ jobs:
           eval $(opam env)
           source $HOME/.elan/env
           python src/test/simple_data_gen_test.py
+
+      - name: Run Data Extraction Test
+        shell: bash
+        run: |
+          export PATH="$HOME/miniconda/bin:$PATH"
+          source $HOME/miniconda/bin/activate py314-ft
+          eval $(opam env)
+          source $HOME/.elan/env
+          python src/test/simple_data_extract_test.py
