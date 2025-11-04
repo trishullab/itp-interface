@@ -1,5 +1,5 @@
 name = "TacticParser"
-defaultTargets = ["tactic-parser"]
+defaultTargets = ["tactic-parser", "dependency-parser"]
 
 [[lean_lib]]
 name = "TacticParser"
@@ -7,4 +7,9 @@ name = "TacticParser"
 [[lean_exe]]
 name = "tactic-parser"
 root = "TacticParser.Main"
+supportInterpreter = true
+
+[[lean_exe]]
+name = "dependency-parser"
+root = "DependencyParserMain"
 supportInterpreter = true

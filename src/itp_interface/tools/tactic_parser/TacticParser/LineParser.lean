@@ -43,16 +43,55 @@ unsafe def identifyDeclType (stx : Syntax) : DeclType :=
   | some dt => dt.1
   | none => .unknown
 
+/-- Check if a syntax node is an attribute/modifier that should be skipped -/
+def isModifierOrAttribute (stx : Syntax) : Bool :=
+  let kind := stx.getKind
+  -- Skip attributes (@[...]), docstrings, and other modifiers
+  kind == `Lean.Parser.Term.attrInstance ||
+  kind == `Lean.Parser.Command.docComment ||
+  kind == `Lean.Parser.Term.attributes ||
+  kind.toString.startsWith "Lean.Parser.Command.declModifiers"
+
 /-- Extract the name of the declaration from syntax tree -/
 partial def extractDeclName (stx : Syntax) : String :=
   match stx with
   | Syntax.ident _ _ name _ => name.toString
-  | Syntax.node _ _ args =>
-    -- Search through arguments to find an identifier
-    (args.findSome? fun arg =>
-      let result := extractDeclName arg;
-      if result != Name.anonymous.toString then some result else none
-    ).getD Name.anonymous.toString
+  | Syntax.node _ kind args =>
+    -- For declaration nodes, skip modifiers/attributes and keywords to find the name
+    if kind == `Lean.Parser.Command.declaration ||
+       kind == `Lean.Parser.Command.theorem ||
+       kind == `Lean.Parser.Command.definition ||
+       kind == `Lean.Parser.Command.inductive ||
+       kind == `Lean.Parser.Command.structure ||
+       kind == `Lean.Parser.Command.classDecl ||
+       kind == `Lean.Parser.Command.instance ||
+       kind == `Lean.Parser.Command.axiom then
+      -- Skip attributes and find the first identifier that's not a keyword
+      (args.findSome? fun arg =>
+        if isModifierOrAttribute arg then
+          none
+        else
+          let result := extractDeclName arg
+          -- Skip keywords like "theorem", "def", etc.
+          if result != Name.anonymous.toString &&
+             result != "theorem" &&
+             result != "def" &&
+             result != "lemma" &&
+             result != "inductive" &&
+             result != "structure" &&
+             result != "class" &&
+             result != "instance" &&
+             result != "axiom" then
+            some result
+          else
+            none
+      ).getD Name.anonymous.toString
+    else
+      -- For other nodes, search through arguments
+      (args.findSome? fun arg =>
+        let result := extractDeclName arg
+        if result != Name.anonymous.toString then some result else none
+      ).getD Name.anonymous.toString
   | _ => Name.anonymous.toString
 
 /-- Comment parsing state machine, can parse nested comments too -/

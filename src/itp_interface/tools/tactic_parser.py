@@ -15,10 +15,9 @@ import logging
 import re
 import shutil
 from enum import Enum
-from bisect import bisect_left
 from pydantic import BaseModel, field_validator
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 
 class Position(BaseModel):
     """Represents a position in the source code."""
@@ -139,6 +138,88 @@ class LeanLineInfo(BaseModel):
     def load_from_string(json_text: str):
         raise NotImplementedError("load_from_string must be implemented by the child class")
 
+class DeclarationDependency(BaseModel):
+    """Information about a single dependency reference."""
+    name: str  # Fully qualified name (e.g., "Nat.add_zero")
+    namespace: Optional[str] = None  # Namespace portion (e.g., "Nat")
+    local_name: str  # Local name without namespace (e.g., "add_zero")
+    file_path: Optional[str] = None  # Source file if resolvable
+    module_name: Optional[str] = None  # Module where defined
+    decl_id: Optional[str] = None  # Optional declaration ID for linking
+
+    def __repr__(self) -> str:
+        module_info = f" (from {self.module_name})" if self.module_name else ""
+        return f"{self.name}{module_info}"
+
+class DeclWithDependencies(BaseModel):
+    """Declaration with its dependencies - designed for merging into larger collections."""
+    declaration: LeanLineInfo  # Declaration metadata
+    dependencies: List[DeclarationDependency]
+    unresolved_names: List[str] = []  # Names we couldn't resolve
+    decl_id: Optional[str] = None  # Optional unique ID for this declaration
+
+    def __repr__(self) -> str:
+        id_info = f" [ID: {self.decl_id}]" if self.decl_id else ""
+        return f"[{self.declaration.decl_type}] {self.declaration.name} ({len(self.dependencies)} deps){id_info}"
+
+    def set_decl_id(self, decl_id: str) -> 'DeclWithDependencies':
+        """Set declaration ID (useful for chaining)."""
+        self.decl_id = decl_id
+        return self
+
+    @staticmethod
+    def from_dict(decl_data: Dict) -> 'DeclWithDependencies':
+        """Create from dictionary (e.g., from JSON dependency parser output)."""
+        decl_dict = decl_data['declaration']
+
+        # Create LeanLineInfo from declaration data
+        declaration = LeanLineInfo(
+            text=decl_dict.get('text', ''),
+            line=decl_dict.get('startPos', 0),
+            column=0,
+            end_line=decl_dict.get('endPos', 0),
+            end_column=0,
+            decl_type=decl_dict.get('declType'),
+            name=decl_dict.get('name'),
+            doc_string=decl_dict.get('docString'),
+            namespace=decl_dict.get('namespace')
+        )
+
+        # Parse dependencies
+        dependencies = []
+        for dep_data in decl_data.get('dependencies', []):
+            dependencies.append(DeclarationDependency(
+                name=dep_data['name'],
+                namespace=dep_data.get('namespace'),
+                local_name=dep_data['localName'],
+                file_path=dep_data.get('filePath'),
+                module_name=dep_data.get('moduleName'),
+                decl_id=dep_data.get('declId')
+            ))
+
+        return DeclWithDependencies(
+            declaration=declaration,
+            dependencies=dependencies,
+            unresolved_names=decl_data.get('unresolvedNames', []),
+            decl_id=decl_data.get('declId')
+        )
+
+    @staticmethod
+    def from_dependency_analysis(analysis_dict: Dict) -> List['DeclWithDependencies']:
+        """
+        Extract list of declarations from dependency parser output.
+
+        Args:
+            analysis_dict: Dict returned by parse_file with PARSE_DEPENDS
+
+        Returns:
+            List of DeclWithDependencies that can be merged into larger collections
+        """
+        return [
+            DeclWithDependencies.from_dict(decl_data)
+            for decl_data in analysis_dict.get('declarations', [])
+        ]
+
 
 # Create an enum for parsing request type
 class RequestType(Enum):
@@ -146,6 +227,7 @@ class RequestType(Enum):
     PARSE_THEOREM = "parse_theorem"
     CHKPT_TACTICS = "chkpt_tactics"
     BREAK_CHCKPNT = "break_chckpnt"
+    PARSE_DEPENDS = "parse_depends"  # 13 chars - for dependency analysis
 
 def get_path_to_tactic_parser_project() -> str:
     """Get the path to the tactic parser project directory."""
@@ -240,6 +322,79 @@ def build_tactic_parser_if_needed(logger: Optional[logging.Logger] = None):
     if not is_tactic_parser_built():
         build_lean4_project(get_path_to_tactic_parser_project(), logger, has_executable=True)
 
+def get_path_to_dependency_parser_executable() -> str:
+    """Get the path to the dependency parser executable."""
+    abs_path = get_path_to_tactic_parser_project()
+    dependency_parser_bin_path = os.path.join(abs_path, ".lake", "build", "bin", "dependency-parser")
+    return dependency_parser_bin_path
+
+def analyze_lean_file_dependencies(
+    lean_file_path: str,
+    json_output_path: str,
+    working_dir: Optional[str] = None,
+    logger: Optional[logging.Logger] = None
+) -> Dict:
+    """
+    Analyze dependencies in a Lean file and export to JSON.
+
+    Args:
+        lean_file_path: Path to the Lean file to analyze (relative to working_dir)
+        json_output_path: Path where JSON output will be written (relative to working_dir)
+        working_dir: Working directory (Lean project root). If None, uses current directory.
+        logger: Optional logger for debugging
+
+    Returns:
+        dict: The dependency analysis results as a Python dictionary
+
+    Raises:
+        FileNotFoundError: If the executable or input file doesn't exist
+        subprocess.CalledProcessError: If the analysis fails
+    """
+    if logger is None:
+        logger = logging.getLogger(__name__)
+
+    if working_dir is None:
+        working_dir = os.getcwd()
+
+    # Ensure the dependency parser is built
+    build_tactic_parser_if_needed(logger)
+
+    # Get the executable path
+    exec_path = get_path_to_dependency_parser_executable()
+    if not os.path.isfile(exec_path):
+        raise FileNotFoundError(
+            f"Dependency parser executable not found at {exec_path}. "
+            "Please build it first with 'lake build'"
+        )
+
+    # Verify the input file exists (relative to working_dir)
+    full_lean_path = Path(working_dir) / lean_file_path
+    if not full_lean_path.exists():
+        raise FileNotFoundError(f"Lean file not found: {full_lean_path}")
+
+    # Build the command
+    cmds = ["lake", "env", str(exec_path), lean_file_path, json_output_path]
+
+    logger.debug(f"Running dependency analysis: {' '.join(cmds)}")
+    logger.debug(f"Working directory: {working_dir}")
+
+    # Execute the command
+    result = subprocess.run(
+        cmds,
+        cwd=working_dir,
+        capture_output=True,
+        text=True,
+        check=True
+    )
+
+    logger.debug(f"Dependency analysis stdout: {result.stdout}")
+    if result.stderr:
+        logger.warning(f"Dependency analysis stderr: {result.stderr}")
+
+    # Read and return the JSON output
+    full_json_path = Path(working_dir) / json_output_path
+    with open(full_json_path, 'r') as f:
+        return json.load(f)
 
 def get_from_original_text(code: str, lean_info: LeanLineInfo, relative_line_num : int = 1) -> str:
     """Extract the text corresponding to a LeanLineInfo from the code."""
@@ -447,19 +602,52 @@ class TacticParser:
 
         return tactics, errors
 
-    def parse_file(self, file_path: str, parse_type: RequestType = RequestType.PARSE_THEOREM) -> tuple[List[LeanLineInfo], List[ErrorInfo]]:
+    def parse_file(self, file_path: str, parse_type: RequestType = RequestType.PARSE_THEOREM, json_output_path: Optional[str] = None) -> Union[tuple[List[LeanLineInfo], List[ErrorInfo]], Dict]:
         """
-        Parse tactics from a Lean 4 file.
+        Parse tactics from a Lean 4 file or analyze its dependencies.
 
         Args:
             file_path: Path to the Lean 4 file
+            parse_type: Type of parsing to perform
+            json_output_path: For PARSE_DEPENDS only - path where JSON output will be written.
+                            If None, generates a temporary path.
 
         Returns:
-            List of leanInfo objects
+            - For PARSE_TACTICS/PARSE_THEOREM/CHKPT_TACTICS/BREAK_CHCKPNT: tuple of (List[LeanLineInfo], List[ErrorInfo])
+            - For PARSE_DEPENDS: Dict containing dependency analysis results
         """
-        with open(file_path, 'r', encoding='utf-8') as f:
-            lean_code = f.read()
-        return self.parse(lean_code, parse_type=parse_type)
+        if parse_type == RequestType.PARSE_DEPENDS:
+            # Use dependency parser executable
+            if json_output_path is None:
+                # Generate a temporary output path
+                json_output_path = str(Path(file_path).with_suffix('.deps.json'))
+
+            # Determine working directory
+            if self.project_path:
+                working_dir = self.project_path
+                # Make file_path relative to working_dir if it's absolute
+                file_path_obj = Path(file_path)
+                if file_path_obj.is_absolute():
+                    try:
+                        file_path = str(file_path_obj.relative_to(working_dir))
+                    except ValueError:
+                        # file_path is not relative to working_dir, use as-is
+                        pass
+            else:
+                working_dir = str(Path(file_path).parent)
+                file_path = str(Path(file_path).name)
+
+            return analyze_lean_file_dependencies(
+                lean_file_path=file_path,
+                json_output_path=json_output_path,
+                working_dir=working_dir,
+                logger=self.logger
+            )
+        else:
+            # Use normal tactic parser
+            with open(file_path, 'r', encoding='utf-8') as f:
+                lean_code = f.read()
+            return self.parse(lean_code, parse_type=parse_type)
 
     def close(self):
         """Close the parser process."""
