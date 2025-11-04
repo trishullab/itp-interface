@@ -12,7 +12,7 @@ from dataclasses_json import dataclass_json
 from collections import OrderedDict
 from typing import List, Optional, Union, runtime_checkable, Protocol
 from pydantic import BaseModel
-from itp_interface.tools.tactic_parser import LeanLineInfo
+from itp_interface.tools.tactic_parser import DeclWithDependencies
 
 @runtime_checkable
 class TrainingDataFormat(Protocol):
@@ -503,7 +503,7 @@ class TheoremProvingTrainingDataCollection(TrainingDataCollection):
         return deserialized
 
 class ExtractionDataCollection(BaseModel):
-    training_data: list[LeanLineInfo] = []
+    training_data: list[DeclWithDependencies] = []
 
     def __len__(self) -> int:
         return len(self.training_data)

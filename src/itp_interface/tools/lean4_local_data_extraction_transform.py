@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
+import os
 import sys
-root_dir = f"{__file__.split('itp_interface')[0]}"
+dir_name = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+root_dir = os.path.abspath(dir_name)
 if root_dir not in sys.path:
     sys.path.append(root_dir)
 import typing
@@ -53,14 +55,20 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
         else:
             theorems = set(theorems) if theorems is not None else None
         cnt = 0
-        with lean_executor:
-            lean_executor.set_run_exactly()
-            line_infos = lean_executor.extract_all_theorems_and_definitions()
-            for line_info in line_infos:
-                if theorems is not None and line_info.name not in theorems:
-                    continue
-                training_data.merge(line_info)
-                cnt += 1
+        temp_dir = os.path.join(training_data.folder, "temp")
+        os.makedirs(temp_dir, exist_ok=True)
+        json_output_path = f"{temp_dir}/{file_namespace.replace('.', '_')}.lean.deps.json"
+        file_dep_analyses = lean_executor.extract_all_theorems_and_definitions(json_output_path=json_output_path)
+        self.logger.info(f"Extracted {len(file_dep_analyses)} FileDependencyAnalysis objects from {file_namespace}")
+        self.logger.info(f"file_dep_analyses: {file_dep_analyses}")
+        assert len(file_dep_analyses) == 1, "Expected exactly one FileDependencyAnalysis object"
+        file_dep_analysis = file_dep_analyses[0]
+        for decls in file_dep_analysis.declarations:
+            line_info = decls.declaration
+            if theorems is not None and line_info.name not in theorems:
+                continue
+            training_data.merge(decls)
+            cnt += 1
         training_data.meta.last_proof_id = theorem_id
         self.logger.info(f"===============Finished processing {file_namespace}=====================")
         self.logger.info(f"Total declarations processed in this transform: {cnt}")

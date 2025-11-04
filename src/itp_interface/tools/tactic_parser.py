@@ -166,6 +166,12 @@ class DeclWithDependencies(BaseModel):
         """Set declaration ID (useful for chaining)."""
         self.decl_id = decl_id
         return self
+    
+    def to_json(self, indent=0) -> str:
+        if indent == 0:
+            return self.model_dump_json()
+        else:
+            return self.model_dump_json(indent=indent)
 
     @staticmethod
     def from_dict(decl_data: Dict) -> 'DeclWithDependencies':
@@ -220,6 +226,57 @@ class DeclWithDependencies(BaseModel):
             for decl_data in analysis_dict.get('declarations', [])
         ]
 
+    @staticmethod
+    def load_from_file(file_path: str) -> 'DeclWithDependencies':
+        raise NotImplementedError("load_from_file must be implemented by the child class")
+    
+    @staticmethod
+    def load_from_string(json_text: str) -> 'DeclWithDependencies':
+        raise NotImplementedError("load_from_string must be implemented by the child class")
+
+class FileDependencyAnalysis(BaseModel):
+    """
+    File-level dependency analysis output from the Lean dependency parser.
+
+    This model is used to parse the JSON output from the dependency-parser executable.
+    For merging into larger collections, extract the declarations list.
+    """
+    file_path: str
+    module_name: str
+    imports: List[Dict]  # Raw import info
+    declarations: List[DeclWithDependencies]
+
+    def __repr__(self) -> str:
+        return f"FileDependencyAnalysis({self.module_name}, {len(self.declarations)} decls)"
+
+    def to_dict(self) -> Dict:
+        """Convert to dictionary matching the JSON format."""
+        return {
+            "filePath": self.file_path,
+            "moduleName": self.module_name,
+            "imports": self.imports,
+            "declarations": [
+                {
+                    "declaration": decl.declaration.to_dict(),
+                    "dependencies": [dep.model_dump(exclude_none=True) for dep in decl.dependencies],
+                    "unresolvedNames": decl.unresolved_names,
+                    **({"declId": decl.decl_id} if decl.decl_id else {})
+                }
+                for decl in self.declarations
+            ]
+        }
+
+    @staticmethod
+    def from_dict(data: Dict) -> 'FileDependencyAnalysis':
+        """Parse from the JSON dict returned by dependency-parser executable."""
+        declarations = DeclWithDependencies.from_dependency_analysis(data)
+
+        return FileDependencyAnalysis(
+            file_path=data['filePath'],
+            module_name=data['moduleName'],
+            imports=data.get('imports', []),
+            declarations=declarations
+        )
 
 # Create an enum for parsing request type
 class RequestType(Enum):
@@ -329,22 +386,22 @@ def get_path_to_dependency_parser_executable() -> str:
     return dependency_parser_bin_path
 
 def analyze_lean_file_dependencies(
-    lean_file_path: str,
+    full_lean_file_path: str,
     json_output_path: str,
     working_dir: Optional[str] = None,
     logger: Optional[logging.Logger] = None
-) -> Dict:
+) -> tuple[List[FileDependencyAnalysis], List[ErrorInfo]]:
     """
     Analyze dependencies in a Lean file and export to JSON.
 
     Args:
-        lean_file_path: Path to the Lean file to analyze (relative to working_dir)
+        full_lean_file_path: Path to the Lean file to analyze (relative to working_dir)
         json_output_path: Path where JSON output will be written (relative to working_dir)
         working_dir: Working directory (Lean project root). If None, uses current directory.
         logger: Optional logger for debugging
 
     Returns:
-        dict: The dependency analysis results as a Python dictionary
+        tuple: (FileDependencyAnalysis, List[ErrorInfo]) - analysis results and any errors
 
     Raises:
         FileNotFoundError: If the executable or input file doesn't exist
@@ -368,12 +425,12 @@ def analyze_lean_file_dependencies(
         )
 
     # Verify the input file exists (relative to working_dir)
-    full_lean_path = Path(working_dir) / lean_file_path
-    if not full_lean_path.exists():
-        raise FileNotFoundError(f"Lean file not found: {full_lean_path}")
+    # full_lean_path = Path(working_dir) / lean_file_path
+    if not os.path.exists(full_lean_file_path):
+        raise FileNotFoundError(f"Lean file not found: {full_lean_file_path}")
 
     # Build the command
-    cmds = ["lake", "env", str(exec_path), lean_file_path, json_output_path]
+    cmds = ["lake", "env", str(exec_path), full_lean_file_path, json_output_path]
 
     logger.debug(f"Running dependency analysis: {' '.join(cmds)}")
     logger.debug(f"Working directory: {working_dir}")
@@ -384,17 +441,42 @@ def analyze_lean_file_dependencies(
         cwd=working_dir,
         capture_output=True,
         text=True,
-        check=True
+        check=False  # Don't raise on error, handle it ourselves
     )
 
     logger.debug(f"Dependency analysis stdout: {result.stdout}")
     if result.stderr:
         logger.warning(f"Dependency analysis stderr: {result.stderr}")
 
-    # Read and return the JSON output
+    # Check for errors
+    errors: List[ErrorInfo] = []
+    if result.returncode != 0 or result.stderr:
+        error_msg = f"Dependency parser failed with code {result.returncode}"
+        if result.stderr:
+            error_msg += f": {result.stderr}"
+        errors.append(ErrorInfo(message=error_msg, position=Position(line=0, column=0)))
+
+    # Read and parse the JSON output
     full_json_path = Path(working_dir) / json_output_path
-    with open(full_json_path, 'r') as f:
-        return json.load(f)
+    if full_json_path.exists():
+        with open(full_json_path, 'r') as f:
+            data = json.load(f)
+        analysis = FileDependencyAnalysis.from_dict(data)
+    else:
+        # Create empty analysis if file doesn't exist
+        analysis = FileDependencyAnalysis(
+            file_path=full_lean_file_path,
+            module_name="",
+            imports=[],
+            declarations=[]
+        )
+        if not errors:
+            errors.append(ErrorInfo(
+                message="Output file was not created",
+                position=Position(line=0, column=0)
+            ))
+
+    return [analysis], errors
 
 def get_from_original_text(code: str, lean_info: LeanLineInfo, relative_line_num : int = 1) -> str:
     """Extract the text corresponding to a LeanLineInfo from the code."""
@@ -602,7 +684,7 @@ class TacticParser:
 
         return tactics, errors
 
-    def parse_file(self, file_path: str, parse_type: RequestType = RequestType.PARSE_THEOREM, json_output_path: Optional[str] = None) -> Union[tuple[List[LeanLineInfo], List[ErrorInfo]], Dict]:
+    def parse_file(self, file_path: str, parse_type: RequestType = RequestType.PARSE_THEOREM, json_output_path: Optional[str] = None) -> tuple[Union[List[LeanLineInfo], List[FileDependencyAnalysis]], List[ErrorInfo]]:
         """
         Parse tactics from a Lean 4 file or analyze its dependencies.
 
@@ -614,31 +696,32 @@ class TacticParser:
 
         Returns:
             - For PARSE_TACTICS/PARSE_THEOREM/CHKPT_TACTICS/BREAK_CHCKPNT: tuple of (List[LeanLineInfo], List[ErrorInfo])
-            - For PARSE_DEPENDS: Dict containing dependency analysis results
+            - For PARSE_DEPENDS: tuple of (FileDependencyAnalysis, List[ErrorInfo])
         """
         if parse_type == RequestType.PARSE_DEPENDS:
             # Use dependency parser executable
             if json_output_path is None:
                 # Generate a temporary output path
-                json_output_path = str(Path(file_path).with_suffix('.deps.json'))
+                json_output_file_path = Path(file_path).with_suffix('.deps.json')
+                json_output_path = str(json_output_file_path)
 
             # Determine working directory
             if self.project_path:
                 working_dir = self.project_path
                 # Make file_path relative to working_dir if it's absolute
                 file_path_obj = Path(file_path)
-                if file_path_obj.is_absolute():
-                    try:
-                        file_path = str(file_path_obj.relative_to(working_dir))
-                    except ValueError:
-                        # file_path is not relative to working_dir, use as-is
-                        pass
+                # Make sure that path is absolute
+                if not file_path_obj.is_absolute():
+                    file_path = str(file_path_obj.resolve())
+                working_dir = str(Path(working_dir).resolve())
+                json_output_path = str(Path(json_output_path).resolve())
             else:
-                working_dir = str(Path(file_path).parent)
-                file_path = str(Path(file_path).name)
+                working_dir = str(Path(file_path).parent.resolve())
+                file_path = str(Path(file_path).resolve())
+                json_output_path = str(Path(json_output_path).resolve())
 
             return analyze_lean_file_dependencies(
-                lean_file_path=file_path,
+                full_lean_file_path=file_path,
                 json_output_path=json_output_path,
                 working_dir=working_dir,
                 logger=self.logger

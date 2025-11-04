@@ -9,7 +9,7 @@ import json
 import typing
 import bisect
 import subprocess
-from itp_interface.tools.tactic_parser import TacticParser, ErrorInfo, LeanLineInfo, RequestType
+from itp_interface.tools.tactic_parser import TacticParser, ErrorInfo, LeanLineInfo, FileDependencyAnalysis, RequestType
 from itp_interface.lean_server.lean_context import ProofContext
 from itp_interface.lean_server.lean4_utils import Lean4Utils
 from itp_interface.tools.lean_parse_utils import LeanLineByLineReader
@@ -190,16 +190,16 @@ class SimpleLean4SyncExecutor:
             self._lines_executed.append("") # Add an empty line to keep the line numbers in sync
         return True
 
-    def extract_all_theorems_and_definitions(self) -> List[LeanLineInfo]:
+    def extract_all_theorems_and_definitions(self, json_output_path: str|None = None) -> List[FileDependencyAnalysis]:
         assert self.main_file is not None, "main_file must be set to extract theorems and definitions"
         assert self.tactic_parser is not None, "tactic_parser must be initialized to extract theorems and definitions"
-        with open(self.main_file, 'r', encoding='utf-8') as f:
-            file_content = f.read()
-        lean_line_infos, _ = self.tactic_parser.parse(
-            file_content, 
-            fail_on_error=False, 
-            parse_type=RequestType.PARSE_THEOREM)
-        return lean_line_infos
+
+        json_output_path = json_output_path if json_output_path is not None else self.main_file + ".dependency_analysis.json"
+        file_dependency_analysis, _ = self.tactic_parser.parse_file(
+            self.main_file,
+            parse_type=RequestType.PARSE_DEPENDS,
+            json_output_path=json_output_path)
+        return file_dependency_analysis
 
     def get_lemma_name_if_running(self) -> Optional[str]:
         if not self.is_in_proof_mode():
