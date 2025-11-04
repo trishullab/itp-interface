@@ -11,5 +11,5 @@ supportInterpreter = true
 
 [[lean_exe]]
 name = "dependency-parser"
-root = "DependencyParserMain"
+root = "TacticParser.DependencyParserMain"
 supportInterpreter = true
