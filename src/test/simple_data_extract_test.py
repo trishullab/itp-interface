@@ -87,8 +87,8 @@ def main():
 
 if __name__ == '__main__':
     if HAS_RAY:
-        object_store_memory_in_gb = 0.75
-        memory_in_gb = 0.5
+        object_store_memory_in_gb = 0.15
+        memory_in_gb = 0.25
         ray_dashboard = RayUtils.init_ray(
             num_of_cpus=2, 
             object_store_memory_in_gb=object_store_memory_in_gb, 
