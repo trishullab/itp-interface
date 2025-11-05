@@ -175,9 +175,7 @@ unsafe def processRequest (b64Input : String) (chkptState : Option CheckpointedP
       let temp_result ← parseDecls parse_request.content
       let mut tree_list : Array InfoNodeStruct := #[]
       for decl in temp_result do
-        let start_pos ← pure (get_position_from_char_pos parse_request.content decl.startPos)
-        let end_pos ← pure (get_position_from_char_pos parse_request.content decl.endPos)
-        let info_tree ← pure (InfoNodeStruct.mk decl.declType decl.name decl.docString decl.text start_pos end_pos decl.namespc #[])
+        let info_tree ← pure (InfoNodeStruct.mk decl.declType decl.name decl.docString decl.text decl.startPos decl.endPos decl.namespc #[])
         tree_list := tree_list.push info_tree
       result := { trees := tree_list, errors := #[] }
 

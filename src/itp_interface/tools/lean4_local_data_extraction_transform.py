@@ -64,7 +64,7 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
         assert len(file_dep_analyses) == 1, "Expected exactly one FileDependencyAnalysis object"
         file_dep_analysis = file_dep_analyses[0]
         for decls in file_dep_analysis.declarations:
-            line_info = decls.declaration
+            line_info = decls.decl_info
             if theorems is not None and line_info.name not in theorems:
                 continue
             training_data.merge(decls)
@@ -80,8 +80,10 @@ if __name__ == "__main__":
     import logging
     import time
     os.chdir(root_dir)
-    project_dir = 'data/test/lean4_proj/'
-    file_name = 'data/test/lean4_proj/Lean4Proj/Basic.lean'
+    # project_dir = 'data/test/lean4_proj/'
+    project_dir = 'data/test/Mathlib'
+    # file_name = 'data/test/lean4_proj/Lean4Proj/Basic.lean'
+    file_name = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Algebra/Divisibility/Basic.lean'
     project_id = project_dir.replace('/', '.')
     time_str = time.strftime("%Y%m%d-%H%M%S")
     output_path = f".log/local_data_generation_transform/data/{time_str}"

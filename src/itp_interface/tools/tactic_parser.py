@@ -153,14 +153,14 @@ class DeclarationDependency(BaseModel):
 
 class DeclWithDependencies(BaseModel):
     """Declaration with its dependencies - designed for merging into larger collections."""
-    declaration: LeanLineInfo  # Declaration metadata
+    decl_info: LeanLineInfo  # Declaration metadata
     dependencies: List[DeclarationDependency]
     unresolved_names: List[str] = []  # Names we couldn't resolve
     decl_id: Optional[str] = None  # Optional unique ID for this declaration
 
     def __repr__(self) -> str:
         id_info = f" [ID: {self.decl_id}]" if self.decl_id else ""
-        return f"[{self.declaration.decl_type}] {self.declaration.name} ({len(self.dependencies)} deps){id_info}"
+        return f"[{self.decl_info.decl_type}] {self.decl_info.name} ({len(self.dependencies)} deps){id_info}"
 
     def set_decl_id(self, decl_id: str) -> 'DeclWithDependencies':
         """Set declaration ID (useful for chaining)."""
@@ -204,7 +204,7 @@ class DeclWithDependencies(BaseModel):
             ))
 
         return DeclWithDependencies(
-            declaration=declaration,
+            decl_info=declaration,
             dependencies=dependencies,
             unresolved_names=decl_data.get('unresolvedNames', []),
             decl_id=decl_data.get('declId')
@@ -249,34 +249,34 @@ class FileDependencyAnalysis(BaseModel):
     def __repr__(self) -> str:
         return f"FileDependencyAnalysis({self.module_name}, {len(self.declarations)} decls)"
 
-    def to_dict(self) -> Dict:
-        """Convert to dictionary matching the JSON format."""
-        return {
-            "filePath": self.file_path,
-            "moduleName": self.module_name,
-            "imports": self.imports,
-            "declarations": [
-                {
-                    "declaration": decl.declaration.to_dict(),
-                    "dependencies": [dep.model_dump(exclude_none=True) for dep in decl.dependencies],
-                    "unresolvedNames": decl.unresolved_names,
-                    **({"declId": decl.decl_id} if decl.decl_id else {})
-                }
-                for decl in self.declarations
-            ]
-        }
+    # def to_dict(self) -> Dict:
+    #     """Convert to dictionary matching the JSON format."""
+    #     return {
+    #         "filePath": self.file_path,
+    #         "moduleName": self.module_name,
+    #         "imports": self.imports,
+    #         "declarations": [
+    #             {
+    #                 "declaration": decl.declaration.to_dict(),
+    #                 "dependencies": [dep.model_dump(exclude_none=True) for dep in decl.dependencies],
+    #                 "unresolvedNames": decl.unresolved_names,
+    #                 **({"declId": decl.decl_id} if decl.decl_id else {})
+    #             }
+    #             for decl in self.declarations
+    #         ]
+    #     }
 
-    @staticmethod
-    def from_dict(data: Dict) -> 'FileDependencyAnalysis':
-        """Parse from the JSON dict returned by dependency-parser executable."""
-        declarations = DeclWithDependencies.from_dependency_analysis(data)
+    # @staticmethod
+    # def from_dict(data: Dict) -> 'FileDependencyAnalysis':
+    #     """Parse from the JSON dict returned by dependency-parser executable."""
+    #     declarations = DeclWithDependencies.from_dependency_analysis(data)
 
-        return FileDependencyAnalysis(
-            file_path=data['filePath'],
-            module_name=data['moduleName'],
-            imports=data.get('imports', []),
-            declarations=declarations
-        )
+    #     return FileDependencyAnalysis(
+    #         file_path=data['filePath'],
+    #         module_name=data['moduleName'],
+    #         imports=data.get('imports', []),
+    #         declarations=declarations
+    #     )
 
 # Create an enum for parsing request type
 class RequestType(Enum):
@@ -461,7 +461,7 @@ def analyze_lean_file_dependencies(
     if full_json_path.exists():
         with open(full_json_path, 'r') as f:
             data = json.load(f)
-        analysis = FileDependencyAnalysis.from_dict(data)
+        analysis = FileDependencyAnalysis.model_validate(data)
     else:
         # Create empty analysis if file doesn't exist
         analysis = FileDependencyAnalysis(
@@ -626,7 +626,7 @@ class TacticParser:
         # Read JSON response (one line)
         try:
             response_line = self.process.stdout.readline()
-            self.logger.debug(f"Response: {response_line.strip()}")
+            self.logger.info(f"Response: {response_line.strip()}")
             if not response_line:
                 # Check stderr for error messages
                 stderr_output = self.process.stderr.read() if self.process.stderr else ""

@@ -10,54 +10,6 @@ open Lean
 open Lean.Parser
 open Lean.Elab
 
-/-- Information about an import statement -/
-structure ImportInfo where
-  moduleName : String
-  startPos : Nat
-  endPos : Nat
-  text : String
-  deriving Repr
-
-/-- Information about a namespace declaration -/
-structure NamespaceInfo where
-  name : String
-  startPos : Nat
-  endPos : Nat
-  text : String
-  deriving Repr
-
-/-- Information about file dependencies and module structure -/
-structure DependencyInfo where
-  filePath : String
-  moduleName : String  -- The module name derived from file path
-  imports : Array ImportInfo
-  namespaces : Array NamespaceInfo
-  deriving Repr
-
-/-- Information about a single dependency reference -/
-structure DeclarationDependency where
-  name : String              -- Fully qualified name (e.g., "Nat.add_zero")
-  namespc : Option String    -- Namespace portion (e.g., "Nat")
-  localName : String         -- Local name without namespace
-  filePath : Option String   -- Source file if resolvable
-  moduleName : Option String -- Module where defined
-  deriving Repr
-
-/-- Declaration with its dependencies -/
-structure DeclWithDependencies where
-  declInfo : DeclInfo                       -- From LineParser
-  dependencies : Array DeclarationDependency
-  unresolvedNames : Array String            -- Names we couldn't resolve
-  deriving Repr
-
-/-- Complete file dependency analysis with per-declaration tracking -/
-structure FileDependencyAnalysis where
-  filePath : String
-  moduleName : String
-  imports : Array ImportInfo
-  declarations : Array DeclWithDependencies
-  deriving Repr
-
 /-- Extract module name from import syntax -/
 partial def extractModuleName (stx : Syntax) : String :=
   match stx with
@@ -396,71 +348,10 @@ unsafe def analyzeFileDependencies (filepath : System.FilePath) : IO FileDepende
   }
   return result
 
-/-- Convert ImportInfo to JSON -/
-def importInfoToJson (info : ImportInfo) : Json :=
-  Json.mkObj [
-    ("moduleName", Json.str info.moduleName),
-    ("startPos", Json.num info.startPos),
-    ("endPos", Json.num info.endPos),
-    ("text", Json.str info.text)
-  ]
-
-/-- Convert NamespaceInfo to JSON -/
-def namespaceInfoToJson (info : NamespaceInfo) : Json :=
-  Json.mkObj [
-    ("name", Json.str info.name),
-    ("startPos", Json.num info.startPos),
-    ("endPos", Json.num info.endPos),
-    ("text", Json.str info.text)
-  ]
-
-/-- Convert DependencyInfo to JSON -/
-def dependencyInfoToJson (info : DependencyInfo) : Json :=
-  Json.mkObj [
-    ("filePath", Json.str info.filePath),
-    ("moduleName", Json.str info.moduleName),
-    ("imports", Json.arr (info.imports.map importInfoToJson)),
-    ("namespaces", Json.arr (info.namespaces.map namespaceInfoToJson))
-  ]
-
-/-- Convert DeclarationDependency to JSON -/
-def declarationDependencyToJson (dep : DeclarationDependency) : Json :=
-  let baseFields := [
-    ("name", Json.str dep.name),
-    ("localName", Json.str dep.localName)
-  ]
-  let withNs := match dep.namespc with
-    | some ns => baseFields ++ [("namespace", Json.str ns)]
-    | none => baseFields
-  let withFile := match dep.filePath with
-    | some fp => withNs ++ [("filePath", Json.str fp)]
-    | none => withNs
-  let withModule := match dep.moduleName with
-    | some mn => withFile ++ [("moduleName", Json.str mn)]
-    | none => withFile
-  Json.mkObj withModule
-
-/-- Convert DeclWithDependencies to JSON -/
-def declWithDependenciesToJson (decl : DeclWithDependencies) : Json :=
-  Json.mkObj [
-    ("declaration", declInfoToJson decl.declInfo),
-    ("dependencies", Json.arr (decl.dependencies.map declarationDependencyToJson)),
-    ("unresolvedNames", Json.arr (decl.unresolvedNames.map Json.str))
-  ]
-
-/-- Convert FileDependencyAnalysis to JSON -/
-def fileDependencyAnalysisToJson (analysis : FileDependencyAnalysis) : Json :=
-  Json.mkObj [
-    ("filePath", Json.str analysis.filePath),
-    ("moduleName", Json.str analysis.moduleName),
-    ("imports", Json.arr (analysis.imports.map importInfoToJson)),
-    ("declarations", Json.arr (analysis.declarations.map declWithDependenciesToJson))
-  ]
-
 /-- Export dependency info to JSON file -/
 def exportDependenciesToJson (info : DependencyInfo) (outputPath : System.FilePath) : IO Unit := do
-  let json := dependencyInfoToJson info
-  let jsonStr := json.pretty
+  let json := toJson info
+  let jsonStr := json.compress
   IO.FS.writeFile outputPath jsonStr
   IO.println s!"Exported dependencies to {outputPath}"
 
@@ -536,8 +427,8 @@ def parseDependenciesAndExport (filepath : System.FilePath) (jsonOutput : Option
 
 /-- Export FileDependencyAnalysis to JSON file -/
 def exportFileDependencyAnalysisToJson (analysis : FileDependencyAnalysis) (outputPath : System.FilePath) : IO Unit := do
-  let json := fileDependencyAnalysisToJson analysis
-  let jsonStr := json.pretty
+  let json := toJson analysis
+  let jsonStr := json.compress
   IO.FS.writeFile outputPath jsonStr
   IO.println s!"Exported file dependency analysis to {outputPath}"
 

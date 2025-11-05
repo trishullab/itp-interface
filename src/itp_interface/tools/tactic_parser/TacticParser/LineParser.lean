@@ -143,6 +143,21 @@ def no_comment_testcase := "def noComment : Nat := 100"
 #eval trimComment no_comment_testcase  -- should return 0
 #eval no_comment_testcase.drop (trimComment no_comment_testcase)  -- should return "def noComment : Nat := 100"
 
+def postProcess (text : String) : String × List Nat :=
+  -- Replace lines with `^lemma ` with `theorem `
+  let lines := text.splitOn "\n"
+  let processedLines := lines.mapIdx fun i line =>
+    if line.trimLeft.startsWith "lemma " then
+      let leadingSpaces := line.takeWhile (fun c => c == ' ' ∨ c == '\t')
+      let newLine := leadingSpaces ++ "theorem " ++ line.trimLeft.drop "lemma ".length
+      (newLine, lines.length)
+      --(newLine, lines.length)
+    else
+      (line, i)
+  let linesOnly := processedLines.map Prod.fst
+  let lineNumbers := processedLines.map Prod.snd
+  let filteredLineNums := lineNumbers.filter (fun n => n != lines.length)
+  (String.intercalate "\n" linesOnly, filteredLineNums)
 
 unsafe def parseCommon
   (originalContent : String)
@@ -242,11 +257,14 @@ unsafe def parseCommon
       else
         some (String.intercalate "." openNamespaces)
 
+    let start_pos := get_position_from_char_pos originalContent realStart.byteIdx
+    let end_pos := get_position_from_char_pos originalContent endPos.byteIdx
+
     let info : DeclInfo := {
       declType := actualDeclType
       name := name
-      startPos := realStart.byteIdx
-      endPos := endPos.byteIdx
+      startPos := start_pos
+      endPos := end_pos
       text := textWithoutComments -- Store text after extracting docstring
       docString := docString -- Store extracted docstring
       namespc := namespc
@@ -257,7 +275,8 @@ unsafe def parseCommon
 
 /-- Parse a Lean 4 file and extract declaration information -/
 unsafe def parseDecls (originalContent : String) : IO (Array DeclInfo) := do
-  let inputCtx := mkInputContext originalContent "<input>"
+  let (postProcessedContent, modifiedLineIdx) := postProcess originalContent
+  let inputCtx := mkInputContext postProcessedContent "<input>"
 
   -- Parse the header (using original content)
   let (_, parserState, _) ← parseHeader inputCtx
@@ -269,14 +288,15 @@ unsafe def parseDecls (originalContent : String) : IO (Array DeclInfo) := do
     env := env
     options := opts
   }
-  let decls ← parseCommon originalContent parserState pmctx inputCtx
+  let decls ← parseCommon postProcessedContent parserState pmctx inputCtx
 
   return decls
 
 /-- Parse a Lean 4 file and extract declaration information -/
 unsafe def parseFile (filepath : System.FilePath) : IO (Array DeclInfo) := do
   let originalContent ← IO.FS.readFile filepath
-  let inputCtx := mkInputContext originalContent filepath.toString
+  let (postProcessedContent, modifiedLineIdx) := postProcess originalContent
+  let inputCtx := mkInputContext postProcessedContent filepath.toString
 
   -- Parse the header (using original content)
   let (_, parserState, _) ← parseHeader inputCtx
@@ -289,7 +309,7 @@ unsafe def parseFile (filepath : System.FilePath) : IO (Array DeclInfo) := do
     options := opts
   }
 
-  let decls ← parseCommon originalContent parserState pmctx inputCtx
+  let decls ← parseCommon postProcessedContent parserState pmctx inputCtx
 
   return decls
 
@@ -298,8 +318,8 @@ def declInfoToJson (info : DeclInfo) : Json :=
   let baseFields := [
     ("declType", Json.str (toString info.declType)),
     ("name", Json.str info.name),
-    ("startPos", Json.num info.startPos),
-    ("endPos", Json.num info.endPos),
+    ("startPos", toJson info.startPos),
+    ("endPos", toJson info.endPos),
     ("text", Json.str info.text)
   ]
   let withDocString := match info.docString with
@@ -310,7 +330,7 @@ def declInfoToJson (info : DeclInfo) : Json :=
 /-- Simple helper to print declaration info -/
 def printDeclInfo (info : DeclInfo) : IO Unit := do
   IO.println s!"[{info.declType}] {info.name}"
-  IO.println s!"  Position: {info.startPos} - {info.endPos}"
+  IO.println s!"  Position: {toJson info.startPos} - {toJson info.endPos}"
   let preview := if info.text.length > 100 then
     info.text.take 50 ++ "\n ... more text ... \n" ++ info.text.drop (info.text.length - 50)
   else
@@ -437,6 +457,17 @@ have eq₂ : (21 * n + 4) % (14 * n + 3) = 7 * n + 1 := by
 rw [eq₂]
 sorry
 
+
+lemma pow_dvd_pow (a : α) (h : m ≤ n) : a ^ m ∣ a ^ n :=
+  ⟨a ^ (n - m), by rw [← pow_add, Nat.add_comm, Nat.sub_add_cancel h]⟩
+
+lemma dvd_pow (hab : a ∣ b) : ∀ {n : ℕ} (_ : n ≠ 0), a ∣ b ^ n
+  | 0,     hn => (hn rfl).elim
+  | n + 1, _  => by rw [pow_succ']; exact hab.mul_right _
+
+alias Dvd.dvd.pow := dvd_pow
+
+lemma dvd_pow_self (a : α) {n : ℕ} (hn : n ≠ 0) : a ∣ a ^ n := dvd_rfl.pow hn
 
 end Lean4Proj2
 "
