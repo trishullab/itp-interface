@@ -75,6 +75,11 @@ jobs:
           eval $(opam env)
           source $HOME/.elan/env
           python src/test/simple_env_test.py
+        
+      - name: Ray Cleanup
+        shell: bash
+        run: |
+          rm -rf /tmp/*
 
       - name: Run Data Gen Test
         shell: bash
@@ -83,6 +88,10 @@ jobs:
           source $HOME/.elan/env
           python src/test/simple_data_gen_test.py
 
+      - name: Ray Cleanup
+        shell: bash
+        run: |
+          rm -rf /tmp/*
 
       - name: Run Data Extraction Test
         shell: bash
@@ -90,3 +99,8 @@ jobs:
           eval $(opam env)
           source $HOME/.elan/env
           python src/test/simple_data_extract_test.py
+
+      - name: Ray Cleanup
+        shell: bash
+        run: |
+          rm -rf /tmp/*
