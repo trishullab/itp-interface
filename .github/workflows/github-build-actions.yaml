@@ -79,7 +79,7 @@ jobs:
       - name: Ray Cleanup
         shell: bash
         run: |
-          rm -rf /tmp/*
+          rm -rf /tmp/* --verbose
 
       - name: Run Data Gen Test
         shell: bash
@@ -91,7 +91,7 @@ jobs:
       - name: Ray Cleanup
         shell: bash
         run: |
-          rm -rf /tmp/*
+          rm -rf /tmp/* --verbose
 
       - name: Run Data Extraction Test
         shell: bash
@@ -103,4 +103,4 @@ jobs:
       - name: Ray Cleanup
         shell: bash
         run: |
-          rm -rf /tmp/*
+          rm -rf /tmp/* --verbose

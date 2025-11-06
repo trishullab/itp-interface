@@ -86,6 +86,7 @@ def main():
 
 if __name__ == '__main__':
     if HAS_RAY:
+        os.environ["RAY_OBJECT_STORE_ALLOW_SLOW_STORAGE"] = "1"
         object_store_memory_in_gb = 0.15
         memory_in_gb = 0.25
         ray_dashboard = RayUtils.init_ray(
