@@ -375,7 +375,6 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
             assert val_result.get('success', False), f"Proof validation failed:\n{val_result.get('error_message', '')}"
             assert val_result.get('compilation_ok', False), f"Proof validation failed:\n{val_result.get('error_message', '')}"
 
-
     def test_simple_lean_enforce_done_test(self):
         from itp_interface.rl.proof_state import ProofState
         from itp_interface.rl.proof_action import ProofAction
@@ -614,9 +613,9 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
             assert proof_finished, "Proof was not finished"
 
 def main():
-    unittest.main()
+    # unittest.main()
     # Run only the Lean 4 tests
-    # t = Lean4Test()
+    t = Lean4Test()
     # t.test_simple_lean4()
     # t.test_lean4_backtracking()
     # t.test_simple_lean4_done_test()
@@ -624,7 +623,7 @@ def main():
     # t.test_simple_lean_calc_with_validation()
     # t.test_simple_lean4_with_error()
     # t.test_simple_lean4_have_test()
-    # t.test_simple_lean_enforce_done_test()
+    t.test_simple_lean_enforce_done_test()
 
 
 if __name__ == '__main__':

@@ -239,8 +239,9 @@ class SimpleLean4SyncExecutor:
         if idx not in self._last_tactics:
             stmt = self._have_preprocessing(stmt)
             indentation = " " * self._nested_have_counts * 2
-            stmt = stmt.lstrip()
-            stmt = indentation + stmt
+            if self._nested_have_counts > 0:
+                stmt = stmt.lstrip()
+                stmt = indentation + stmt
             self._last_tactics[idx] = stmt
             self._last_tactic_line_idx = idx
             # self.logger.info(f"Proofs so far:\n{self._get_tactics_so_far()}")
