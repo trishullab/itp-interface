@@ -10,6 +10,7 @@ import ray
 import typing
 import logging
 import gc
+import os
 
 class RayUtils(object):
 
@@ -18,7 +19,15 @@ class RayUtils(object):
         gb = 2**30
         object_store_memory = int(object_store_memory_in_gb * gb)
         memory = int(memory_in_gb * gb)
-        return ray.init(num_cpus=num_of_cpus, object_store_memory=object_store_memory, _memory=memory, ignore_reinit_error=True, runtime_env=runtime_env)
+        os.environ["RAY_INITIALIZED"] = "1"
+        obj = ray.init(num_cpus=num_of_cpus, object_store_memory=object_store_memory, _memory=memory, ignore_reinit_error=True, runtime_env=runtime_env)
+        return obj
+
+    @staticmethod
+    def is_ray_initialized() -> bool:
+        if os.environ.get("RAY_INITIALIZED", "0") == "1":
+            return True
+        return ray.is_initialized()
 
     @staticmethod
     def ray_run_within_parallel_limits(

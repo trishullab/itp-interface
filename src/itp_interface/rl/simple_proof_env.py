@@ -10,7 +10,7 @@ from itp_interface.rl.proof_state import ProofState
 from itp_interface.rl.proof_action import ProofAction
 from itp_interface.rl.abstraction import State, Action, Env
 from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
-from itp_interface.tools.training_data_format import TrainingDataFormat
+from itp_interface.tools.training_data_format import TheoremProvingTrainingDataFormat
 from itp_interface.tools.dynamic_coq_proof_exec import DynamicProofExecutor as DynamicCoqProofExecutor
 from itp_interface.tools.dynamic_lean_proof_exec import DynamicProofExecutor as DynamicLeanProofExecutor
 from itp_interface.tools.dynamic_lean4_proof_exec import DynamicProofExecutor as DynamicLean4ProofExecutor
@@ -73,7 +73,7 @@ class ProofEnv(Env):
         assert isinstance(max_proof_depth, int)
         assert isinstance(always_retrieve_thms, bool)
         self.dynamic_proof_executor_callback = dynamic_proof_executor_callback
-        self._dynamic_proof_executor : typing.Union[DynamicCoqProofExecutor, DynamicLeanProofExecutor, DynamicIsabelleProofExecutor] = None
+        self._dynamic_proof_executor : typing.Union[DynamicCoqProofExecutor, DynamicLeanProofExecutor, DynamicIsabelleProofExecutor, DynamicLean4ProofExecutor] = None
         self._loaded = False
         self._history : typing.List[typing.Tuple[ProofState, ProofAction, ProofState, float, bool, ProofEnvInfo]] = []
         self._name = name
@@ -230,6 +230,18 @@ class ProofEnv(Env):
         self.inferences_used += 1
         return self._history[-1][0], self._history[-1][1], self._history[-1][2], self._history[-1][3], self._history[-1][4], self._history[-1][5]
     
+    def validate_proof_completion(self, timeout_in_secs = 120, keep_validation_file = False) -> dict[str, typing.Any]:
+        assert self._loaded, "Env not loaded, call reset() first"
+        assert self.done, "Proof is not yet complete, cannot validate"
+        if self.language == ProofAction.Language.LEAN4:
+            assert isinstance(self._dynamic_proof_executor, DynamicLean4ProofExecutor), "Dynamic proof executor must be of type DynamicLean4ProofExecutor"
+            return self._dynamic_proof_executor.validate_proof(
+                timeout_sec=timeout_in_secs,
+                keep_temp_file=keep_validation_file
+            )
+        else:
+            return {}
+
     def checkpoint(self):
         return super().checkpoint()
     
@@ -278,7 +290,7 @@ class ProofEnv(Env):
         assert self._loaded, "Env not loaded, call reset() first"
         self.goal_end_time = time.time()
         self.time_taken = self.goal_end_time - self.goal_start_time
-        proof_steps = [TrainingDataFormat(proof_steps=tactic.proof_steps) for _, tactic in self._p_tree.tactics]
+        proof_steps = [TheoremProvingTrainingDataFormat(proof_steps=tactic.proof_steps) for _, tactic in self._p_tree.tactics]
         additional_info = additional_info if additional_info is not None else {}
         self.proof_search_res = ProofSearchResult(
             self._dynamic_proof_executor.main_file, 
@@ -336,9 +348,22 @@ class ProofEnv(Env):
         
         self._history[history_idx] = (state, action, next_state, reward, done, env_info)
 
+    def _fix_tactics(self, tactics: typing.List[str], action: ProofAction):
+        if self.language == ProofAction.Language.LEAN4 and len(tactics) > 0:
+            # It is possible that Lean4 modifies the last tactic (especially in case of `have` tactics)
+            modified_last_tactic = self._dynamic_proof_executor.get_last_tactic()
+            if modified_last_tactic is None:
+                return
+            tactics[len(tactics) - 1] = modified_last_tactic
+            if "tactics" in action.kwargs:
+                tactics_in_action = action.kwargs["tactics"]
+                tactics_in_action[len(tactics_in_action) - 1] = modified_last_tactic
+                action.kwargs["tactics"] = tactics_in_action
+
     def _run_tactics(self, tactics: typing.List[str], state: ProofState, action: ProofAction, env_info: ProofEnvInfo):
         env_info = copy.deepcopy(env_info)
         tactic_line_num, ran_successfully = self._dynamic_proof_executor.run_tactics(tactics)
+        self._fix_tactics(tactics, action)
         proof_progressed = False
         if ran_successfully:
             previous_proof_state = state
@@ -354,7 +379,9 @@ class ProofEnv(Env):
             self._possible_failure_paths += 1
             assert len(self._p_tree) == self.current_proof_depth, "proof_tree must have the same length as current_depth"
             # cancel anything which might got executed
-            self._dynamic_proof_executor.cancel_tactic_till_line(tactic_line_num)
+            if self.language != ProofAction.Language.LEAN4:
+                # Lean4 automatically cancels the failed tactic
+                self._dynamic_proof_executor.cancel_tactic_till_line(tactic_line_num)
         reward = 0.0
         depth_ratio = self.current_proof_depth/self.max_proof_depth
         if depth_ratio > 1.0:

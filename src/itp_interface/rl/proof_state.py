@@ -12,14 +12,14 @@ from itp_interface.tools.dynamic_lean4_proof_exec import DynamicProofExecutor as
 from itp_interface.tools.dynamic_isabelle_proof_exec import DynamicProofExecutor as DynamicIsabelleProofExecutor
 from itp_interface.rl.abstraction import State
 from itp_interface.rl.proof_action import ProofAction
-from itp_interface.tools.training_data_format import TrainingDataFormat
+from itp_interface.tools.training_data_format import TheoremProvingTrainingDataFormat
 from dataclasses_json import dataclass_json
 from dataclasses import dataclass
 
 @dataclass_json
 @dataclass
 class ProofState(State):
-    training_data_format: TrainingDataFormat
+    training_data_format: TheoremProvingTrainingDataFormat
     was_reset: bool = False
     language: ProofAction.Language = ProofAction.Language.COQ
     theorem_statement_with_name: typing.Optional[str] = None
@@ -76,7 +76,7 @@ class ProofState(State):
             return self.training_data_format == __o.training_data_format
         if self == FailedProofState:
             return True
-        assert isinstance(self.training_data_format, TrainingDataFormat)
+        assert isinstance(self.training_data_format, TheoremProvingTrainingDataFormat)
         if self.language == ProofAction.Language.COQ:
             desc_cmp = DynamicCoqProofExecutor.goal_description_compare(self.training_data_format.goal_description, __o.training_data_format.goal_description)
         elif self.language == ProofAction.Language.LEAN:
@@ -109,7 +109,7 @@ class ProofState(State):
             return self.training_data_format == __o.training_data_format
         if __o == FailedProofState:
             return True
-        assert isinstance(self.training_data_format, TrainingDataFormat)
+        assert isinstance(self.training_data_format, TheoremProvingTrainingDataFormat)
         if self.language == ProofAction.Language.COQ:
             desc_cmp = DynamicCoqProofExecutor.goal_description_compare(self.training_data_format.goal_description, __o.training_data_format.goal_description)
         elif self.language == ProofAction.Language.LEAN:
@@ -127,13 +127,13 @@ class ProofState(State):
     
     def __lt__(self, __o: object) -> bool:
         assert isinstance(__o, ProofState)
-        assert isinstance(self.training_data_format, TrainingDataFormat)
+        assert isinstance(self.training_data_format, TheoremProvingTrainingDataFormat)
         assert self.language == __o.language, f"self.language: {self.language}, __o.language: {__o.language}"
         return self.training_data_format != __o.training_data_format and self.training_data_format <= __o.training_data_format
     
     def __gt__(self, __o: object) -> bool:
         assert isinstance(__o, ProofState)
-        assert isinstance(self.training_data_format, TrainingDataFormat)
+        assert isinstance(self.training_data_format, TheoremProvingTrainingDataFormat)
         assert self.language == __o.language, f"self.language: {self.language}, __o.language: {__o.language}"
         return self.training_data_format != __o.training_data_format and self.training_data_format >= __o.training_data_format
 

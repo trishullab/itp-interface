@@ -142,6 +142,7 @@ class Lean4Utils:
         #     raise
         return ProofContext(goals, [], [], [])
 
+    @staticmethod
     def parse_proof_context_human_readable_as_goals(proof_context_str: str) -> typing.List[Obligation]:
         if len(proof_context_str) == 0 and Lean4Utils.proof_context_separator not in proof_context_str:
             return None

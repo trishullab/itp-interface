@@ -9,12 +9,12 @@ import typing
 from dataclasses_json import dataclass_json
 from dataclasses import dataclass, field
 from itp_interface.rl.proof_action import ProofAction
-from itp_interface.tools.training_data_format import TrainingDataFormat
+from itp_interface.tools.training_data_format import TheoremProvingTrainingDataFormat
 
 @dataclass_json
 @dataclass
 class ProofTree(object):
-    tactics: typing.List[typing.Tuple[int, TrainingDataFormat]] = field(default_factory=list)
+    tactics: typing.List[typing.Tuple[int, TheoremProvingTrainingDataFormat]] = field(default_factory=list)
     actions: typing.List[typing.Optional[ProofAction]] = field(default_factory=list)
 
     def __len__(self):
@@ -23,7 +23,7 @@ class ProofTree(object):
     def __getitem__(self, index):
         return self.tactics[index]
 
-    def try_add_tactic(self, line_num, tactic: TrainingDataFormat, force_add: bool = False, action: ProofAction = None):
+    def try_add_tactic(self, line_num, tactic: TheoremProvingTrainingDataFormat, force_add: bool = False, action: ProofAction = None):
         # Make sure that the tactic is not more hard than any of the previous tactics
         if not force_add:
             for _, prev_tactic in self.tactics:
@@ -40,7 +40,7 @@ class ProofTree(object):
             return line_num, tactic
         return None, None
 
-    def _convert_to_str(self, tactic: TrainingDataFormat) -> typing.Tuple[str, list, list]:
+    def _convert_to_str(self, tactic: TheoremProvingTrainingDataFormat) -> typing.Tuple[str, list, list]:
         # sort the goals
         goal_set = set([goal.goal for goal in tactic.start_goals])
         hyp_set = set([hyp for goal in tactic.start_goals for hyp in goal.hypotheses])
@@ -55,7 +55,7 @@ class ProofSearchResult(object):
     proof_file: typing.Optional[str]
     proof_found: bool
     lemma_name: str
-    proof_steps: typing.List[TrainingDataFormat]
+    proof_steps: typing.List[TheoremProvingTrainingDataFormat]
     proof_time_in_secs: float
     inferences_taken: int
     possible_failed_paths: int

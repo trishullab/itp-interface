@@ -8,7 +8,7 @@ if root_dir not in sys.path:
 import logging
 import typing
 from itp_interface.tools.lean_cmd_executor import Lean3Executor
-from itp_interface.tools.training_data_format import Goal, LemmaRefWithScore, LemmaReferences, TrainingDataFormat
+from itp_interface.tools.training_data_format import Goal, LemmaRefWithScore, LemmaReferences, TheoremProvingTrainingDataFormat
 from typing import List
 
 class Lean3ContextHelper(object):
@@ -122,7 +122,7 @@ class Lean3ContextHelper(object):
         #         lemmas.append((lemma_name, lemma_val))
         # return lemmas
 
-    def set_relevant_defns_in_training_data_point(self, training_data_point: TrainingDataFormat, lean_executor: Lean3Executor, logger: logging.Logger = None, depth: int = None):
+    def set_relevant_defns_in_training_data_point(self, training_data_point: TheoremProvingTrainingDataFormat, lean_executor: Lean3Executor, logger: logging.Logger = None, depth: int = None):
         # Search is not supported in Lean as of now
         raise Exception("Search is not supported in Lean as of now")
         # logger = logger if logger is not None else self.logger
@@ -166,7 +166,7 @@ class Lean3ContextHelper(object):
         #     useful_defns = [LemmaRefWithScore(unique_defns[defn], score) for defn, _, score in useful_defns]
         #     goal.relevant_defns = useful_defns
 
-    def set_all_type_matched_query_result(self, training_data_point: TrainingDataFormat, lean_executor: Lean3Executor, logger: logging.Logger = None, depth: int = None):
+    def set_all_type_matched_query_result(self, training_data_point: TheoremProvingTrainingDataFormat, lean_executor: Lean3Executor, logger: logging.Logger = None, depth: int = None):
         unique_thms = {defn.lemma_name: idx for idx, defn in enumerate(training_data_point.all_useful_defns_theorems)}
         # query = training_data_point.get_human_readable_serialized_goal(idx, skip_special_tokens=True)
         relevant_thms = self.search_executor.search_type_matching_defns("") # Here the search simply returns everything
@@ -234,7 +234,7 @@ class Lean3ContextHelper(object):
         #     goal.possible_useful_theorems_external = [LemmaRefWithScore(defn_idx, score) for defn_idx, score in useful_external_theorems if score <= Lean3ContextHelper.max_relevance_score]
         #     goal.possible_useful_theorems_local = [LemmaRefWithScore(defn_idx, score) for defn_idx, score in useful_local_theorems if score <= Lean3ContextHelper.max_relevance_score]
 
-    def set_useful_defns_theorems_for_training_data_generation(self, current_stmt: str, training_data_point: TrainingDataFormat, lean_executor: Lean3Executor, logger: logging.Logger = None, depth: int = None, max_search_res: typing.Optional[int] = None):
+    def set_useful_defns_theorems_for_training_data_generation(self, current_stmt: str, training_data_point: TheoremProvingTrainingDataFormat, lean_executor: Lean3Executor, logger: logging.Logger = None, depth: int = None, max_search_res: typing.Optional[int] = None):
         # Search is not supported in Lean as of now
         raise Exception("Search is not supported in Lean as of now")
         # # Use the hypothesis to find the definition
@@ -310,7 +310,7 @@ class Lean3ContextHelper(object):
         #     goal.possible_useful_theorems_local = [LemmaRefWithScore(defn_idx, score) for defn_idx, score in useful_local_theorems if score <= Lean3ContextHelper.max_relevance_score]
         #     goal.possible_useful_theorems_external = [LemmaRefWithScore(defn_idx, score) for defn_idx, score in useful_external_theorems if score <= Lean3ContextHelper.max_relevance_score]
 
-    def set_local_thms_dfns(self, training_data_point: TrainingDataFormat, lean_executor: Lean3Executor, logger: logging.Logger = None):
+    def set_local_thms_dfns(self, training_data_point: TheoremProvingTrainingDataFormat, lean_executor: Lean3Executor, logger: logging.Logger = None):
         # Search is not supported in Lean as of now
         raise Exception("Search is not supported in Lean as of now")        
         # local_lemmas = self.get_local_lemmas(lean_executor, logger)

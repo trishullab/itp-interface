@@ -13,7 +13,7 @@ import copy
 from rank_bm25 import BM25Okapi
 from itp_interface.tools.coq_executor import CoqExecutor
 from itp_interface.tools.training_data import TrainingData
-from itp_interface.tools.training_data_format import TrainingDataFormat
+from itp_interface.tools.training_data_format import TheoremProvingTrainingDataFormat
 from itp_interface.retrieval.abstraction import ReRanker
 
 class CoqBm25ReRanker(ReRanker):
@@ -106,7 +106,7 @@ class CoqBM25TrainingDataRetriever(object):
         self.logger.info(f"BM25 initialized.")
         self._loaded = True
     
-    def find_relevant_training_data(self, query: str, num_results: int = 1) -> typing.List[typing.Tuple[float, TrainingDataFormat]]:
+    def find_relevant_training_data(self, query: str, num_results: int = 1) -> typing.List[typing.Tuple[float, TheoremProvingTrainingDataFormat]]:
         assert self.is_loaded
         query_tokens = list(CoqExecutor.tokenize(query))
         scores = self.bm25.get_scores(query_tokens)

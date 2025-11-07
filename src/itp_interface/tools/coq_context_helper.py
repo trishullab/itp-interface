@@ -8,7 +8,7 @@ if root_dir not in sys.path:
 import logging
 import typing
 from itp_interface.tools.coq_executor import CoqExecutor
-from itp_interface.tools.training_data_format import Goal, LemmaRefWithScore, LemmaReferences, TrainingDataFormat
+from itp_interface.tools.training_data_format import Goal, LemmaRefWithScore, LemmaReferences, TheoremProvingTrainingDataFormat
 from typing import List
 
 class CoqContextHelper(object):
@@ -113,7 +113,7 @@ class CoqContextHelper(object):
             variables.update(possible_vars)
         return variables
 
-    def _get_changed_goal_idx(self, training_data_point: TrainingDataFormat) -> typing.List[int]:
+    def _get_changed_goal_idx(self, training_data_point: TheoremProvingTrainingDataFormat) -> typing.List[int]:
         # Figure out the subset of start goals which were changed
         start_goals = dict()
         for goal in training_data_point.start_goals:
@@ -168,7 +168,7 @@ class CoqContextHelper(object):
                 lemmas.append((lemma_name, lemma_val))
         return lemmas
 
-    def set_relevant_defns_in_training_data_point(self, training_data_point: TrainingDataFormat, coq_executor: CoqExecutor, logger: logging.Logger = None, depth: int = None, should_print_symbol: bool = False, only_local: bool = False):
+    def set_relevant_defns_in_training_data_point(self, training_data_point: TheoremProvingTrainingDataFormat, coq_executor: CoqExecutor, logger: logging.Logger = None, depth: int = None, should_print_symbol: bool = False, only_local: bool = False):
         logger = logger if logger is not None else self.logger
         depth = self.depth if depth is None else depth
         unique_defns = {defn: idx for idx, defn in enumerate(training_data_point.all_useful_defns_theorems)}
@@ -210,7 +210,7 @@ class CoqContextHelper(object):
             useful_defns = [LemmaRefWithScore(unique_defns[defn], score) for defn, _, score in useful_defns]
             goal.relevant_defns = useful_defns
 
-    def set_all_type_matched_query_result(self, training_data_point: TrainingDataFormat, coq_executor: CoqExecutor, logger: logging.Logger = None, depth: int = None, should_print_symbol: bool = False, only_local: bool = False):
+    def set_all_type_matched_query_result(self, training_data_point: TheoremProvingTrainingDataFormat, coq_executor: CoqExecutor, logger: logging.Logger = None, depth: int = None, should_print_symbol: bool = False, only_local: bool = False):
         # Use the hypothesis to find the definition
         # Recursively find the definition of the definition to a fixed depth
         # dump useful_hyps and current stmt into a stack
@@ -265,7 +265,7 @@ class CoqContextHelper(object):
             goal.possible_useful_theorems_external = [LemmaRefWithScore(defn_idx, score) for defn_idx, score in useful_external_theorems if score <= CoqContextHelper.max_relevance_score]
             goal.possible_useful_theorems_local = [LemmaRefWithScore(defn_idx, score) for defn_idx, score in useful_local_theorems if score <= CoqContextHelper.max_relevance_score]
 
-    def set_useful_defns_theorems_for_training_data_generation(self, current_stmt: str, training_data_point: TrainingDataFormat, coq_executor: CoqExecutor, logger: logging.Logger = None, depth: int = None, max_search_res: typing.Optional[int] = None, should_print_symbol: bool = False, only_local: bool = False):
+    def set_useful_defns_theorems_for_training_data_generation(self, current_stmt: str, training_data_point: TheoremProvingTrainingDataFormat, coq_executor: CoqExecutor, logger: logging.Logger = None, depth: int = None, max_search_res: typing.Optional[int] = None, should_print_symbol: bool = False, only_local: bool = False):
         # Use the hypothesis to find the definition
         # Recursively find the definition of the definition to a fixed depth
         # dump useful_hyps and current stmt into a stack
@@ -339,7 +339,7 @@ class CoqContextHelper(object):
             goal.possible_useful_theorems_local = [LemmaRefWithScore(defn_idx, score) for defn_idx, score in useful_local_theorems if score <= CoqContextHelper.max_relevance_score]
             goal.possible_useful_theorems_external = [LemmaRefWithScore(defn_idx, score) for defn_idx, score in useful_external_theorems if score <= CoqContextHelper.max_relevance_score]
 
-    def set_local_thms_dfns(self, training_data_point: TrainingDataFormat, coq_executor: CoqExecutor, logger: logging.Logger = None):
+    def set_local_thms_dfns(self, training_data_point: TheoremProvingTrainingDataFormat, coq_executor: CoqExecutor, logger: logging.Logger = None):
         local_lemmas = self.get_local_lemmas(coq_executor, logger)
         unique_thms = {defn.lemma_name: idx for idx, defn in enumerate(training_data_point.all_useful_defns_theorems)}
         useful_local_theorems = []

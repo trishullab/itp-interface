@@ -1,20 +1,47 @@
 import unittest
+import os
+from itp_interface.tools.tactic_parser import build_lean4_project, build_tactic_parser_if_needed
+
+def pretty_print(s1, s2, proof_step, done):
+    print(f"Current Goal:")
+    print('-'*30)
+    for goal in s1.training_data_format.start_goals:
+        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
+        print(hyps)
+        print('|- ', end='')
+        print(goal.goal)
+        print(f'*'*30)
+    print(f"="*30)
+    print(f"Action: {proof_step}")
+    print(f"="*30)
+    print(f"Next Goal:")
+    print('-'*30)
+    if s2 is not None:
+        for goal in s2.training_data_format.start_goals:
+            hyps = '\n'.join([hyp for hyp in goal.hypotheses])
+            print(hyps)
+            print('|- ', end='')
+            print(goal.goal)
+            print(f'*'*30)
+    print(f"="*30)
+    print(f"DONE: {done}")
+    print('-'*30)
+    if s2 is None and done:
+        print("No more goals. Proof Finished!")
 
 class Helper():
     def __init__(self):
         self.current_switch = None
     
     def build_lean4_project(self, project_folder):
-        import os
+        build_tactic_parser_if_needed()
         # Build the project
-        with os.popen(f"cd {project_folder} && lake exe cache get && lake build") as proc:
-            print("Building Lean4 project...")
-            print('-'*15 + 'Build Logs' + '-'*15)
-            print(proc.read())
-            print('-'*15 + 'End Build Logs' + '-'*15)
+        path_to_lake_folder = os.path.join(project_folder, ".lake")
+        if not os.path.exists(path_to_lake_folder):
+            build_lean4_project(project_folder)
+
 
     def build_coq_project(self, project_folder):
-        import os
         try:
             with os.popen("opam switch show") as proc:
                 self.current_switch = proc.read().strip()
@@ -44,7 +71,6 @@ class Helper():
             print('-'*15 + 'End Build Logs' + '-'*15)
 
     def switch_to_current_switch(self):
-        import os
         if self.current_switch is not None:
             try:
                 proc = os.popen(f"opam switch {self.current_switch} && eval $(opam env)")
@@ -66,7 +92,7 @@ class Lean4Test(unittest.TestCase):
         helper = Helper()
         helper.build_lean4_project(project_folder)
         language = ProofAction.Language.LEAN4
-        theorem_name = "test3"
+        theorem_name = '{\"namespace\":\"Lean4Proj2\",\"name\":\"test3\"}'
         # theorem test3 (p q : Prop) (hp : p) (hq : q)
         # : p ∧ q ∧ p :=
         proof_exec_callback = ProofExecutorCallback(
@@ -107,24 +133,7 @@ class Lean4Test(unittest.TestCase):
                 else:
                     s1 : ProofState = state
                     s2 : ProofState = next_state
-                    print(f"Current Goal:")
-                    print('-'*30)
-                    for goal in s1.training_data_format.start_goals:
-                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
-                        print(hyps)
-                        print('|- ', end='')
-                        print(goal.goal)
-                    print(f"="*30)
-                    print(f"Action: {proof_step}")
-                    print(f"="*30)
-                    print(f"Next Goal:")
-                    print('-'*30)
-                    for goal in s2.training_data_format.start_goals:
-                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
-                        print(hyps)
-                        print('|- ', end='')
-                        print(goal.goal)
-                    print(f"="*30)
+                    pretty_print(s1, s2, proof_step, done)
             assert proof_was_finished, "Proof was not finished"
 
     def test_lean4_backtracking(self):
@@ -140,7 +149,7 @@ class Lean4Test(unittest.TestCase):
         helper = Helper()
         helper.build_lean4_project(project_folder)
         language = ProofAction.Language.LEAN4
-        theorem_name = "test3"
+        theorem_name = '{\"namespace\":\"Lean4Proj2\",\"name\":\"test3\"}'
         # theorem test3 (p q : Prop) (hp : p) (hq : q)
         # : p ∧ q ∧ p :=
         proof_exec_callback = ProofExecutorCallback(
@@ -237,24 +246,7 @@ class Lean4Test(unittest.TestCase):
                 else:
                     s1 : ProofState = state
                     s2 : ProofState = next_state
-                    print(f"Current Goal:")
-                    print('-'*30)
-                    for goal in s1.training_data_format.start_goals:
-                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
-                        print(hyps)
-                        print('|- ', end='')
-                        print(goal.goal)
-                    print(f"="*30)
-                    print(f"Action: {proof_step}")
-                    print(f"="*30)
-                    print(f"Next Goal:")
-                    print('-'*30)
-                    for goal in s2.training_data_format.start_goals:
-                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
-                        print(hyps)
-                        print('|- ', end='')
-                        print(goal.goal)
-                    print(f"="*30)
+                    pretty_print(s1, s2, proof_step, done)
         helper.switch_to_current_switch()
 
     def test_simple_lean_calc(self):
@@ -270,7 +262,7 @@ class Lean4Test(unittest.TestCase):
         helper = Helper()
         helper.build_lean4_project(project_folder)
         language = ProofAction.Language.LEAN4
-        theorem_name = "test_calc"
+        theorem_name = "{\"namespace\":\"Lean4Proj1\",\"name\":\"test_calc\"}"
         # theorem test_calc (n: Nat) : n^2 + 2*n + 1 = (n + 1)*(n + 1) := by
         proof_exec_callback = ProofExecutorCallback(
             project_folder=project_folder,
@@ -309,40 +301,79 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
                 print('-'*30)
                 if done:
                     s1 : ProofState = state
-                    print(f"Current Goal:")
-                    print('-'*30)
-                    for goal in s1.training_data_format.start_goals:
-                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
-                        print(hyps)
-                        print('|- ', end='')
-                        print(goal.goal)
-                    print(f"="*30)
-                    print(f"Action: {proof_step}")
-                    print(f"="*30)
-                    print("Proof Finished!!")
+                    pretty_print(s1, None, proof_step, done)
                     proof_was_finished = True
                 else:
                     s1 : ProofState = state
                     s2 : ProofState = next_state
-                    print(f"Current Goal:")
-                    print('-'*30)
-                    for goal in s1.training_data_format.start_goals:
-                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
-                        print(hyps)
-                        print('|- ', end='')
-                        print(goal.goal)
-                    print(f"="*30)
-                    print(f"Action: {proof_step}")
-                    print(f"="*30)
-                    print(f"Next Goal:")
-                    print('-'*30)
-                    for goal in s2.training_data_format.start_goals:
-                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
-                        print(hyps)
-                        print('|- ', end='')
-                        print(goal.goal)
-                    print(f"="*30)
+                    pretty_print(s1, s2, proof_step, done)
             assert proof_was_finished, "Proof was not finished"
+
+    def test_simple_lean_calc_with_validation(self):
+        from itp_interface.rl.proof_state import ProofState
+        from itp_interface.rl.proof_action import ProofAction
+        from itp_interface.rl.simple_proof_env import ProofEnv
+        from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
+        from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
+        project_folder = "src/data/test/lean4_proj"
+        file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
+        # Build the project
+        # cd src/data/test/lean4_proj && lake build
+        helper = Helper()
+        helper.build_lean4_project(project_folder)
+        language = ProofAction.Language.LEAN4
+        theorem_name = "{\"namespace\":\"Lean4Proj1\",\"name\":\"test_calc\"}"
+        # theorem test_calc (n: Nat) : n^2 + 2*n + 1 = (n + 1)*(n + 1) := by
+        proof_exec_callback = ProofExecutorCallback(
+            project_folder=project_folder,
+            file_path=file_path,
+            language=language,
+            always_use_retrieval=False,
+            keep_local_context=True
+        )
+        always_retrieve_thms = False
+        retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
+        env = ProofEnv("test_lean4", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms)
+        proof_steps = [
+"""calc
+_ = n^2 + n*2 + 1 := by rw [Nat.mul_comm 2 n]
+_ = n^2 + (n + n) + 1 := by rw [Nat.mul_two]
+_ = n^2 + n + n + 1 := by rw [←Nat.add_assoc]
+_ = n*n + n + n + 1 := by rw [Nat.pow_two]
+_ = n*n + n*1 + n + 1 := by rw [Nat.mul_one n]
+_ = n*(n + 1) + n + 1 := by rw [Nat.left_distrib n n 1]
+_ = n*(n + 1) + (n + 1) := by rw [Nat.add_assoc]
+_ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_one (n + 1), Nat.mul_comm]""",
+"_ = (n + 1)*(n + 1) := by \n   rw [Nat.right_distrib n 1 (n + 1)]"
+]
+        with env:
+            proof_was_finished = False
+            for proof_step in proof_steps:
+                state, _, next_state, _, done, info = env.step(ProofAction(
+                    ProofAction.ActionType.RUN_TACTIC, 
+                    language, 
+                    tactics=[proof_step]))
+                if info.error_message is not None:
+                    print(f"Error: {info.error_message}")
+                # This prints StateChanged, StateUnchanged, Failed, or Done
+                print(f"DONE: {done}")
+                print(info.progress)
+                print('-'*30)
+                if done:
+                    s1 : ProofState = state
+                    pretty_print(s1, None, proof_step, done)
+                    proof_was_finished = True
+                else:
+                    s1 : ProofState = state
+                    s2 : ProofState = next_state
+                    pretty_print(s1, s2, proof_step, done)
+            assert proof_was_finished, "Proof was not finished"
+            # Run the validation
+            val_result = env.validate_proof_completion(timeout_in_secs=60, keep_validation_file=False)
+            print("Validation Result:")
+            print(val_result)
+            assert val_result.get('success', False), f"Proof validation failed:\n{val_result.get('error_message', '')}"
+            assert val_result.get('compilation_ok', False), f"Proof validation failed:\n{val_result.get('error_message', '')}"
 
     def test_simple_lean_enforce_done_test(self):
         from itp_interface.rl.proof_state import ProofState
@@ -357,7 +388,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
         helper = Helper()
         helper.build_lean4_project(project_folder)
         language = ProofAction.Language.LEAN4
-        theorem_name = "test_calc"
+        theorem_name = "{\"namespace\":\"Lean4Proj1\",\"name\":\"test_calc\"}"
         # theorem test_calc (n: Nat) : n^2 + 2*n + 1 = (n + 1)*(n + 1) := by
         proof_exec_callback = ProofExecutorCallback(
             project_folder=project_folder,
@@ -399,39 +430,12 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
                 if done:
                     assert proof_step == "done", "Proof can only finish with done"
                     s1 : ProofState = state
-                    print(f"Current Goal:")
-                    print('-'*30)
-                    for goal in s1.training_data_format.start_goals:
-                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
-                        print(hyps)
-                        print('|- ', end='')
-                        print(goal.goal)
-                    print(f"="*30)
-                    print(f"Action: {proof_step}")
-                    print(f"="*30)
-                    print("Proof Finished!!")
+                    pretty_print(s1, None, proof_step, done)
                     proof_finished = True
                 else:
                     s1 : ProofState = state
                     s2 : ProofState = next_state
-                    print(f"Current Goal:")
-                    print('-'*30)
-                    for goal in s1.training_data_format.start_goals:
-                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
-                        print(hyps)
-                        print('|- ', end='')
-                        print(goal.goal)
-                    print(f"="*30)
-                    print(f"Action: {proof_step}")
-                    print(f"="*30)
-                    print(f"Next Goal:")
-                    print('-'*30)
-                    for goal in s2.training_data_format.start_goals:
-                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
-                        print(hyps)
-                        print('|- ', end='')
-                        print(goal.goal)
-                    print(f"="*30)
+                    pretty_print(s1, s2, proof_step, done)
             assert proof_finished, "Proof was not finished"
 
     def test_simple_lean4_done_test(self):
@@ -447,7 +451,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
         helper = Helper()
         helper.build_lean4_project(project_folder)
         language = ProofAction.Language.LEAN4
-        theorem_name = "test3"
+        theorem_name = '{\"namespace\":\"Lean4Proj2\",\"name\":\"test3\"}'
         # theorem test3 (p q : Prop) (hp : p) (hq : q)
         # : p ∧ q ∧ p :=
         proof_exec_callback = ProofExecutorCallback(
@@ -484,24 +488,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
                 else:
                     s1 : ProofState = state
                     s2 : ProofState = next_state
-                    print(f"Current Goal:")
-                    print('-'*30)
-                    for goal in s1.training_data_format.start_goals:
-                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
-                        print(hyps)
-                        print('|- ', end='')
-                        print(goal.goal)
-                    print(f"="*30)
-                    print(f"Action: {proof_step}")
-                    print(f"="*30)
-                    print(f"Next Goal:")
-                    print('-'*30)
-                    for goal in s2.training_data_format.start_goals:
-                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
-                        print(hyps)
-                        print('|- ', end='')
-                        print(goal.goal)
-                    print(f"="*30)
+                    pretty_print(s1, s2, proof_step, done)
 
     def test_simple_lean4_have_test(self):
         from itp_interface.rl.proof_state import ProofState
@@ -516,7 +503,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
         helper = Helper()
         helper.build_lean4_project(project_folder)
         language = ProofAction.Language.LEAN4
-        theorem_name = "imo_1959_p1"
+        theorem_name = '{\"namespace\":\"Lean4Proj2\",\"name\":\"imo_1959_p1\"}'
         # theorem test3 (p q : Prop) (hp : p) (hq : q)
         # : p ∧ q ∧ p :=
         proof_exec_callback = ProofExecutorCallback(
@@ -563,31 +550,81 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
                 else:
                     s1 : ProofState = state
                     s2 : ProofState = next_state
-                    print(f"Current Goal:")
-                    print('-'*30)
-                    for goal in s1.training_data_format.start_goals:
-                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
-                        print(hyps)
-                        print('|- ', end='')
-                        print(goal.goal)
-                        print(f'*'*30)
-                    print(f"="*30)
-                    print(f"Action: {proof_step}")
-                    print(f"="*30)
-                    print(f"Next Goal:")
-                    print('-'*30)
-                    for goal in s2.training_data_format.start_goals:
-                        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
-                        print(hyps)
-                        print('|- ', end='')
-                        print(goal.goal)
-                        print(f'*'*30)
-                    print(f"="*30)
-                    print(f"DONE: {done}")
-                    print('-'*30)
+                    pretty_print(s1, s2, proof_step, done)
+    
+    def test_simple_lean4_with_error(self):
+        from itp_interface.rl.proof_state import ProofState
+        from itp_interface.rl.proof_action import ProofAction
+        from itp_interface.rl.simple_proof_env import ProofEnv
+        from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
+        from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
+        project_folder = "src/data/test/lean4_proj"
+        file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
+        # Build the project
+        # cd src/data/test/lean4_proj && lake build
+        helper = Helper()
+        helper.build_lean4_project(project_folder)
+        language = ProofAction.Language.LEAN4
+        theorem_name = '{\"namespace\":\"Lean4Proj2\",\"name\":\"test3\"}'
+        # theorem test3 (p q : Prop) (hp : p) (hq : q)
+        # : p ∧ q ∧ p :=
+        proof_exec_callback = ProofExecutorCallback(
+            project_folder=project_folder,
+            file_path=file_path,
+            language=language,
+            always_use_retrieval=False,
+            keep_local_context=True
+        )
+        always_retrieve_thms = False
+        retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
+        env = ProofEnv("test_lean4", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms)
+        proof_steps = [
+            'apply And.intro',
+            'exact hpx', # Error here
+            'exact hp', # This should automatically work
+            'apply And.intro',
+            'exact hq',
+            'exact hp'
+        ]
+        proof_finished = False
+        with env:
+            for i, proof_step in enumerate(proof_steps):
+                state, _, next_state, _, done, info = env.step(ProofAction(
+                    ProofAction.ActionType.RUN_TACTIC, 
+                    language, 
+                    tactics=[proof_step]))
+                if info.error_message is not None:
+                    print(f"Error: {info.error_message}")
+                    print(f"Proof step {i + 1} failed")
+                if i == 1:
+                    assert info.error_message is not None, "Error was expected at step 2"
+                else:
+                    assert info.error_message is None, f"Error was not expected at step {i + 1}"
+                # This prints StateChanged, StateUnchanged, Failed, or Done
+                print(info.progress)
+                print('-'*30)
+                if done:
+                    print("Proof Finished!!")
+                    proof_finished = True
+                else:
+                    s1 : ProofState = state
+                    s2 : ProofState = next_state
+                    pretty_print(s1, s2, proof_step, done)
+            assert proof_finished, "Proof was not finished"
 
 def main():
     unittest.main()
+    # Run only the Lean 4 tests
+    # t = Lean4Test()
+    # t.test_simple_lean4()
+    # t.test_lean4_backtracking()
+    # t.test_simple_lean4_done_test()
+    # t.test_simple_lean_calc()
+    # t.test_simple_lean_calc_with_validation()
+    # t.test_simple_lean4_with_error()
+    # t.test_simple_lean4_have_test()
+    # t.test_simple_lean_enforce_done_test()
+
 
 if __name__ == '__main__':
     main()

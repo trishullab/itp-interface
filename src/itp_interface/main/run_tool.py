@@ -13,7 +13,6 @@ import typing
 import numpy as np
 import yaml
 import uuid
-import threading
 from concurrent.futures import ThreadPoolExecutor
 
 # Conditional Ray import
@@ -34,15 +33,14 @@ from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
 from itp_interface.tools.coq_local_data_generation_transform import LocalDataGenerationTransform as CoqLocalDataGenerationTransform
 from itp_interface.tools.lean_local_data_generation_transform import LocalDataGenerationTransform as LeanLocalDataGenerationTransform
 from itp_interface.tools.lean4_local_data_generation_transform import Local4DataGenerationTransform
+from itp_interface.tools.lean4_local_data_extraction_transform import Local4DataExtractionTransform
 from itp_interface.tools.isabelle_local_data_generation_transform import LocalDataGenerationTransform as IsabelleLocalDataGenerationTransform
 from itp_interface.tools.run_data_generation_transforms import RunDataGenerationTransforms
 from itp_interface.tools.log_utils import setup_logger
-from itp_interface.main.config import Experiments, EvalRunCheckpointInfo, TransformType, parse_config
-from itp_interface.tools.isabelle_executor import IsabelleExecutor
+from itp_interface.main.config import EvalFile, ExtractFile, Experiments, EvalRunCheckpointInfo, EvalBenchmark, TransformType, parse_config
 from itp_interface.tools.dynamic_coq_proof_exec import DynamicProofExecutor as DynamicCoqProofExecutor
 from itp_interface.tools.dynamic_lean_proof_exec import DynamicProofExecutor as DynamicLeanProofExecutor
 from itp_interface.tools.dynamic_lean4_proof_exec import DynamicProofExecutor as DynamicLean4ProofExecutor
-from itp_interface.tools.dynamic_isabelle_proof_exec import DynamicProofExecutor as DynamicIsabelleProofExecutor
 from itp_interface.tools.coq_executor import get_all_lemmas_in_file as get_all_lemmas_coq
 from itp_interface.tools.lean4_sync_executor import get_all_theorems_in_file as get_all_lemmas_lean4, get_fully_qualified_theorem_name as get_fully_qualified_theorem_name_lean4, get_theorem_name_resembling as get_theorem_name_resembling_lean4
 from itp_interface.tools.isabelle_executor import get_all_lemmas_in_file as get_all_lemmas_isabelle
@@ -122,6 +120,16 @@ def _get_all_lemmas_impl(
     logger.info(f"Discovered {len(lemmas_to_prove)} lemmas")
     return lemmas_to_prove
 
+
+def _get_all_lean_files_in_folder_recursively(
+        project_folder: str) -> typing.List[str]:
+    lean_files = []
+    for root, dirs, files in os.walk(project_folder):
+        for file in files:
+            if file.endswith(".lean"):
+                lean_files.append(os.path.join(root, file))
+    return lean_files
+
 # Create Ray remote version if Ray is available
 if HAS_RAY:
     get_all_lemmas = ray.remote(num_cpus=0.5)(_get_all_lemmas_impl)
@@ -139,6 +147,7 @@ def partition_data(project_to_theorems: typing.Dict[str, typing.Dict[str, typing
         # Go over each project and classify into three categories
         proj_file_to_theorems_named_tuple = typing.NamedTuple("proj_file_to_theorems", [("project", str), ("file", str), ("theorems", typing.List[str])])
         proj_file_thms = []
+        logger.info(f"Partitioning: {project_to_theorems}")
         for project, file_to_theorems in project_to_theorems.items():
             for file, theorems in file_to_theorems.items():
                 # Generate a random number between 0 and 1
@@ -211,7 +220,8 @@ def partition_data(project_to_theorems: typing.Dict[str, typing.Dict[str, typing
             logger.info(f"Actual division Train: {train_cnt}, Eval: {eval_cnt}, Test: {test_cnt}")
         return train_project_to_theorems, eval_project_to_theorems, test_project_to_theorems
 
-def create_yaml(project_to_theorems, name, language, output_file):
+def create_yaml(project_to_theorems, name, eval_benchmark: EvalBenchmark, output_file):
+    language = eval_benchmark.language
     data = {
         "name": name,
         "num_files": 0,
@@ -219,6 +229,7 @@ def create_yaml(project_to_theorems, name, language, output_file):
         "few_shot_data_path_for_retrieval": None,
         "few_shot_metadata_filename_for_retrieval": None,
         "dfs_data_path_for_retrieval": None,
+        "is_extraction_request": eval_benchmark.is_extraction_request,
         "dfs_metadata_filename_for_retrieval": "local.meta.json",
         "theorem_cnt": 0,
         "datasets": []
@@ -228,11 +239,183 @@ def create_yaml(project_to_theorems, name, language, output_file):
         for file_path, theorems in file_dict.items():
             data["num_files"] += 1
             data["theorem_cnt"] += len(theorems)
-            dataset["files"].append({"path": file_path, "theorems": theorems}) 
+            if eval_benchmark.is_extraction_request:
+                dataset["files"].append({"path": file_path, "declarations": theorems})
+            else:
+                dataset["files"].append({"path": file_path, "theorems": theorems}) 
         data["datasets"].append(dataset)
 
     with open(output_file, 'w') as yaml_file:
         yaml.dump(data, yaml_file, sort_keys=False)
+
+def add_transform(experiment: Experiments, clone_dir: str, resources: list, transforms: list, logger: logging.Logger = None):
+    global ray_resource_pool
+    if experiment.run_settings.transform_type == TransformType.LOCAL:
+        if experiment.benchmark.language == ProofAction.Language.LEAN:
+            transform = LeanLocalDataGenerationTransform(
+                experiment.run_settings.dep_depth, 
+                max_search_results=experiment.run_settings.max_search_results, 
+                buffer_size=experiment.run_settings.buffer_size, 
+                logger=logger)
+            os.makedirs(clone_dir, exist_ok=True)
+        elif experiment.benchmark.language == ProofAction.Language.LEAN4:
+            if experiment.benchmark.is_extraction_request:
+                transform = Local4DataExtractionTransform(
+                    experiment.run_settings.dep_depth, 
+                    buffer_size=experiment.run_settings.buffer_size, 
+                    logger=logger)
+            else:
+                transform = Local4DataGenerationTransform(
+                    experiment.run_settings.dep_depth, 
+                    max_search_results=experiment.run_settings.max_search_results, 
+                    buffer_size=experiment.run_settings.buffer_size, 
+                    logger=logger)
+            clone_dir = None
+        elif experiment.benchmark.language == ProofAction.Language.COQ:
+            only_proof_state = experiment.env_settings.retrieval_strategy == ProofEnvReRankStrategy.NO_RE_RANK
+            transform = CoqLocalDataGenerationTransform(
+                experiment.run_settings.dep_depth, 
+                max_search_results=experiment.run_settings.max_search_results, 
+                buffer_size=experiment.run_settings.buffer_size, 
+                logger=logger,
+                no_dfns=only_proof_state,
+                no_thms=only_proof_state)
+            clone_dir = None
+        elif experiment.benchmark.language == ProofAction.Language.ISABELLE:
+            if HAS_RAY:
+                ray_resource_pool = RayResourcePoolActor.remote(resources)
+            else:
+                # Thread-based resource pool (simplified version)
+                from itp_interface.tools.thread_resource_pool import ThreadResourcePool
+                ray_resource_pool = ThreadResourcePool(resources)
+            transform = IsabelleLocalDataGenerationTransform(
+                experiment.run_settings.dep_depth,
+                max_search_results=experiment.run_settings.max_search_results, 
+                buffer_size=experiment.run_settings.buffer_size, 
+                logger=logger,
+                resource_pool=ray_resource_pool
+            )
+            clone_dir = None
+            # os.makedirs(clone_dir, exist_ok=True)
+        else:
+            raise ValueError(f"Unexpected language: {experiment.benchmark.language}")
+        transforms.append(transform)
+    else:
+        raise ValueError(f"Unexpected transform_type: {experiment.run_settings.transform_type}")
+    return clone_dir
+
+def get_decl_lemmas_to_parse(
+    experiment: Experiments, 
+    lemma_discovery_remotes: list, 
+    project_to_theorems: typing.Dict[str, typing.Any],
+    other_args: typing.Dict[str, typing.Any],
+    log_dir: str,
+    logger: logging.Logger):
+    for idx, dataset in enumerate(experiment.benchmark.datasets):
+        if dataset.project not in project_to_theorems:
+            project_to_theorems[dataset.project] = {}
+            other_args[dataset.project] = {}
+        file_to_theorems = project_to_theorems[dataset.project]
+        file_args = other_args[dataset.project]
+        if experiment.benchmark.language == ProofAction.Language.LEAN4 \
+            and experiment.benchmark.is_extraction_request:
+            if len(dataset.files) == 0:
+                # List all the files recursively in the project folder
+                files_in_dataset = _get_all_lean_files_in_folder_recursively(dataset.project)
+                for file_path in files_in_dataset:
+                    file_to_theorems[file_path] = ["*"]
+                    file_args[file_path] = {}
+            else:
+                for file in dataset.files:
+                    if file.path not in file_to_theorems:
+                        file_to_theorems[file.path] = []
+                        file_args[file.path] = {}
+                    decls_or_thms = []
+                    assert isinstance(file, ExtractFile)
+                    assert experiment.benchmark.is_extraction_request, "Extraction request must be true for ExtractFile"
+                    decls_or_thms = file.declarations
+                    if isinstance(decls_or_thms, list):
+                        file_to_theorems[file.path].extend(decls_or_thms)
+                    else:
+                        assert isinstance(decls_or_thms, str) and decls_or_thms.strip() == "*", "Only '*' is supported for Lean4 extraction request"
+                        file_to_theorems[file.path].append("*")
+        else:
+            for file_idx, file in enumerate(dataset.files):
+                if file.path not in file_to_theorems:
+                    file_to_theorems[file.path] = []
+                    file_args[file.path] = {}
+                decls_or_thms = []
+                if isinstance(file, EvalFile):
+                    assert not experiment.benchmark.is_extraction_request, "Extraction request must be false for EvalFile"
+                    decls_or_thms = file.theorems
+                else:
+                    assert isinstance(file, ExtractFile)
+                    assert experiment.benchmark.is_extraction_request, "Extraction request must be true for ExtractFile"
+                    decls_or_thms = file.declarations
+                if isinstance(decls_or_thms, list):
+                    # if language is Lean4 then change the theorem names to fully qualified names
+                    if experiment.benchmark.language == ProofAction.Language.LEAN4:
+                        full_file_path = os.path.join(dataset.project, file.path)
+                        if experiment.benchmark.is_extraction_request:
+                            theorems_in_file = decls_or_thms
+                        else:
+                            theorems_in_file = [get_theorem_name_resembling_lean4(full_file_path, theorem, use_cache=True) for theorem in decls_or_thms]
+                    else:
+                        assert not experiment.benchmark.is_extraction_request, "Extraction request with list of declarations is not supported"
+                        theorems_in_file = decls_or_thms
+                    file_to_theorems[file.path].extend(theorems_in_file)
+                else:
+                    if not experiment.benchmark.is_extraction_request:
+                        discover_log_file = os.path.join(log_dir, f"discover{idx}_{file_idx}.log")
+                        if HAS_RAY:
+                            timed_exec = TimedRayExec.remote(get_all_lemmas, kwargs=dict(
+                                project_folder=dataset.project,
+                                file_path=os.path.join(dataset.project, file.path),
+                                language=experiment.benchmark.language,
+                                use_hammer=False,
+                                timeout_in_secs=experiment.run_settings.timeout_in_secs,
+                                use_human_readable_proof_context=experiment.run_settings.use_human_readable,
+                                suppress_error_log=True,
+                                always_use_retrieval=False,
+                                setup_cmds=experiment.benchmark.setup_cmds,
+                                log_file=discover_log_file))
+                            timeout_in_secs = experiment.run_settings.timeout_in_secs * 100
+                            timed_exec_remote = timed_exec.execute_with_timeout.remote(timeout=timeout_in_secs)
+                            lemma_discovery_remotes.append(timed_exec_remote)
+                        else:
+                            # Thread-based execution
+                            lemma_discovery_remotes.append((dataset.project, file.path, discover_log_file))
+                pass
+    if len(lemma_discovery_remotes) > 0:
+        assert not experiment.benchmark.is_extraction_request, "Lemma discovery is not needed for extraction request"
+        if HAS_RAY:
+            lemmas = ray.get(lemma_discovery_remotes)
+        else:
+            # Thread-based lemma discovery
+            with ThreadPoolExecutor(max_workers=experiment.run_settings.pool_size) as executor:
+                futures = []
+                for proj, fpath, log_file in lemma_discovery_remotes:
+                    future = executor.submit(_get_all_lemmas_impl,
+                        project_folder=proj,
+                        file_path=os.path.join(proj, fpath),
+                        language=experiment.benchmark.language,
+                        use_hammer=False,
+                        timeout_in_secs=experiment.run_settings.timeout_in_secs,
+                        use_human_readable_proof_context=experiment.run_settings.use_human_readable,
+                        suppress_error_log=True,
+                        always_use_retrieval=False,
+                        setup_cmds=experiment.benchmark.setup_cmds,
+                        log_file=log_file)
+                    futures.append(future)
+                lemmas = [f.result() for f in futures]
+        _idx = 0
+        for idx, dataset in enumerate(experiment.benchmark.datasets):
+            for file_idx, file in enumerate(dataset.files):
+                if lemmas[_idx] is not None:
+                    project_to_theorems[dataset.project][file.path].extend(lemmas[_idx])
+                else:
+                    logger.error(f"Discovering lemmas failed because of timeout for {dataset.project}/{file.path}")
+                _idx += 1
 
 def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoint_info: EvalRunCheckpointInfo, logger: logging.Logger = None):
     global ray_resource_pool
@@ -276,124 +459,19 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
         transforms = []
         str_time = time.strftime("%Y%m%d-%H%M%S")
         clone_dir = os.path.join(experiment.run_settings.output_dir, "clone{}".format(str_time))
-        if experiment.run_settings.transform_type == TransformType.LOCAL:
-            if experiment.benchmark.language == ProofAction.Language.LEAN:
-                transform = LeanLocalDataGenerationTransform(
-                    experiment.run_settings.dep_depth, 
-                    max_search_results=experiment.run_settings.max_search_results, 
-                    buffer_size=experiment.run_settings.buffer_size, 
-                    logger=logger)
-                os.makedirs(clone_dir, exist_ok=True)
-            elif experiment.benchmark.language == ProofAction.Language.LEAN4:
-                transform = Local4DataGenerationTransform(
-                    experiment.run_settings.dep_depth, 
-                    max_search_results=experiment.run_settings.max_search_results, 
-                    buffer_size=experiment.run_settings.buffer_size, 
-                    logger=logger)
-                clone_dir = None
-            elif experiment.benchmark.language == ProofAction.Language.COQ:
-                only_proof_state = experiment.env_settings.retrieval_strategy == ProofEnvReRankStrategy.NO_RE_RANK
-                transform = CoqLocalDataGenerationTransform(
-                    experiment.run_settings.dep_depth, 
-                    max_search_results=experiment.run_settings.max_search_results, 
-                    buffer_size=experiment.run_settings.buffer_size, 
-                    logger=logger,
-                    no_dfns=only_proof_state,
-                    no_thms=only_proof_state)
-                clone_dir = None
-            elif experiment.benchmark.language == ProofAction.Language.ISABELLE:
-                if HAS_RAY:
-                    ray_resource_pool = RayResourcePoolActor.remote(resources)
-                else:
-                    # Thread-based resource pool (simplified version)
-                    from itp_interface.tools.thread_resource_pool import ThreadResourcePool
-                    ray_resource_pool = ThreadResourcePool(resources)
-                transform = IsabelleLocalDataGenerationTransform(
-                    experiment.run_settings.dep_depth,
-                    max_search_results=experiment.run_settings.max_search_results, 
-                    buffer_size=experiment.run_settings.buffer_size, 
-                    logger=logger,
-                    resource_pool=ray_resource_pool
-                )
-                clone_dir = None
-                # os.makedirs(clone_dir, exist_ok=True)
-            else:
-                raise ValueError(f"Unexpected language: {experiment.benchmark.language}")
-            transforms.append(transform)
-        else:
-            raise ValueError(f"Unexpected transform_type: {experiment.run_settings.transform_type}")
+        clone_dir = add_transform(experiment, clone_dir, resources, transforms, logger)
         # Find all the lemmas to prove
         project_to_theorems = {}
         other_args = {}
         lemma_discovery_remotes = []
-        for idx, dataset in enumerate(experiment.benchmark.datasets):
-            if dataset.project not in project_to_theorems:
-                project_to_theorems[dataset.project] = {}
-                other_args[dataset.project] = {}
-            file_to_theorems = project_to_theorems[dataset.project]
-            file_args = other_args[dataset.project]
-            for file_idx, file in enumerate(dataset.files):
-                if file.path not in file_to_theorems:
-                    file_to_theorems[file.path] = []
-                    file_args[file.path] = {}
-                if isinstance(file.theorems, list):
-                    # if language is Lean4 then change the theorem names to fully qualified names
-                    if experiment.benchmark.language == ProofAction.Language.LEAN4:
-                        full_file_path = os.path.join(dataset.project, file.path)
-                        theorems_in_file = [get_theorem_name_resembling_lean4(full_file_path, theorem, use_cache=True) for theorem in file.theorems]
-                    else:
-                        theorems_in_file = file.theorems
-                    file_to_theorems[file.path].extend(theorems_in_file)
-                else:
-                    discover_log_file = os.path.join(log_dir, f"discover{idx}_{file_idx}.log")
-                    if HAS_RAY:
-                        timed_exec = TimedRayExec.remote(get_all_lemmas, kwargs=dict(
-                            project_folder=dataset.project,
-                            file_path=os.path.join(dataset.project, file.path),
-                            language=experiment.benchmark.language,
-                            use_hammer=False,
-                            timeout_in_secs=experiment.run_settings.timeout_in_secs,
-                            use_human_readable_proof_context=experiment.run_settings.use_human_readable,
-                            suppress_error_log=True,
-                            always_use_retrieval=False,
-                            setup_cmds=experiment.benchmark.setup_cmds,
-                            log_file=discover_log_file))
-                        timeout_in_secs = experiment.run_settings.timeout_in_secs * 100
-                        timed_exec_remote = timed_exec.execute_with_timeout.remote(timeout=timeout_in_secs)
-                        lemma_discovery_remotes.append(timed_exec_remote)
-                    else:
-                        # Thread-based execution
-                        lemma_discovery_remotes.append((dataset.project, file.path, discover_log_file))
-                pass
-        if len(lemma_discovery_remotes) > 0:
-            if HAS_RAY:
-                lemmas = ray.get(lemma_discovery_remotes)
-            else:
-                # Thread-based lemma discovery
-                with ThreadPoolExecutor(max_workers=experiment.run_settings.pool_size) as executor:
-                    futures = []
-                    for proj, fpath, log_file in lemma_discovery_remotes:
-                        future = executor.submit(_get_all_lemmas_impl,
-                            project_folder=proj,
-                            file_path=os.path.join(proj, fpath),
-                            language=experiment.benchmark.language,
-                            use_hammer=False,
-                            timeout_in_secs=experiment.run_settings.timeout_in_secs,
-                            use_human_readable_proof_context=experiment.run_settings.use_human_readable,
-                            suppress_error_log=True,
-                            always_use_retrieval=False,
-                            setup_cmds=experiment.benchmark.setup_cmds,
-                            log_file=log_file)
-                        futures.append(future)
-                    lemmas = [f.result() for f in futures]
-            _idx = 0
-            for idx, dataset in enumerate(experiment.benchmark.datasets):
-                for file_idx, file in enumerate(dataset.files):
-                    if lemmas[_idx] is not None:
-                        project_to_theorems[dataset.project][file.path].extend(lemmas[_idx])
-                    else:
-                        logger.error(f"Discovering lemmas failed because of timeout for {dataset.project}/{file.path}")
-                    _idx += 1
+        get_decl_lemmas_to_parse(
+            experiment, 
+            lemma_discovery_remotes, 
+            project_to_theorems,
+            other_args,
+            log_dir,
+            logger
+        )
         data_transform = RunDataGenerationTransforms(transforms, 
                 log_dir, 
                 save_intermidiat_transforms=len(transforms) > 1 or \
@@ -409,7 +487,7 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
             # dump a yaml file with the partition
             partition_name = f"{experiment.benchmark.name}_{dataset_partition}"
             yaml_file = os.path.join(new_output_dir, f"{partition_name}.yaml")
-            create_yaml(partition_project_to_theorems, partition_name, experiment.benchmark.language, yaml_file)
+            create_yaml(partition_project_to_theorems, partition_name, experiment.benchmark, yaml_file)
             if len(partition_project_to_theorems) == 0:
                 logger.info(f"==============================>No projects to process for {dataset_partition}<==============================")
                 continue

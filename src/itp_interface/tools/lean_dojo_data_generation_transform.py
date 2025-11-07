@@ -12,7 +12,7 @@ import yaml
 from itp_interface.lean_server.lean_context import ProofContext
 from itp_interface.lean_server.lean4_utils import Lean4Utils
 from itp_interface.tools.training_data import TrainingData
-from itp_interface.tools.training_data_format import Goal, MergableCollection, TrainingDataCollection, TrainingDataFormat, TrainingDataMetadataFormat
+from itp_interface.tools.training_data_format import Goal, MergableCollection, TheoremProvingTrainingDataCollection, TheoremProvingTrainingDataFormat, TrainingDataMetadataFormat
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
 
 class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
@@ -31,13 +31,13 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
         return TrainingDataMetadataFormat(training_data_buffer_size=self.buffer_size)
 
     def get_data_collection_object(self) -> MergableCollection:
-        return TrainingDataCollection()
+        return TheoremProvingTrainingDataCollection()
     
     def load_meta_from_file(self, file_path) -> MergableCollection:
         return TrainingDataMetadataFormat.load_from_file(file_path)
     
     def load_data_from_file(self, file_path) -> MergableCollection:
-        return TrainingDataCollection.load_from_file(file_path, self.logger)
+        return TheoremProvingTrainingDataCollection.load_from_file(file_path, self.logger)
     
     def dump_theorems_from_file(self, file_path: str, output_path: str, output_filename: str, logger = None):
         assert file_path.endswith('.json'), f"Invalid file path {file_path}"
@@ -148,7 +148,7 @@ class LocalDataGenerationTransform(GenericTrainingDataGenerationTransform):
                     raise
                 if len(start_goals.all_goals) > 0:
                     # Create a training data object
-                    training_data_format = TrainingDataFormat(
+                    training_data_format = TheoremProvingTrainingDataFormat(
                         proof_id=theorem_id,
                         start_goals=[Goal(goal.hypotheses, goal.goal) for goal in start_goals.all_goals],
                         end_goals=[Goal(goal.hypotheses, goal.goal) for goal in end_goals.all_goals],
