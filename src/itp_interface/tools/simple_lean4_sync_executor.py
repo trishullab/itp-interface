@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import copy
 import random
 import logging
 import re
@@ -9,7 +10,14 @@ import json
 import typing
 import bisect
 import subprocess
-from itp_interface.tools.tactic_parser import TacticParser, ErrorInfo, LeanLineInfo, FileDependencyAnalysis, RequestType
+from itp_interface.tools.tactic_parser import (
+    TacticParser, 
+    ErrorInfo, 
+    LeanLineInfo, 
+    FileDependencyAnalysis, 
+    RequestType,
+    print_tactics
+)
 from itp_interface.lean_server.lean_context import ProofContext
 from itp_interface.lean_server.lean4_utils import Lean4Utils
 from itp_interface.tools.lean_parse_utils import LeanLineByLineReader
@@ -21,6 +29,8 @@ from typing import List, Optional, Tuple, OrderedDict, Dict
 class SimpleLean4SyncExecutor:
     theorem_regex = r"((((theorem|lemma)[\s]+([^\s:]*))|example)([\S|\s]*?)(:=|=>)[\s]*?)[\s]+"
     theorem_match = re.compile(theorem_regex, re.MULTILINE)
+    have_regex = r"(^\s*have\s+([^\s:]*):[=]*([^:]*))(:=\s*by)([\s|\S]*)"
+    have_match = re.compile(have_regex, re.MULTILINE)
     unsolved_message = "unsolved goals"
     no_goals = "No goals to be solved"
     missing_closure_message = "unexpected end of input; expected '{'"
@@ -95,6 +105,7 @@ class SimpleLean4SyncExecutor:
         self._error_messages_so_far = set()
         self._error_messages_since_last_thm = {}
         self._run_exactly = False
+        self._nested_have_counts = 0
         if self._enable_search:
             pass
         pass
@@ -141,6 +152,7 @@ class SimpleLean4SyncExecutor:
         self.debug_enabled = False
         self._error_messages_so_far = set()
         self._error_messages_since_last_thm = {}
+        self._nested_have_counts = 0
         if self._enable_search:
             pass
         pass
@@ -225,18 +237,48 @@ class SimpleLean4SyncExecutor:
     
     def _add_last_tactic(self, idx: int, stmt: str):
         if idx not in self._last_tactics:
+            stmt = self._have_preprocessing(stmt)
+            indentation = " " * self._nested_have_counts * 2
+            stmt = stmt.lstrip()
+            stmt = indentation + stmt
             self._last_tactics[idx] = stmt
             self._last_tactic_line_idx = idx
+            # self.logger.info(f"Proofs so far:\n{self._get_tactics_so_far()}")
+    
+    def _have_preprocessing(self, stmt: str) -> str:
+        stmt_match = SimpleLean4SyncExecutor.have_match.match(stmt)
+        if not stmt_match:
+            return stmt
+        else:
+            full_have_stmt = stmt_match.group(1)
+            by = stmt_match.group(4)
+            after_tactics = stmt_match.group(5)
+            # self.logger.info(f"Processing 'have' statement: {full_have_stmt} with by: {by} and after tactics: {after_tactics}")
+            assert by is not None, "By should not be None"
+            assert full_have_stmt is not None, "Full have statement should not be None"
+            if after_tactics is None:
+                # There is no tactic to apply afterwards to just leave it as it is
+                return stmt
+            else:
+                # split the after tactics by new lines
+                after_tactics = after_tactics.split("\n")
+                for i, tactic in enumerate(after_tactics):
+                    indentation = " " * (self._nested_have_counts + 1) * 2
+                    after_tactics[i] = indentation + tactic.lstrip()
+                after_tactics_str = "\n".join(after_tactics)
+                # Reconstruct the have statement with the tactics applied afterwards
+                by = by.rstrip()
+                new_stmt = f"{full_have_stmt}{by}\n{after_tactics_str}"
+                new_stmt = new_stmt.rstrip()
+                return new_stmt
 
     def _get_lean_code_with_tactics(self, idx: int, stmt: str):
         assert self._last_theorem is not None, "Last theorem should not be None"
         self._add_last_tactic(idx, stmt)
-        temp_tactics_so_far = [(k, v) for k, v in self._last_tactics.items()]
-        temp_tactics_so_far = sorted(temp_tactics_so_far, key=lambda x: x[0])
-        tactics_so_far = [v for _, v in temp_tactics_so_far]
+        tactics_so_far = self._get_tactics_so_far()
         assert len(tactics_so_far) > 0, "There should be at least one tactic so far"
         _ , _, theorem_stmt = self._last_theorem
-        return theorem_stmt + "\n".join(tactics_so_far)
+        return theorem_stmt + tactics_so_far
 
     def _backtrack_tactic_line(self, idx: int):
         # identify the keys to remove
@@ -262,11 +304,19 @@ class SimpleLean4SyncExecutor:
         self._last_tactic_line_idx = max(self._last_tactics.keys(), default=None) 
         return backtracked
 
-    def _clear_tactics(self):
+    def _get_tactics_in_sorted_order(self) -> List[Tuple[int, str]]:
         tactics_so_far = [(k, v) for k, v in self._last_tactics.items()]
         tactics_so_far = sorted(tactics_so_far, key=lambda x: x[0])
+        return tactics_so_far
+
+    def _get_tactics_so_far(self) -> str:
+        tactics_so_far = self._get_tactics_in_sorted_order()
         tactics_so_far = [v for _, v in tactics_so_far]
-        self.possible_proof_tactics += "\n".join(tactics_so_far)
+        return "\n".join(tactics_so_far)
+
+    def _clear_tactics(self):
+        tactics_so_far = self._get_tactics_so_far()
+        self.possible_proof_tactics += tactics_so_far
         self._last_tactics : dict[int, str] = {}
         self._last_tactic_line_idx = None
         self._error_messages_since_last_thm = {}
@@ -293,8 +343,44 @@ class SimpleLean4SyncExecutor:
         self.curr_lemma_name = None
         self._clear_tactics()
         self._proof_running = False
+    
+    def _set_proof_context(self, 
+        proof_is_running: bool, 
+        proof_goal_messages: List[str],
+        last_tactic: LeanLineInfo):
+        self._proof_running = proof_is_running
+        if self._proof_running:
+            proof_goals = []
+            if len(proof_goal_messages) == 0:
+                proof_goals = []
+            else:
+                proof_goals = [g_text for g_text in proof_goal_messages
+                if g_text is not None and len(g_text) > 0]
+            self.proof_context = self._parse_proof_context(proof_goals)
+            if self.proof_context == ProofContext.empty() and \
+                ((self._enforce_qed and last_tactic.text.strip() == "done") or not self._enforce_qed):
+                self._reset_proof_context()
+        else:
+            self.proof_context : ProofContext | None = None
+        self.lean_error_messages.clear()
+    
+    def _get_nested_haves_count(self, tactics: List[LeanLineInfo], errors: List[ErrorInfo]) -> int:
+        # See all goal related error messages
+        goal_related : List[ErrorInfo] = []
+        for error in errors:
+            if error.message.startswith(SimpleLean4SyncExecutor.unsolved_message):
+                # Check if the last tactic before this error was a 'have' tactic
+                goal_related.append(error)
+        nested_have_count = 0
+        for tactic in reversed(tactics):
+            if tactic.text.strip().startswith("have"):
+                # Check if there is any goal related error after this tactic
+                for error in goal_related:
+                    if error.position.line == tactic.line:
+                        nested_have_count += 1
+        return nested_have_count
 
-    def _update_proof_context(self, idx, tactics: List[LeanLineInfo], errors: List[ErrorInfo]):
+    def _update_proof_context(self, idx : int, tactics: List[LeanLineInfo], errors: List[ErrorInfo]):
         proof_goal_messages: list[str] = []
         error_messages: list[str] = []
         assert len(tactics) >= 0, "Tactics should not be None"
@@ -319,25 +405,46 @@ class SimpleLean4SyncExecutor:
             proof_is_running = True
         if len(error_messages) == 0:
             assert proof_is_running, f"Proof is not running but no error message is present, errors:\n{errors}, \nlemma: \n{self.curr_lemma_name}, \nlemma_stmt: \n{self.curr_lemma}, \nline_num: \n{self.line_num}"
-            self._proof_running = proof_is_running
-            if self._proof_running:
-                proof_goals = []
-                if len(proof_goal_messages) == 0:
-                    proof_goals = []
-                else:
-                    proof_goals = [g_text for g_text in proof_goal_messages
-                    if g_text is not None and len(g_text) > 0]
-                self.proof_context = self._parse_proof_context(proof_goals)
-                if self.proof_context == ProofContext.empty() and \
-                    ((self._enforce_qed and last_tactic.text.strip() == "done") or not self._enforce_qed):
-                    self._reset_proof_context()
-            else:
-                self.proof_context : ProofContext | None = None
-            self.lean_error_messages.clear()
+            self._nested_have_counts = self._get_nested_haves_count(tactics, errors)
+            self._set_proof_context(proof_is_running, proof_goal_messages, last_tactic)
         else:
-            self.lean_error_messages = error_messages
-            # Rollback the last tactic if there was an error
+            new_failed_tactic_error_lines = set()
+            if len(self._last_tactics) >= 2:
+                all_tactics = self._get_tactics_in_sorted_order()
+                last_tactic_line = all_tactics[-2][0]
+                # for error_info in errors:
+                #     self.logger.info(f"Error at line {error_info.position.line}, col {error_info.position.column}: {error_info.message}")
+                # self.logger.info(f"Last tactic at line {last_tactic.line}, col {last_tactic.column}: {last_tactic.text}")
+                # Rollback the last tactic if there was an error
+                tactics_before_backtrack = self._get_tactics_so_far()
+                # errors after last tactic
+                errors_after_last_tactic = [e for e in errors if e.position.line > last_tactic_line]
+                # for error in errors_after_last_tactic:
+                #     self.logger.info(f"Error after last tactic at line {error.position.line}, col {error.position.column}: {error.message}")
+                for error in errors_after_last_tactic:
+                    new_failed_tactic_error_lines.add(error.position.line)
+                # self.logger.info(f"New failed tactic error lines: {new_failed_tactic_error_lines}")
+                tactics_which_failed = [t for t in tactics if t.line in new_failed_tactic_error_lines]
+                tactics_which_failed_str = "\n".join([t.text for t in tactics_which_failed])
             self._backtrack_tactic_line(idx)
+            if len(new_failed_tactic_error_lines) >= 1 and len(tactics_which_failed) >= 1:
+                tactics_so_far = self._get_tactics_so_far()
+                # This should be (tactics_before_backtrack - tactics_so_far) - (tactics_which_failed)
+                # Where `-` is basically removing that part of the string
+                # self.logger.info(f"Backtracking tactics at line {idx}.\n Tactics so far:\n{tactics_so_far}\nTactics before backtrack:\n{tactics_before_backtrack}\nTactics which failed:\n{tactics_which_failed_str}")
+                # print_tactics(tactics, self.logger)
+                assert tactics_before_backtrack.startswith(tactics_so_far), \
+                    "Tactics before backtrack should start with tactics so far"
+                tactics_tried = tactics_before_backtrack[len(tactics_so_far):]
+                # self.logger.info(f"Tactics tried:\n{tactics_tried}\nTactics which failed:\n{tactics_which_failed_str}")
+                assert tactics_tried.endswith(tactics_which_failed_str), "Tactics tried should end with tactics which failed"
+                partially_executed_tactics = tactics_tried[:-len(tactics_which_failed_str)] if len(tactics_which_failed_str) > 0 else tactics_tried
+                # self.logger.info(f"Partially executed tactics:\n{partially_executed_tactics}")
+                # Add the partially executed tactics back, and push the state update
+                if len(partially_executed_tactics.strip()) > 0:
+                    partially_executed_tactics = partially_executed_tactics.strip()
+                    self._run_stmt_on_lean_server(idx, partially_executed_tactics)
+            self.lean_error_messages = copy.deepcopy(error_messages)
 
     def _run_stmt_on_lean_server(self, idx : int, stmt: str, theorem_started: bool = False):
         assert self.tactic_parser is not None, "Tactic parser is not initialized"

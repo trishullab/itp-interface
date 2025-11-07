@@ -626,7 +626,7 @@ class TacticParser:
         # Read JSON response (one line)
         try:
             response_line = self.process.stdout.readline()
-            self.logger.info(f"Response: {response_line.strip()}")
+            self.logger.debug(f"Response: {response_line.strip()}")
             if not response_line:
                 # Check stderr for error messages
                 stderr_output = self.process.stderr.read() if self.process.stderr else ""
@@ -755,9 +755,13 @@ class TacticParser:
         self.close()
 
 # Example usage
-def print_tactics(tactics: List[LeanLineInfo]):
+def print_tactics(tactics: List[LeanLineInfo], logger: Optional[logging.Logger] = None):
     for tactic in tactics:
-        print(f"Line {tactic.line}, Col {tactic.column} to Line {tactic.end_line}, Col {tactic.end_column}: {tactic.text}")
+        msg = f"Line {tactic.line}, Col {tactic.column} to Line {tactic.end_line}, Col {tactic.end_column}: {tactic.text}"
+        if logger:
+            logger.info(msg)
+        else:
+            print(msg)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
@@ -779,6 +783,8 @@ if __name__ == "__main__":
         lean_code = """
 example (p q r: Prop) (h1: p → q) (h2: q → r) : p → r := by
     have h3: p → r := by
+        try simp
+        wrong_tactic
     done
 """
 
