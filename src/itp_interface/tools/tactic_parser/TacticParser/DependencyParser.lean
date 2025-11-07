@@ -150,6 +150,31 @@ def extractDependenciesFromSyntax (env : Environment) (stx : Syntax) : Array Dec
     | none => (deps, unres.push name.toString)
   ) (#[], #[])
 
+/-- Parse the header recursively to find all import commands -/
+partial def findImports (stx : Syntax) (content: String) : IO (Array ImportInfo) → IO (Array ImportInfo)
+  | accIO => do
+    let acc ← accIO
+    match stx with
+    | Syntax.node _ kind args =>
+      if kind == `Lean.Parser.Module.import then
+        -- Found an import
+        match stx.getRange? with
+        | some range =>
+          let moduleName := extractModuleName stx
+          let text := content.extract range.start range.stop
+          let info : ImportInfo := {
+            moduleName := moduleName
+            startPos := range.start.byteIdx
+            endPos := range.stop.byteIdx
+            text := text
+          }
+          return acc.push info
+        | none => return acc
+      else
+        -- Recursively search children
+        args.foldlM (fun acc child => findImports child content (pure acc)) acc
+    | _ => return acc
+
 /-- Parse imports and namespaces from a Lean 4 file -/
 def parseImports (filepath : System.FilePath) : IO DependencyInfo := do
   let content ← IO.FS.readFile filepath
@@ -164,32 +189,9 @@ def parseImports (filepath : System.FilePath) : IO DependencyInfo := do
   -- Extract the underlying syntax from TSyntax
   let headerSyn : Syntax := headerStx
 
-  -- Parse the header recursively to find all import commands
-  let rec findImports (stx : Syntax) : IO (Array ImportInfo) → IO (Array ImportInfo)
-    | accIO => do
-      let acc ← accIO
-      match stx with
-      | Syntax.node _ kind args =>
-        if kind == `Lean.Parser.Module.import then
-          -- Found an import
-          match stx.getRange? with
-          | some range =>
-            let moduleName := extractModuleName stx
-            let text := content.extract range.start range.stop
-            let info : ImportInfo := {
-              moduleName := moduleName
-              startPos := range.start.byteIdx
-              endPos := range.stop.byteIdx
-              text := text
-            }
-            return acc.push info
-          | none => return acc
-        else
-          -- Recursively search children
-          args.foldlM (fun acc child => findImports child (pure acc)) acc
-      | _ => return acc
 
-  imports ← findImports headerSyn (pure imports)
+
+  imports ← findImports headerSyn content (pure imports)
 
   -- Now parse the rest of the file to find namespace declarations
   let env ← Lean.importModules #[] {} 0

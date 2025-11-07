@@ -249,35 +249,6 @@ class FileDependencyAnalysis(BaseModel):
     def __repr__(self) -> str:
         return f"FileDependencyAnalysis({self.module_name}, {len(self.declarations)} decls)"
 
-    # def to_dict(self) -> Dict:
-    #     """Convert to dictionary matching the JSON format."""
-    #     return {
-    #         "filePath": self.file_path,
-    #         "moduleName": self.module_name,
-    #         "imports": self.imports,
-    #         "declarations": [
-    #             {
-    #                 "declaration": decl.declaration.to_dict(),
-    #                 "dependencies": [dep.model_dump(exclude_none=True) for dep in decl.dependencies],
-    #                 "unresolvedNames": decl.unresolved_names,
-    #                 **({"declId": decl.decl_id} if decl.decl_id else {})
-    #             }
-    #             for decl in self.declarations
-    #         ]
-    #     }
-
-    # @staticmethod
-    # def from_dict(data: Dict) -> 'FileDependencyAnalysis':
-    #     """Parse from the JSON dict returned by dependency-parser executable."""
-    #     declarations = DeclWithDependencies.from_dependency_analysis(data)
-
-    #     return FileDependencyAnalysis(
-    #         file_path=data['filePath'],
-    #         module_name=data['moduleName'],
-    #         imports=data.get('imports', []),
-    #         declarations=declarations
-    #     )
-
 # Create an enum for parsing request type
 class RequestType(Enum):
     PARSE_TACTICS = "parse_tactics"

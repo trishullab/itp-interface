@@ -14,7 +14,9 @@ partial def identifySomeDeclType (stx : Syntax) : Option (DeclType × Nat) :=
     match stx with
     | Syntax.node _ _ args =>
       -- Look for the actual declaration type in the children
-      let idx := args.findIdx (fun a => (identifySomeDeclType a).isSome);
+      -- NOTE: using findIdx? for backward compatibility to Lean 4.15
+      -- (as.findIdx? p).getD as.size
+      let idx := (args.findIdx? (fun a => (identifySomeDeclType a).isSome)).getD args.size;
       if idx = args.size then
         some (.unknown, idx)
       else

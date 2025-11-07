@@ -269,7 +269,7 @@ partial def InfoNodeStruct.toJson (n: InfoNodeStruct) : Json :=
 instance : ToJson InfoNodeStruct where
   toJson := InfoNodeStruct.toJson
 
-def getInfoNodeStruct (node : InfoTreeNode) : Option InfoNodeStruct :=
+partial def getInfoNodeStruct (node : InfoTreeNode) : Option InfoNodeStruct :=
   match node with
   | .leanInfo declType name docString text startPos endPos namespc children =>
     let childStructs := children.map getInfoNodeStruct

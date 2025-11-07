@@ -1,10 +1,15 @@
 import os
 import random
 import string
+import logging
+import traceback
 from itp_interface.tools.tactic_parser import build_tactic_parser_if_needed
 
 file_path = os.path.abspath(__file__)
 
+logging.basicConfig(level=logging.INFO)
+# Create a console logger
+logger = logging.getLogger(__name__)
 
 def generate_random_string(length, allowed_chars=None):
     if allowed_chars is None:
@@ -25,7 +30,12 @@ def install_itp_interface():
     print("Lean toolchain version for tactic_parser: ", lean_toolchain_content)
     print(f"LEAN_VERSION set: {os.environ.get('LEAN_VERSION', 'Not Set')}")
     print("Building itp_interface")
-    build_tactic_parser_if_needed()
+    try:
+        build_tactic_parser_if_needed(logger)
+    except Exception:
+        # print the stack trace
+        traceback.print_exc()
+        raise
 
 def install_lean_repl():
     print("Updating Lean")

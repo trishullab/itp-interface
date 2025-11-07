@@ -159,12 +159,12 @@ class DynamicProofExecutor(SimpleLean4SyncExecutor):
                 if line_num >= tactic_line_num:
                     del self.run_state.line_tactic_map[line_num]
             line_proof_context_map_keys = list(self.run_state.line_proof_context_map.keys())
-            for line_num in line_proof_context_map_keys:
-                if line_num >= tactic_line_num:
-                    del self.run_state.line_proof_context_map[line_num]
             if not no_backtracking:
                 self.proof_context = self.run_state.line_proof_context_map[tactic_line_num]
                 self.line_num = tactic_line_num
                 cancelled_some_tactics = self._backtrack_tactic_line(tactic_line_num)
                 self._proof_running = self.proof_context is not None
+            for line_num in line_proof_context_map_keys:
+                if line_num >= tactic_line_num:
+                    del self.run_state.line_proof_context_map[line_num]
         return cancelled_some_tactics

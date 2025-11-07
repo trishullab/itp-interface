@@ -16,7 +16,8 @@ pip install itp-interface
 ```
 
 2. Run the following command to prepare the REPL for Lean 4. The default version is 4.24.0. You can change the version by setting the `LEAN_VERSION` environment variable. If no version is set, then 4.24.0 is used.
->NOTE: The Lean 4 version must match the version of the Lean 4 project you are working with.
+>NOTE: The Lean 4 version must match the version of the Lean 4 project you are working with. `itp-interface` **supports Lean 4 version >= 4.15.0 and <= 4.24.0**. (It has been tested till version 4.24.0, but might as well work for future versions too, if the future versions are completely backwards-compatible).
+
 ```bash
 install-lean-repl
 # To use a different Lean version, set LEAN_VERSION before running:
