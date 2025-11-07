@@ -137,7 +137,6 @@ class Lean4Test(unittest.TestCase):
             assert proof_was_finished, "Proof was not finished"
 
     def test_lean4_backtracking(self):
-        from itp_interface.rl.proof_state import ProofState
         from itp_interface.rl.proof_action import ProofAction
         from itp_interface.rl.simple_proof_env import ProofEnv
         from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
