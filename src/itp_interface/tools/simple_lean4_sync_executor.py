@@ -106,6 +106,7 @@ class SimpleLean4SyncExecutor:
         self._error_messages_since_last_thm = {}
         self._run_exactly = False
         self._nested_have_counts = 0
+        self._last_tactic_was_modified = False
         if self._enable_search:
             pass
         pass
@@ -153,6 +154,7 @@ class SimpleLean4SyncExecutor:
         self._error_messages_so_far = set()
         self._error_messages_since_last_thm = {}
         self._nested_have_counts = 0
+        self._last_tactic_was_modified = False
         if self._enable_search:
             pass
         pass
@@ -242,6 +244,7 @@ class SimpleLean4SyncExecutor:
             if self._nested_have_counts > 0:
                 stmt = stmt.lstrip()
                 stmt = indentation + stmt
+                self._last_tactic_was_modified = True
             self._last_tactics[idx] = stmt
             self._last_tactic_line_idx = idx
             # self.logger.info(f"Proofs so far:\n{self._get_tactics_so_far()}")
@@ -271,6 +274,7 @@ class SimpleLean4SyncExecutor:
                 by = by.rstrip()
                 new_stmt = f"{full_have_stmt}{by}\n{after_tactics_str}"
                 new_stmt = new_stmt.rstrip()
+                self._last_tactic_was_modified = True
                 return new_stmt
 
     def _get_lean_code_with_tactics(self, idx: int, stmt: str):
