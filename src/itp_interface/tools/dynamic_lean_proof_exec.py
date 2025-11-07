@@ -198,6 +198,11 @@ class DynamicProofExecutor(Lean3Executor):
             self.run_state.last_exception = '\n'.join(self.lean_error_messages)
         return start_line_num, not tactic_failed
     
+    def get_last_tactic(self) -> typing.Optional[str]:
+        if len(self.run_state.tatics_ran) == 0:
+            return None
+        return self.run_state.tatics_ran[-1]
+    
     def get_last_exception(self) -> typing.Optional[str]:
         last_exception = self.run_state.last_exception
         self.run_state.last_exception = None

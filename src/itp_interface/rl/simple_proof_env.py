@@ -348,9 +348,22 @@ class ProofEnv(Env):
         
         self._history[history_idx] = (state, action, next_state, reward, done, env_info)
 
+    def _fix_tactics(self, tactics: typing.List[str], action: ProofAction):
+        if self.language == ProofAction.Language.LEAN4 and len(tactics) > 0:
+            # It is possible that Lean4 modifies the last tactic (especially in case of `have` tactics)
+            modified_last_tactic = self._dynamic_proof_executor.get_last_tactic()
+            if modified_last_tactic is None:
+                return
+            tactics[len(tactics) - 1] = modified_last_tactic
+            if "tactics" in action.kwargs:
+                tactics_in_action = action.kwargs["tactics"]
+                tactics_in_action[len(tactics_in_action) - 1] = modified_last_tactic
+                action.kwargs["tactics"] = tactics_in_action
+
     def _run_tactics(self, tactics: typing.List[str], state: ProofState, action: ProofAction, env_info: ProofEnvInfo):
         env_info = copy.deepcopy(env_info)
         tactic_line_num, ran_successfully = self._dynamic_proof_executor.run_tactics(tactics)
+        self._fix_tactics(tactics, action)
         proof_progressed = False
         if ran_successfully:
             previous_proof_state = state
@@ -366,7 +379,9 @@ class ProofEnv(Env):
             self._possible_failure_paths += 1
             assert len(self._p_tree) == self.current_proof_depth, "proof_tree must have the same length as current_depth"
             # cancel anything which might got executed
-            self._dynamic_proof_executor.cancel_tactic_till_line(tactic_line_num)
+            if self.language != ProofAction.Language.LEAN4:
+                # Lean4 automatically cancels the failed tactic
+                self._dynamic_proof_executor.cancel_tactic_till_line(tactic_line_num)
         reward = 0.0
         depth_ratio = self.current_proof_depth/self.max_proof_depth
         if depth_ratio > 1.0:

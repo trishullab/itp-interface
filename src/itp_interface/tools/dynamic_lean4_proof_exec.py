@@ -16,7 +16,7 @@ from itp_interface.tools.iter_helpers import IntertwinedIterator
 class DynamicProofExecutor(SimpleLean4SyncExecutor):
     class RunState(object):
         def __init__(self):
-            self.tatics_ran = []
+            self.tactics_ran : typing.List[str] = []
             self.last_exception : typing.Optional[str] = None
             self.line_tactic_map = {}
             self.line_proof_context_map = {}
@@ -47,7 +47,6 @@ class DynamicProofExecutor(SimpleLean4SyncExecutor):
             return 0
         else:
             return -1
-
 
     def __init__(self, coq_context_helper: Lean3ContextHelper, project_folder: str = None, proof_file: str = None, instruction_iter: typing.Optional[str] = None, use_hammer: typing.Union[bool, HammerMode] = False, timeout_in_seconds: int = 60, use_human_readable_proof_context: bool = True, suppress_error_log: bool = True, context_type: ContextType = ContextType.NoContext, keep_local_context = False, enforce_qed: bool = False):
         assert proof_file is None or os.path.exists(proof_file), f"Proof file {proof_file} does not exist"
@@ -114,20 +113,31 @@ class DynamicProofExecutor(SimpleLean4SyncExecutor):
     def run_tactics(self, tactics: typing.List[str]) -> typing.Tuple[int, bool]:
         tactic_failed = False
         start_line_num = self.line_num
-        self.run_state.line_tactic_map[self.line_num] = len(self.run_state.tatics_ran)
+        self.run_state.line_tactic_map[self.line_num] = len(self.run_state.tactics_ran)
         self.run_state.line_proof_context_map[self.line_num] = copy.deepcopy(self.proof_context)
         for tactic in tactics:
             self.tactic_switch_iterator.set_next_instruction(tactic)
             self.run_next()
-            self.run_state.tatics_ran.append(tactic)
+            self.run_state.tactics_ran.append(tactic)
             self.run_state.line_proof_context_map[self.line_num] = copy.deepcopy(self.proof_context)
         if len(self.lean_error_messages) > 0:
             current_thm_name = self.get_lemma_name_if_running()
             assert current_thm_name is not None, "current_thm_name must not be None"
             tactic_failed = True
             self.run_state.last_exception = '\n'.join(self.lean_error_messages)
+            # Cancel the last tactic
+            self.cancel_tactic_till_line(start_line_num, no_backtracking=True)
+        if self._last_tactic_was_modified:
+            tactics_in_order = self._get_tactics_in_sorted_order()
+            assert len(tactics_in_order) > 0, "tactics_in_order must not be empty"
+            self.run_state.tactics_ran[-1] = tactics_in_order[-1][1]
         return start_line_num, not tactic_failed
     
+    def get_last_tactic(self) -> typing.Optional[str]:
+        if len(self.run_state.tactics_ran) == 0:
+            return None
+        return self.run_state.tactics_ran[-1]
+
     def get_last_exception(self) -> typing.Optional[str]:
         last_exception = self.run_state.last_exception
         self.run_state.last_exception = None
@@ -137,14 +147,13 @@ class DynamicProofExecutor(SimpleLean4SyncExecutor):
         self._skip_to_theorem(theorem_name)
 
     # [TODO] change this for bactracking
-    def cancel_tactic_till_line(self, tactic_line_num: int) -> bool:
+    def cancel_tactic_till_line(self, tactic_line_num: int, no_backtracking: bool = False) -> bool:
         assert tactic_line_num <= self.line_num, "tactic_line_num must be <= self.line_num"
         assert tactic_line_num >= 0, "tactic_line_num must be >= 0"
         cancelled_some_tactics = False
         if tactic_line_num < self.line_num:
             state_num = self.run_state.line_tactic_map[tactic_line_num]
-            self.run_state.tatics_ran = self.run_state.tatics_ran[:state_num]
-            self.proof_context = self.run_state.line_proof_context_map[tactic_line_num]
+            self.run_state.tactics_ran = self.run_state.tactics_ran[:state_num]
             line_tactic_map_keys = list(self.run_state.line_tactic_map.keys())
             for line_num in line_tactic_map_keys:
                 if line_num >= tactic_line_num:
@@ -153,7 +162,9 @@ class DynamicProofExecutor(SimpleLean4SyncExecutor):
             for line_num in line_proof_context_map_keys:
                 if line_num >= tactic_line_num:
                     del self.run_state.line_proof_context_map[line_num]
-            self.line_num = tactic_line_num
-            cancelled_some_tactics = self._backtrack_tactic_line(tactic_line_num)
-            self._proof_running = self.proof_context is not None
+            if not no_backtracking:
+                self.proof_context = self.run_state.line_proof_context_map[tactic_line_num]
+                self.line_num = tactic_line_num
+                cancelled_some_tactics = self._backtrack_tactic_line(tactic_line_num)
+                self._proof_running = self.proof_context is not None
         return cancelled_some_tactics
