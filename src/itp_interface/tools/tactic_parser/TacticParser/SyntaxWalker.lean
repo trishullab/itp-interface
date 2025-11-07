@@ -181,7 +181,7 @@ def nodeEndPos (node : InfoTreeNode) : Option Position :=
   | InfoTreeNode.leanInfo _ _ _ _ _ endPos _ _ => some endPos
   | _ => none
 
-def filterAllNodesWhichDontStartAndEndOnLine (node : InfoTreeNode) (line_num: Nat) : Array InfoTreeNode :=
+partial def filterAllNodesWhichDontStartAndEndOnLine (node : InfoTreeNode) (line_num: Nat) : Array InfoTreeNode :=
 match node with
 | .context child =>
   filterAllNodesWhichDontStartAndEndOnLine child line_num
@@ -213,7 +213,7 @@ let arg_max := all_possible_nodes.foldl (fun (acc_node, acc_len) n =>
 ) (InfoTreeNode.hole, 0)
 arg_max
 
-def getAllLinesInTree (node : InfoTreeNode) : Std.HashSet Nat :=
+partial def getAllLinesInTree (node : InfoTreeNode) : Std.HashSet Nat :=
   match node with
   | .context child =>
     getAllLinesInTree child
