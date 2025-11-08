@@ -74,4 +74,13 @@ rw [eq₂]
 sorry
 
 
+theorem complicated_have
+  (a b c d e f : ℕ)
+  (h1 : a + b = c)
+  (h2 : d + e = f) :
+  a + b + d + e = c + f
+  ∧ a + d + b + e = c + f := by
+  apply And.intro <;> have h3 : a + b + d + e = c + f := by grind;
+  exact h3 ; grind
+
 end Lean4Proj2

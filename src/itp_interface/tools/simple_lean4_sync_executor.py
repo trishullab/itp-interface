@@ -29,7 +29,7 @@ from typing import List, Optional, Tuple, OrderedDict, Dict
 class SimpleLean4SyncExecutor:
     theorem_regex = r"((((theorem|lemma)[\s]+([^\s:]*))|example)([\S|\s]*?)(:=|=>)[\s]*?)[\s]+"
     theorem_match = re.compile(theorem_regex, re.MULTILINE)
-    have_regex = r"(^\s*have\s+([^\s:]*):[=]*([^:]*))(:=\s*by)([\s|\S]*)"
+    have_regex = r"(^\s*have\s+([^:]*):([\s|\S]*))(:=\s*by)([\s|\S]*)"
     have_match = re.compile(have_regex, re.MULTILINE)
     unsolved_message = "unsolved goals"
     no_goals = "No goals to be solved"
@@ -107,6 +107,7 @@ class SimpleLean4SyncExecutor:
         self._run_exactly = False
         self._nested_have_counts = 0
         self._last_tactic_was_modified = False
+        self._last_modified_tactic : str | None = None
         if self._enable_search:
             pass
         pass
@@ -155,6 +156,7 @@ class SimpleLean4SyncExecutor:
         self._error_messages_since_last_thm = {}
         self._nested_have_counts = 0
         self._last_tactic_was_modified = False
+        self._last_modified_tactic : str | None = None
         if self._enable_search:
             pass
         pass
@@ -239,12 +241,17 @@ class SimpleLean4SyncExecutor:
     
     def _add_last_tactic(self, idx: int, stmt: str):
         if idx not in self._last_tactics:
-            stmt = self._have_preprocessing(stmt)
+            original_stmt = stmt
+            stmt = self._tactic_preprocessing(stmt)
             indentation = " " * self._nested_have_counts * 2
             if self._nested_have_counts > 0:
                 stmt = stmt.lstrip()
                 stmt = indentation + stmt
-                self._last_tactic_was_modified = True
+            self._last_tactic_was_modified = original_stmt != stmt
+            if self._last_tactic_was_modified:
+                self._last_modified_tactic = stmt
+            else:
+                self._last_modified_tactic = None
             self._last_tactics[idx] = stmt
             self._last_tactic_line_idx = idx
             # self.logger.info(f"Proofs so far:\n{self._get_tactics_so_far()}")
@@ -274,8 +281,43 @@ class SimpleLean4SyncExecutor:
                 by = by.rstrip()
                 new_stmt = f"{full_have_stmt}{by}\n{after_tactics_str}"
                 new_stmt = new_stmt.rstrip()
-                self._last_tactic_was_modified = True
                 return new_stmt
+
+    def _multiple_goals_tactic_preprocessing(self, stmt: str) -> List[str]:
+        # Split the tactics on multiple goals using `<;>`
+        initial_space_cnt = len(stmt) - len(stmt.lstrip())
+        stmt_splits = stmt.split("<;>")
+        # Initial space cnt
+        indentation = " " * initial_space_cnt
+        stmt_splits = [
+            indentation + s.strip() for s in stmt_splits
+        ]
+        return stmt_splits
+
+    def _multiline_tactic_preprocessing(self, stmt: str) -> List[str]:
+        # Split the tactics with `;`
+        initial_space_cnt = len(stmt) - len(stmt.lstrip())
+        stmt_splits = stmt.split(";")
+        # Initial space cnt
+        indentation = " " * initial_space_cnt
+        stmt_splits = [
+            indentation + s.strip() for s in stmt_splits
+        ]
+        return stmt_splits
+
+    def _tactic_preprocessing(self, stmt: str) -> str:
+        tactics_multi_goal = self._multiple_goals_tactic_preprocessing(stmt)
+        final_multigoal_tactic : List[str] = []
+        for tactic in tactics_multi_goal:
+            new_tactics = self._multiline_tactic_preprocessing(tactic)
+            final_multiline_tactic : List[str] = []
+            for new_tactic in new_tactics:
+                have_stmts = self._have_preprocessing(new_tactic)
+                final_multiline_tactic.append(have_stmts)
+            multi_line_stmt = ";\n".join(final_multiline_tactic)
+            final_multigoal_tactic.append(multi_line_stmt)
+        final_stmt = "<;>\n".join(final_multigoal_tactic)
+        return final_stmt
 
     def _get_lean_code_with_tactics(self, idx: int, stmt: str):
         assert self._last_theorem is not None, "Last theorem should not be None"

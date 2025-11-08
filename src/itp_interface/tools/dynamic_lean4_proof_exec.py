@@ -128,9 +128,8 @@ class DynamicProofExecutor(SimpleLean4SyncExecutor):
             # Cancel the last tactic
             self.cancel_tactic_till_line(start_line_num, no_backtracking=True)
         if self._last_tactic_was_modified:
-            tactics_in_order = self._get_tactics_in_sorted_order()
-            assert len(tactics_in_order) > 0, "tactics_in_order must not be empty"
-            self.run_state.tactics_ran[-1] = tactics_in_order[-1][1]
+            assert self._last_modified_tactic is not None, "last_modified_tactic must not be None if last_tactic_was_modified is True"
+            self.run_state.tactics_ran[-1] = self._last_modified_tactic
         return start_line_num, not tactic_failed
     
     def get_last_tactic(self) -> typing.Optional[str]:
