@@ -611,10 +611,67 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
                     pretty_print(s1, s2, proof_step, done)
             assert proof_finished, "Proof was not finished"
 
+    def test_simple_lean4_multiline_multigoal(self):
+        from itp_interface.rl.proof_state import ProofState
+        from itp_interface.rl.proof_action import ProofAction
+        from itp_interface.rl.simple_proof_env import ProofEnv
+        from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
+        from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
+        project_folder = "src/data/test/lean4_proj"
+        file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
+        # Build the project
+        # cd src/data/test/lean4_proj && lake build
+        helper = Helper()
+        helper.build_lean4_project(project_folder)
+        language = ProofAction.Language.LEAN4
+        theorem_name = '{\"namespace\":\"Lean4Proj2\",\"name\":\"complicated_have\"}'
+        # theorem complicated_have
+        #   (a b c d e f : ℕ)
+        #   (h1 : a + b = c)
+        #   (h2 : d + e = f) :
+        #   a + b + d + e = c + f
+        #   ∧ a + d + b + e = c + f := by
+        proof_exec_callback = ProofExecutorCallback(
+            project_folder=project_folder,
+            file_path=file_path,
+            language=language,
+            always_use_retrieval=False,
+            keep_local_context=True
+        )
+        always_retrieve_thms = False
+        retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
+        env = ProofEnv("test_lean4", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms)
+        proof_steps = [
+            'apply And.intro <;> have h3 : a + b + d + e = c + f := by grind;',
+            'exact h3 ; grind'
+        ]
+        with env:
+            proof_was_finished = False
+            for proof_step in proof_steps:
+                state, action, next_state, _, done, info = env.step(ProofAction(
+                    ProofAction.ActionType.RUN_TACTIC, 
+                    language, 
+                    tactics=[proof_step]))
+                proof_step = action.kwargs.get('tactics', ['INVALID'])[0]
+                if info.error_message is not None:
+                    print(f"Error: {info.error_message}")
+                # This prints StateChanged, StateUnchanged, Failed, or Done
+                print(info.progress)
+                print('-'*30)
+                if done:
+                    pretty_print(next_state, None, proof_step, done)
+                    proof_was_finished = True
+                else:
+                    s1 : ProofState = state
+                    s2 : ProofState = next_state
+                    pretty_print(s1, s2, proof_step, done)
+            assert proof_was_finished, "Proof was not finished"
+
 def main():
     unittest.main()
     # Run only the Lean 4 tests
     # t = Lean4Test()
+    # t.test_simple_lean4_multiline_multigoal()
     # t.test_simple_lean4()
     # t.test_lean4_backtracking()
     # t.test_simple_lean4_done_test()
