@@ -653,6 +653,7 @@ class SimpleLean4SyncExecutor:
         assert self._content_till_last_theorem_stmt is not None, "Content till last theorem statement should not be None"
         theorem_name, _, full_thm_stmt = self._last_theorem
         code_before_thm = self._content_till_last_theorem_stmt
+        line_number = len(code_before_thm.splitlines())
 
         # Create the Lean code with all executed lines up to current point
         lines_before_thm = code_before_thm + "\n" + full_thm_stmt + "\n"
@@ -724,22 +725,19 @@ class SimpleLean4SyncExecutor:
 
             # Parse the output for errors and warnings
             errors = []
-            error_pattern = re.compile(r'(\S+):(\d+):(\d+):\s*(warning|error):\s*(.+)')
-
-            for line in output.split('\n'):
-                match = error_pattern.match(line)
-                if match:
-                    filename, line_num, col_num, severity, message = match.groups()
-                    errors.append({
-                        'file': filename,
-                        'line': int(line_num),
-                        'column': int(col_num),
-                        'severity': severity,
-                        'message': message
-                    })
+            error_pattern = re.compile(r'(\S+):(\d+):(\d+):\s*(warning|error):\s*(.+)', re.MULTILINE)
+            for match in error_pattern.finditer(output):
+                filename, line_num, col_num, severity, message = match.groups()
+                errors.append({
+                    'file': filename,
+                    'line': int(line_num),
+                    'column': int(col_num),
+                    'severity': severity,
+                    'message': message
+                })
 
             # Check for 'sorry' only in the actual proof we generated
-            has_sorries = 'sorry' in actual_proof.lower()
+            has_sorries = any(['sorry' in line["message"].lower() for line in errors if line["line"] >= line_number])
 
             # Only fail on actual errors (not warnings)
             # Also check for "unsolved goals" in error messages
