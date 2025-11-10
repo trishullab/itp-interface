@@ -127,13 +127,26 @@ class DynamicProofExecutor(SimpleLean4SyncExecutor):
             self.run_state.last_exception = '\n'.join(self.lean_error_messages)
             # Cancel the last tactic
             self.cancel_tactic_till_line(start_line_num, no_backtracking=True)
+            was_cancelled = True
         if self._last_tactic_was_modified:
             assert self._last_modified_tactic is not None, "last_modified_tactic must not be None if last_tactic_was_modified is True"
-            self.run_state.tactics_ran[-1] = self._last_modified_tactic
+            if was_cancelled:
+                # If was cancelled then we need to re-add the modified tactic
+                self.run_state.tactics_ran.append(self._last_modified_tactic)
+            else:
+                assert len(self.run_state.tactics_ran) > 0, "There must be at least one tactic ran if last_tactic_was_modified is True" + \
+                    f" but got len={len(self.run_state.tactics_ran)}\n" + \
+                    f"modified tactic = \n{self._last_modified_tactic}\n" + \
+                    f"len(tactics) = {len(tactics)}"
+                self.run_state.tactics_ran[-1] = self._last_modified_tactic
+            self._last_tactic_was_modified = False
+            self._last_modified_tactic = None
         return start_line_num, not tactic_failed
     
     def get_last_tactic(self) -> typing.Optional[str]:
         if len(self.run_state.tactics_ran) == 0:
+            return None
+        if self.run_state.last_exception is not None:
             return None
         return self.run_state.tactics_ran[-1]
 

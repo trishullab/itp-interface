@@ -73,6 +73,7 @@ def get_debug_info() -> Dict[str, Any]:
         'curr_lemma': executor.curr_lemma,
         '_last_tactics': executor._last_tactics,
         "_nested_have_counts": executor._nested_have_counts,
+        "_nested_calc_counts": executor._nested_calc_counts,
         '_last_tactic_was_modified': executor._last_tactic_was_modified,
 
         # Requested private variables

@@ -359,6 +359,7 @@ class ProofEnv(Env):
                 tactics_in_action = action.kwargs["tactics"]
                 tactics_in_action[len(tactics_in_action) - 1] = modified_last_tactic
                 action.kwargs["tactics"] = tactics_in_action
+                action.kwargs["modified"] = True
 
     def _run_tactics(self, tactics: typing.List[str], state: ProofState, action: ProofAction, env_info: ProofEnvInfo):
         env_info = copy.deepcopy(env_info)
