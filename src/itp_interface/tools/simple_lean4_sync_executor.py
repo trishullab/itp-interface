@@ -272,41 +272,12 @@ class SimpleLean4SyncExecutor:
             self._last_tactic_line_idx = idx
             # self.logger.info(f"Proofs so far:\n{self._get_tactics_so_far()}")
 
-    def _multiline_tactic_preprocessing(self, stmt: str, baseline_indent: int = 0) -> List[str]:
-        # Split the tactics with `;`
-        initial_space_cnt = len(stmt) - len(stmt.lstrip()) + baseline_indent
-        stmt_splits = stmt.split(";")
-        # Initial space cnt
-        indentation = " " * initial_space_cnt
-        stmt_splits = [
-            indentation + s.strip() for s in stmt_splits
-        ]
-        return stmt_splits
-
-    def _multiple_goals_tactic_preprocessing(self, stmt: str, baseline_indent: int = 0) -> List[str]:
-        # Split the tactics on multiple goals using `<;>`
-        initial_space_cnt = len(stmt) - len(stmt.lstrip()) + baseline_indent
-        stmt_splits = stmt.split("<;>")
-        # Initial space cnt
-        indentation = " " * initial_space_cnt
-        stmt_splits = [
-            indentation + s.strip() for s in stmt_splits
-        ]
-        return stmt_splits
-
     def _tactic_preprocessing(self, stmt: str, baseline_indent: int = 0) -> str:
-        original_stmt = stmt
-        tactics_multi_goal = self._multiple_goals_tactic_preprocessing(stmt, baseline_indent)
-        final_multigoal_tactic : List[str] = []
-        for tactic in tactics_multi_goal:
-            new_tactics = self._multiline_tactic_preprocessing(tactic, baseline_indent)
-            final_multiline_tactic : List[str] = []
-            for new_tactic in new_tactics:
-                final_multiline_tactic.append(new_tactic)
-            multi_line_stmt = ";\n".join(final_multiline_tactic)
-            final_multigoal_tactic.append(multi_line_stmt)
-        final_stmt = "<;>\n".join(final_multigoal_tactic)
-        return final_stmt
+        actual_indent = len(stmt) - len(stmt.lstrip())
+        indentation_needed = self._get_indentation_cnt() + baseline_indent
+        if actual_indent < indentation_needed:
+            stmt = (" " * (indentation_needed - actual_indent)) + stmt.lstrip()
+        return stmt
 
     def _get_lean_code_with_tactics(self, idx: int, stmt: str):
         assert self._last_theorem is not None, "Last theorem should not be None"
