@@ -499,15 +499,12 @@ class SimpleLean4SyncExecutor:
         else:
             goal_related : List[ErrorInfo] = []
             has_indentation_error = False
-            has_double_indentation_error = False
             for error in errors:
                 if error.message.startswith(SimpleLean4SyncExecutor.unsolved_message):
                     # Check if the last tactic before this error was a 'have' tactic
                     goal_related.append(error)
                 if error.message.startswith(SimpleLean4SyncExecutor.uncolsed_scope_message):
                     has_indentation_error = True
-                if error.message.startswith(SimpleLean4SyncExecutor.no_goals_alternative):
-                    has_double_indentation_error = True
             last_tactic_stmt = self._last_tactics.get(idx, None)
             assert last_tactic_stmt is not None, "Last tactic statement should not be None"
             self._backtrack_tactic_line(idx)
@@ -518,56 +515,8 @@ class SimpleLean4SyncExecutor:
                 self._run_stmt_on_lean_server(idx, last_tactic_stmt)
                 self._last_modified_tactic = last_tactic_stmt
                 self._last_tactic_was_modified = True
-            elif has_double_indentation_error:
-                # Possibly exited the previous scope earlier, so add 4 spaces
-                last_tactic_stmt = " "*4 + last_tactic_stmt
-                # Try the last tactic again with spaces added
-                self._run_stmt_on_lean_server(idx, last_tactic_stmt)
-                self._last_modified_tactic = last_tactic_stmt
-                self._last_tactic_was_modified = True
             else:
                 self.lean_error_messages = copy.deepcopy(error_messages)
-
-            # if len(self._last_tactics) >= 2:
-            #     all_tactics = self._get_tactics_in_sorted_order()
-            #     last_tactic_line = all_tactics[-2][0]
-            #     # for error_info in errors:
-            #     #     self.logger.info(f"Error at line {error_info.position.line}, col {error_info.position.column}: {error_info.message}")
-            #     # self.logger.info(f"Last tactic at line {last_tactic.line}, col {last_tactic.column}: {last_tactic.text}")
-            #     # Rollback the last tactic if there was an error
-            #     tactics_before_backtrack = self._get_tactics_so_far()
-            #     # errors after last tactic
-            #     errors_after_last_tactic = [e for e in errors if e.position.line > last_tactic_line]
-            #     # for error in errors_after_last_tactic:
-            #     #     self.logger.info(f"Error after last tactic at line {error.position.line}, col {error.position.column}: {error.message}")
-            #     for error in errors_after_last_tactic:
-            #         new_failed_tactic_error_lines.add(error.position.line)
-            #     # self.logger.info(f"New failed tactic error lines: {new_failed_tactic_error_lines}")
-            #     tactics_which_failed = [t for t in tactics if t.line in new_failed_tactic_error_lines]
-            #     tactics_which_failed_str = "\n".join([t.text for t in tactics_which_failed])
-            # self._backtrack_tactic_line(idx)
-            # if len(new_failed_tactic_error_lines) >= 1 and len(tactics_which_failed) >= 1:
-            #     tactics_so_far = self._get_tactics_so_far()
-            #     # This should be (tactics_before_backtrack - tactics_so_far) - (tactics_which_failed)
-            #     # Where `-` is basically removing that part of the string
-            #     # self.logger.info(f"Backtracking tactics at line {idx}.\n Tactics so far:\n{tactics_so_far}\nTactics before backtrack:\n{tactics_before_backtrack}\nTactics which failed:\n{tactics_which_failed_str}")
-            #     # print_tactics(tactics, self.logger)
-            #     assert tactics_before_backtrack.startswith(tactics_so_far), \
-            #         "Tactics before backtrack should start with tactics so far"
-            #     tactics_tried = tactics_before_backtrack[len(tactics_so_far):]
-            #     # self.logger.info(f"Tactics tried:\n{tactics_tried}\nTactics which failed:\n{tactics_which_failed_str}")
-            #     if not tactics_tried.endswith(tactics_which_failed_str):
-            #         self.logger.warning(f"Tactics tried does not end with tactics which failed.\nTactics tried:\n{tactics_tried}\nTactics which failed:\n{tactics_which_failed_str}")
-            #         partially_executed_tactics = ""
-            #     else:
-            #         assert tactics_tried.endswith(tactics_which_failed_str), "Tactics tried should end with tactics which failed"
-            #         partially_executed_tactics = tactics_tried[:-len(tactics_which_failed_str)] if len(tactics_which_failed_str) > 0 else tactics_tried
-            #     self.logger.info(f"Partially executed tactics:\n{partially_executed_tactics}")
-            #     # Add the partially executed tactics back, and push the state update
-            #     if len(partially_executed_tactics.strip()) > 0:
-            #         partially_executed_tactics = partially_executed_tactics.strip()
-            #         self._run_stmt_on_lean_server(idx, partially_executed_tactics)
-            # self.lean_error_messages = copy.deepcopy(error_messages)
 
     def _run_stmt_on_lean_server(self, idx : int, stmt: str, theorem_started: bool = False):
         assert self.tactic_parser is not None, "Tactic parser is not initialized"

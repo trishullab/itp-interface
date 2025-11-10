@@ -120,6 +120,7 @@ class DynamicProofExecutor(SimpleLean4SyncExecutor):
             self.run_next()
             self.run_state.tactics_ran.append(tactic)
             self.run_state.line_proof_context_map[self.line_num] = copy.deepcopy(self.proof_context)
+        was_cancelled = False
         if len(self.lean_error_messages) > 0:
             current_thm_name = self.get_lemma_name_if_running()
             assert current_thm_name is not None, "current_thm_name must not be None"
@@ -130,17 +131,17 @@ class DynamicProofExecutor(SimpleLean4SyncExecutor):
             was_cancelled = True
         if self._last_tactic_was_modified:
             assert self._last_modified_tactic is not None, "last_modified_tactic must not be None if last_tactic_was_modified is True"
-            if was_cancelled:
-                # If was cancelled then we need to re-add the modified tactic
-                self.run_state.tactics_ran.append(self._last_modified_tactic)
-            else:
+            if not was_cancelled:
                 assert len(self.run_state.tactics_ran) > 0, "There must be at least one tactic ran if last_tactic_was_modified is True" + \
                     f" but got len={len(self.run_state.tactics_ran)}\n" + \
                     f"modified tactic = \n{self._last_modified_tactic}\n" + \
                     f"len(tactics) = {len(tactics)}"
-                self.run_state.tactics_ran[-1] = self._last_modified_tactic
-            self._last_tactic_was_modified = False
-            self._last_modified_tactic = None
+                original_last_tactic = tactics[-1]
+                if self._last_modified_tactic != original_last_tactic:
+                    self.run_state.tactics_ran[-1] = self._last_modified_tactic
+                else:
+                    self._last_modified_tactic = None
+                    self._last_tactic_was_modified = False
         return start_line_num, not tactic_failed
     
     def get_last_tactic(self) -> typing.Optional[str]:
@@ -148,7 +149,10 @@ class DynamicProofExecutor(SimpleLean4SyncExecutor):
             return None
         if self.run_state.last_exception is not None:
             return None
-        return self.run_state.tactics_ran[-1]
+        if self._last_tactic_was_modified:
+            return self._last_modified_tactic
+        else:
+            return None
 
     def get_last_exception(self) -> typing.Optional[str]:
         last_exception = self.run_state.last_exception
