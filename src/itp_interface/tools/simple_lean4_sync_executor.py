@@ -36,6 +36,7 @@ class SimpleLean4SyncExecutor:
     no_goals_alternative = "no goals to be solved"
     missing_closure_message = "unexpected end of input; expected '{'"
     uncolsed_scope_message = "expected '{' or indented tactic sequence"
+    unexpected_end_of_input_message = "unexpected end of input; expected"
     max_threshold_for_tactic_length = 200 # Max 200 characters for a tactic
 
     def __init__(self, 
@@ -268,40 +269,6 @@ class SimpleLean4SyncExecutor:
             self._last_tactics[idx] = stmt
             self._last_tactic_line_idx = idx
             # self.logger.info(f"Proofs so far:\n{self._get_tactics_so_far()}")
-    
-    def _have_preprocessing(self, stmt: str, baseline_indent: int = 0) -> str:
-        stmt_match = SimpleLean4SyncExecutor.have_match.match(stmt)
-        if not stmt_match:
-            return stmt
-        else:
-            full_have_stmt = stmt_match.group(1)
-            by = stmt_match.group(4)
-            after_tactics = stmt_match.group(5)
-            # self.logger.info(f"Processing 'have' statement: {full_have_stmt} with by: {by} and after tactics: {after_tactics}")
-            assert by is not None, "By should not be None"
-            assert full_have_stmt is not None, "Full have statement should not be None"
-            if after_tactics is None:
-                # There is no tactic to apply afterwards to just leave it as it is
-                return stmt
-            else:
-                # split the after tactics by new lines
-                after_tactics = after_tactics.splitlines()
-                new_after_tactics = []
-                for i, tactic in enumerate(after_tactics):
-                    if tactic.strip() == "":
-                        continue
-                    actual_indentation = len(tactic) - len(tactic.lstrip())
-                    if actual_indentation == 0:
-                        indentation_cnt = self._get_indentation_cnt() + baseline_indent
-                    else:
-                        indentation_cnt = self._get_indentation_cnt() + actual_indentation + baseline_indent
-                    indentation = " " * indentation_cnt
-                    new_after_tactics.append(indentation + tactic.strip())
-                after_tactics_str = "\n".join(new_after_tactics)
-                # Reconstruct the have statement with the tactics applied afterwards
-                new_stmt = f"{full_have_stmt}:= by\n{after_tactics_str}"
-                new_stmt = new_stmt.rstrip()
-                return new_stmt
 
     def _multiline_tactic_preprocessing(self, stmt: str, baseline_indent: int = 0) -> List[str]:
         # Split the tactics with `;`
@@ -333,8 +300,7 @@ class SimpleLean4SyncExecutor:
             new_tactics = self._multiline_tactic_preprocessing(tactic, baseline_indent)
             final_multiline_tactic : List[str] = []
             for new_tactic in new_tactics:
-                have_stmts = self._have_preprocessing(new_tactic, baseline_indent)
-                final_multiline_tactic.append(have_stmts)
+                final_multiline_tactic.append(new_tactic)
             multi_line_stmt = ";\n".join(final_multiline_tactic)
             final_multigoal_tactic.append(multi_line_stmt)
         final_stmt = "<;>\n".join(final_multigoal_tactic)
@@ -444,7 +410,7 @@ class SimpleLean4SyncExecutor:
             if tactic.text.strip().startswith("have"):
                 # Check if there is any goal related error after this tactic
                 for error in goal_related:
-                    if error.position.line == tactic.line:
+                    if error.position.line == tactic.end_line:
                         nested_have_count += 1
         return nested_have_count
     
@@ -499,11 +465,20 @@ class SimpleLean4SyncExecutor:
         else:
             goal_related : List[ErrorInfo] = []
             has_indentation_error = False
+            num_missing_closures = 0
             for error in errors:
+                if error.message.startswith(SimpleLean4SyncExecutor.missing_closure_message):
+                    num_missing_closures += 1
+                    if num_missing_closures > 1:
+                        has_indentation_error = True
+                    else:
+                        continue
                 if error.message.startswith(SimpleLean4SyncExecutor.unsolved_message):
                     # Check if the last tactic before this error was a 'have' tactic
                     goal_related.append(error)
                 if error.message.startswith(SimpleLean4SyncExecutor.uncolsed_scope_message):
+                    has_indentation_error = True
+                if error.message.startswith(SimpleLean4SyncExecutor.unexpected_end_of_input_message):
                     has_indentation_error = True
             last_tactic_stmt = self._last_tactics.get(idx, None)
             assert last_tactic_stmt is not None, "Last tactic statement should not be None"

@@ -753,10 +753,10 @@ if __name__ == "__main__":
         # p \implies q and q \implies r then have p \implies r
         lean_code = """
 example (p q r: Prop) (h1: p → q) (h2: q → r) : p → r := by
-    have h3: p → r := by
+    have h3: p → r := 
+    by
         try simp
         wrong_tactic
-    done
 """
 
         print("Parsing example 1b...")
