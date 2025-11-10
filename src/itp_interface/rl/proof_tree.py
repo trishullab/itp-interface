@@ -97,12 +97,13 @@ AdditionalInfo: {self.additional_info}
             elif self.language == ProofAction.Language.LEAN4:
                 proof_start = ""
                 proof_end = ""
-            all_proof_steps = "\n    ".join(lines[:-1]) if len(lines) > 1 else ""
-            last_line = (lines[-1] if lines[-1] == proof_end else f"    {lines[-1]}\n") if len(lines) > 0 else ""
+            all_proof_steps = "\n".join(lines) # if len(lines) > 1 else ""
+            # last_line = (lines[-1] if lines[-1] == proof_end else f"    {lines[-1]}\n") if len(lines) > 0 else ""
             return f"""{self.lemma_name}
 {proof_start}
-    {all_proof_steps}
-{last_line}
+by
+{all_proof_steps}
+
 {proof_metadata}
 """
         except Exception:

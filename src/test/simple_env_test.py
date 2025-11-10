@@ -1,6 +1,7 @@
 import unittest
 import os
 from itp_interface.tools.tactic_parser import build_lean4_project, build_tactic_parser_if_needed
+from itp_interface.tools.simple_lean4_sync_executor import SimpleLean4SyncExecutor
 
 def pretty_print(s1, s2, proof_step, done):
     print(f"Current Goal:")
@@ -275,14 +276,14 @@ class Lean4Test(unittest.TestCase):
         env = ProofEnv("test_lean4", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms)
         proof_steps = [
 """calc
-_ = n^2 + n*2 + 1 := by rw [Nat.mul_comm 2 n]
-_ = n^2 + (n + n) + 1 := by rw [Nat.mul_two]
-_ = n^2 + n + n + 1 := by rw [←Nat.add_assoc]
-_ = n*n + n + n + 1 := by rw [Nat.pow_two]
-_ = n*n + n*1 + n + 1 := by rw [Nat.mul_one n]
-_ = n*(n + 1) + n + 1 := by rw [Nat.left_distrib n n 1]
-_ = n*(n + 1) + (n + 1) := by rw [Nat.add_assoc]
-_ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_one (n + 1), Nat.mul_comm]""",
+  _ = n^2 + n*2 + 1 := by rw [Nat.mul_comm 2 n]
+  _ = n^2 + (n + n) + 1 := by rw [Nat.mul_two]
+  _ = n^2 + n + n + 1 := by rw [←Nat.add_assoc]
+  _ = n*n + n + n + 1 := by rw [Nat.pow_two]
+  _ = n*n + n*1 + n + 1 := by rw [Nat.mul_one n]
+  _ = n*(n + 1) + n + 1 := by rw [Nat.left_distrib n n 1]
+  _ = n*(n + 1) + (n + 1) := by rw [Nat.add_assoc]
+  _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_one (n + 1), Nat.mul_comm]""",
 "_ = (n + 1)*(n + 1) := by \n   rw [Nat.right_distrib n 1 (n + 1)]"
 ]
         with env:
@@ -402,15 +403,15 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
         env = ProofEnv("test_lean4", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms)
         proof_steps = [
 """calc
-    _ = n^2 + n*2 + 1 := by rw [Nat.mul_comm 2 n]
-    _ = n^2 + (n + n) + 1 := by rw [Nat.mul_two]
-    _ = n^2 + n + n + 1 := by rw [←Nat.add_assoc]
-    _ = n*n + n + n + 1 := by rw [Nat.pow_two]
-    _ = n*n + n*1 + n + 1 := by rw [Nat.mul_one n]
-    _ = n*(n + 1) + n + 1 := by rw [Nat.left_distrib n n 1]
-    _ = n*(n + 1) + (n + 1) := by rw [Nat.add_assoc]
-    _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_one (n + 1), Nat.mul_comm]""",
-"    _ = (n + 1)*(n + 1) := by rw [Nat.right_distrib n 1 (n + 1)]",
+  _ = n^2 + n*2 + 1 := by rw [Nat.mul_comm 2 n]
+  _ = n^2 + (n + n) + 1 := by rw [Nat.mul_two]
+  _ = n^2 + n + n + 1 := by rw [←Nat.add_assoc]
+  _ = n*n + n + n + 1 := by rw [Nat.pow_two]
+  _ = n*n + n*1 + n + 1 := by rw [Nat.mul_one n]
+  _ = n*(n + 1) + n + 1 := by rw [Nat.left_distrib n n 1]
+  _ = n*(n + 1) + (n + 1) := by rw [Nat.add_assoc]
+  _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_one (n + 1), Nat.mul_comm]""",
+"_ = (n + 1)*(n + 1) := by rw [Nat.right_distrib n 1 (n + 1)]",
 "done"
 ]
         with env:
@@ -524,7 +525,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
 'have eq₂ : (21 * n + 4) % (14 * n + 3) = 7 * n + 1 := by',
 '    have eq₁ : 21 * n + 4 = (14 * n + 3) + (7 * n + 1) := by ring',
 '    rw [eq₁, Nat.add_mod, Nat.mod_self, zero_add]',
-'    have h₂ : 7 * n + 1 < 14 * n + 3 := by linarith',
+'    have h₂ : 7 * n + 1 < 14 * n + 3 := by', 'linarith',
 '    rw [Nat.mod_eq_of_lt]',
 '    rw [Nat.mod_eq_of_lt]',
 '    exact h₂',
@@ -535,12 +536,18 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
         ]
         with env:
             for proof_step in proof_steps:
-                state, _, next_state, _, done, info = env.step(ProofAction(
+                state, m_action, next_state, _, done, info = env.step(ProofAction(
                     ProofAction.ActionType.RUN_TACTIC, 
                     language, 
                     tactics=[proof_step]))
                 if info.error_message is not None:
                     print(f"Error: {info.error_message}")
+                if proof_step == 'linarith' and m_action is not None and isinstance(m_action, ProofAction) and m_action.kwargs.get('modified', False):
+                    print("Modified action detected:")
+                    print(m_action)
+                    modified_tac = m_action.kwargs['tactics'][0]
+                    assert modified_tac.lstrip() == 'linarith'
+                    assert len(modified_tac) - len('linarith') == 4
                 # This prints StateChanged, StateUnchanged, Failed, or Done
                 print(info.progress)
                 print('-'*30)
@@ -668,6 +675,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
             assert proof_was_finished, "Proof was not finished"
 
 def main():
+    SimpleLean4SyncExecutor.max_threshold_for_tactic_length = 10000
     unittest.main()
     # Run only the Lean 4 tests
     # t = Lean4Test()

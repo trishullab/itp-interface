@@ -83,4 +83,21 @@ theorem complicated_have
   apply And.intro <;> have h3 : a + b + d + e = c + f := by grind;
   exact h3 ; grind
 
+theorem test_have_calc
+  (n: Nat)
+  (h1 : n > 0) :
+  n^2 + 2*n + 1 = (n + 1)*(n + 1) := by
+have h2 : n^2 + 2*n + 1 = (n + 1)*(n + 1) := by
+  calc
+    _ = n^2 + n*2 + 1 := by rw [Nat.mul_comm 2 n]
+    _ = n^2 + (n + n) + 1 := by rw [Nat.mul_two]
+    _ = n^2 + n + n + 1 := by rw [←Nat.add_assoc]
+    _ = n*n + n + n + 1 := by rw [Nat.pow_two]
+    _ = n*n + n*1 + n + 1 := by rw [Nat.mul_one n]
+    _ = n*(n + 1) + n + 1 := by rw [Nat.left_distrib n n 1]
+    _ = n*(n + 1) + (n + 1) := by rw [Nat.add_assoc]
+    _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_one (n + 1), Nat.mul_comm]
+    _ = (n + 1)*(n + 1) := by rw [Nat.right_distrib n 1 (n + 1)]
+assumption
+
 end Lean4Proj2
