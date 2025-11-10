@@ -114,6 +114,7 @@ class SimpleLean4SyncExecutor:
         self._nested_calc_counts = 0
         self._last_tactic_was_modified = False
         self._last_modified_tactic : str | None = None
+        self._recursion_depth = 0
         if self._enable_search:
             pass
         pass
@@ -164,6 +165,7 @@ class SimpleLean4SyncExecutor:
         self._nested_calc_counts = 0
         self._last_tactic_was_modified = False
         self._last_modified_tactic : str | None = None
+        self._recursion_depth = 0
         if self._enable_search:
             pass
         pass
@@ -487,9 +489,14 @@ class SimpleLean4SyncExecutor:
                 # Try simple indentation fix
                 last_tactic_stmt = " "*2 + last_tactic_stmt
                 # Try the last tactic again with spaces added
-                self._run_stmt_on_lean_server(idx, last_tactic_stmt)
-                self._last_modified_tactic = last_tactic_stmt
-                self._last_tactic_was_modified = True
+                self._recursion_depth += 1
+                if self._recursion_depth <= 20:
+                    self._run_stmt_on_lean_server(idx, last_tactic_stmt)
+                    self._last_modified_tactic = last_tactic_stmt
+                    self._last_tactic_was_modified = True
+                else:
+                    self.lean_error_messages = copy.deepcopy(error_messages)
+                self._recursion_depth = 0
             else:
                 self.lean_error_messages = copy.deepcopy(error_messages)
 
