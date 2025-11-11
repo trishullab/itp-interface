@@ -747,16 +747,37 @@ if __name__ == "__main__":
         print_tactics(tactics)
         if errors:
             print(f"Error: {errors}")
-    
+    p_path = "/home/amthakur/Projects/copra/data/test/miniF2F-lean4"
+    with TacticParser(project_path=p_path) as parser:
+        # Example 1a: Simple proof with multiple tactics
+        lean_code = """
+import MiniF2F.Minif2fImport
+open BigOperators Real Nat Topology
+
+theorem mathd_algebra_33
+  (x y z : ℝ)
+  (h₀ : x ≠ 0)
+  (h₁ : 2 * x = 5 * y)
+  (h₂ : 7 * y = 10 * z) :
+  z / x = 7 / 25 :=
+by
+have h1': x = 5 * y / 2 := by ring
+"""
+        print("Parsing example 1a...")
+        tactics, errors = parser.parse(lean_code, fail_on_error=False)
+        print_tactics(tactics)
+        if errors:
+            print(f"Error: {errors}")
+
     with TacticParser() as parser:
         # Example 1b: Simple have proofs
         # p \implies q and q \implies r then have p \implies r
         lean_code = """
 example (p q r: Prop) (h1: p → q) (h2: q → r) : p → r := by
-    have h3: p → r := by
+    have h3: p → r := 
+    by
         try simp
         wrong_tactic
-    done
 """
 
         print("Parsing example 1b...")

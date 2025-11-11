@@ -36,6 +36,7 @@ class SimpleLean4SyncExecutor:
     no_goals_alternative = "no goals to be solved"
     missing_closure_message = "unexpected end of input; expected '{'"
     uncolsed_scope_message = "expected '{' or indented tactic sequence"
+    unexpected_end_of_input_message = "unexpected end of input; expected"
     max_threshold_for_tactic_length = 200 # Max 200 characters for a tactic
 
     def __init__(self, 
@@ -113,6 +114,7 @@ class SimpleLean4SyncExecutor:
         self._nested_calc_counts = 0
         self._last_tactic_was_modified = False
         self._last_modified_tactic : str | None = None
+        self._recursion_depth = 0
         if self._enable_search:
             pass
         pass
@@ -163,6 +165,7 @@ class SimpleLean4SyncExecutor:
         self._nested_calc_counts = 0
         self._last_tactic_was_modified = False
         self._last_modified_tactic : str | None = None
+        self._recursion_depth = 0
         if self._enable_search:
             pass
         pass
@@ -268,77 +271,13 @@ class SimpleLean4SyncExecutor:
             self._last_tactics[idx] = stmt
             self._last_tactic_line_idx = idx
             # self.logger.info(f"Proofs so far:\n{self._get_tactics_so_far()}")
-    
-    def _have_preprocessing(self, stmt: str, baseline_indent: int = 0) -> str:
-        stmt_match = SimpleLean4SyncExecutor.have_match.match(stmt)
-        if not stmt_match:
-            return stmt
-        else:
-            full_have_stmt = stmt_match.group(1)
-            by = stmt_match.group(4)
-            after_tactics = stmt_match.group(5)
-            # self.logger.info(f"Processing 'have' statement: {full_have_stmt} with by: {by} and after tactics: {after_tactics}")
-            assert by is not None, "By should not be None"
-            assert full_have_stmt is not None, "Full have statement should not be None"
-            if after_tactics is None:
-                # There is no tactic to apply afterwards to just leave it as it is
-                return stmt
-            else:
-                # split the after tactics by new lines
-                after_tactics = after_tactics.splitlines()
-                new_after_tactics = []
-                for i, tactic in enumerate(after_tactics):
-                    if tactic.strip() == "":
-                        continue
-                    actual_indentation = len(tactic) - len(tactic.lstrip())
-                    if actual_indentation == 0:
-                        indentation_cnt = self._get_indentation_cnt() + baseline_indent
-                    else:
-                        indentation_cnt = self._get_indentation_cnt() + actual_indentation + baseline_indent
-                    indentation = " " * indentation_cnt
-                    new_after_tactics.append(indentation + tactic.strip())
-                after_tactics_str = "\n".join(new_after_tactics)
-                # Reconstruct the have statement with the tactics applied afterwards
-                new_stmt = f"{full_have_stmt}:= by\n{after_tactics_str}"
-                new_stmt = new_stmt.rstrip()
-                return new_stmt
-
-    def _multiline_tactic_preprocessing(self, stmt: str, baseline_indent: int = 0) -> List[str]:
-        # Split the tactics with `;`
-        initial_space_cnt = len(stmt) - len(stmt.lstrip()) + baseline_indent
-        stmt_splits = stmt.split(";")
-        # Initial space cnt
-        indentation = " " * initial_space_cnt
-        stmt_splits = [
-            indentation + s.strip() for s in stmt_splits
-        ]
-        return stmt_splits
-
-    def _multiple_goals_tactic_preprocessing(self, stmt: str, baseline_indent: int = 0) -> List[str]:
-        # Split the tactics on multiple goals using `<;>`
-        initial_space_cnt = len(stmt) - len(stmt.lstrip()) + baseline_indent
-        stmt_splits = stmt.split("<;>")
-        # Initial space cnt
-        indentation = " " * initial_space_cnt
-        stmt_splits = [
-            indentation + s.strip() for s in stmt_splits
-        ]
-        return stmt_splits
 
     def _tactic_preprocessing(self, stmt: str, baseline_indent: int = 0) -> str:
-        original_stmt = stmt
-        tactics_multi_goal = self._multiple_goals_tactic_preprocessing(stmt, baseline_indent)
-        final_multigoal_tactic : List[str] = []
-        for tactic in tactics_multi_goal:
-            new_tactics = self._multiline_tactic_preprocessing(tactic, baseline_indent)
-            final_multiline_tactic : List[str] = []
-            for new_tactic in new_tactics:
-                have_stmts = self._have_preprocessing(new_tactic, baseline_indent)
-                final_multiline_tactic.append(have_stmts)
-            multi_line_stmt = ";\n".join(final_multiline_tactic)
-            final_multigoal_tactic.append(multi_line_stmt)
-        final_stmt = "<;>\n".join(final_multigoal_tactic)
-        return final_stmt
+        actual_indent = len(stmt) - len(stmt.lstrip())
+        indentation_needed = self._get_indentation_cnt() + baseline_indent
+        if actual_indent < indentation_needed:
+            stmt = (" " * (indentation_needed - actual_indent)) + stmt.lstrip()
+        return stmt
 
     def _get_lean_code_with_tactics(self, idx: int, stmt: str):
         assert self._last_theorem is not None, "Last theorem should not be None"
@@ -444,7 +383,7 @@ class SimpleLean4SyncExecutor:
             if tactic.text.strip().startswith("have"):
                 # Check if there is any goal related error after this tactic
                 for error in goal_related:
-                    if error.position.line == tactic.line:
+                    if error.position.line == tactic.end_line:
                         nested_have_count += 1
         return nested_have_count
     
@@ -467,6 +406,31 @@ class SimpleLean4SyncExecutor:
                 if error.position.line > last_calc_line:
                     nested_calc_count += 1
         return nested_calc_count
+
+    def _check_for_have_issues(self, tactics: List[LeanLineInfo], errors: List[ErrorInfo]) -> Optional[str]:
+        # See all goal related error messages
+        goal_related : List[ErrorInfo] = []
+        for error in errors:
+            if error.message.startswith(SimpleLean4SyncExecutor.unsolved_message):
+                # Check if the last tactic before this error was a 'have' tactic
+                goal_related.append(error)
+        for tactic in tactics:
+            if tactic.text.strip().startswith("have"):
+                # Check if there is any goal related error after this tactic
+                for error in goal_related:
+                    if error.position.line == tactic.end_line:
+                        # This is an unclosed `have` goal, check if the proof is attempted in the same line
+                        whole_have_tactic_decl_line = tactic.text.strip()
+                        if whole_have_tactic_decl_line.endswith("by"):
+                            # This is not a problem, proof is in the next line
+                            continue
+                        else:
+                            # The proof was attempted in the same line but did not close the goal                        
+                            return "Could not close the `have` goal properly." + \
+                            f"The proofs provided for `{whole_have_tactic_decl_line}` did not close the goal." + \
+                            " Try just introducing the `have` goal by itself first (by ending with `by`)," + \
+                            " and then provide the proof in the next line."
+        return None
 
     def _update_proof_context(self, idx : int, tactics: List[LeanLineInfo], errors: List[ErrorInfo]):
         proof_goal_messages: list[str] = []
@@ -493,17 +457,31 @@ class SimpleLean4SyncExecutor:
             proof_is_running = True
         if len(error_messages) == 0:
             assert proof_is_running, f"Proof is not running but no error message is present, errors:\n{errors}, \nlemma: \n{self.curr_lemma_name}, \nlemma_stmt: \n{self.curr_lemma}, \nline_num: \n{self.line_num}"
-            self._nested_have_counts = self._get_nested_haves_count(tactics, errors)
-            self._nested_calc_counts = self._get_nested_calc_count(tactics, errors)
-            self._set_proof_context(proof_is_running, proof_goal_messages, last_tactic)
+            have_error_message = self._check_for_have_issues(tactics, errors)
+            if have_error_message is None:
+                self._nested_have_counts = self._get_nested_haves_count(tactics, errors)
+                self._nested_calc_counts = self._get_nested_calc_count(tactics, errors)
+                self._set_proof_context(proof_is_running, proof_goal_messages, last_tactic)
+            else:
+                self._backtrack_tactic_line(idx)
+                self.lean_error_messages = [have_error_message]
         else:
             goal_related : List[ErrorInfo] = []
             has_indentation_error = False
+            num_missing_closures = 0
             for error in errors:
+                if error.message.startswith(SimpleLean4SyncExecutor.missing_closure_message):
+                    num_missing_closures += 1
+                    if num_missing_closures > 1:
+                        has_indentation_error = True
+                    else:
+                        continue
                 if error.message.startswith(SimpleLean4SyncExecutor.unsolved_message):
                     # Check if the last tactic before this error was a 'have' tactic
                     goal_related.append(error)
                 if error.message.startswith(SimpleLean4SyncExecutor.uncolsed_scope_message):
+                    has_indentation_error = True
+                if error.message.startswith(SimpleLean4SyncExecutor.unexpected_end_of_input_message):
                     has_indentation_error = True
             last_tactic_stmt = self._last_tactics.get(idx, None)
             assert last_tactic_stmt is not None, "Last tactic statement should not be None"
@@ -512,9 +490,14 @@ class SimpleLean4SyncExecutor:
                 # Try simple indentation fix
                 last_tactic_stmt = " "*2 + last_tactic_stmt
                 # Try the last tactic again with spaces added
-                self._run_stmt_on_lean_server(idx, last_tactic_stmt)
-                self._last_modified_tactic = last_tactic_stmt
-                self._last_tactic_was_modified = True
+                self._recursion_depth += 1
+                if self._recursion_depth <= 20:
+                    self._run_stmt_on_lean_server(idx, last_tactic_stmt)
+                    self._last_modified_tactic = last_tactic_stmt
+                    self._last_tactic_was_modified = True
+                else:
+                    self.lean_error_messages = copy.deepcopy(error_messages)
+                self._recursion_depth = 0
             else:
                 self.lean_error_messages = copy.deepcopy(error_messages)
 
@@ -528,9 +511,9 @@ class SimpleLean4SyncExecutor:
                 " Please break down the tactic into smaller steps. And execute them one by one."
             ]
             return
-        if "sorry" in stmt and self._proof_running:
+        if ("sorry" in stmt or "admit" in stmt) and self._proof_running:
             # We don't need to run the sorry statements. This should be treated as a failed proof step
-            self.lean_error_messages = ["The tactic 'sorry' was found in the statement, this is not allowed"]
+            self.lean_error_messages = ["The tactic 'sorry/admit' was found in the statement, this is not allowed"]
             return
         elif len(stmt.strip()) == 0 and self._proof_running:
             # We don't need to run the empty statements. This should be treated as a failed proof step
@@ -700,6 +683,7 @@ class SimpleLean4SyncExecutor:
         assert self._content_till_last_theorem_stmt is not None, "Content till last theorem statement should not be None"
         theorem_name, _, full_thm_stmt = self._last_theorem
         code_before_thm = self._content_till_last_theorem_stmt
+        line_number = len(code_before_thm.splitlines())
 
         # Create the Lean code with all executed lines up to current point
         lines_before_thm = code_before_thm + "\n" + full_thm_stmt + "\n"
@@ -771,22 +755,19 @@ class SimpleLean4SyncExecutor:
 
             # Parse the output for errors and warnings
             errors = []
-            error_pattern = re.compile(r'(\S+):(\d+):(\d+):\s*(warning|error):\s*(.+)')
-
-            for line in output.split('\n'):
-                match = error_pattern.match(line)
-                if match:
-                    filename, line_num, col_num, severity, message = match.groups()
-                    errors.append({
-                        'file': filename,
-                        'line': int(line_num),
-                        'column': int(col_num),
-                        'severity': severity,
-                        'message': message
-                    })
+            error_pattern = re.compile(r'(\S+):(\d+):(\d+):\s*(warning|error):\s*(.+)', re.MULTILINE)
+            for match in error_pattern.finditer(output):
+                filename, line_num, col_num, severity, message = match.groups()
+                errors.append({
+                    'file': filename,
+                    'line': int(line_num),
+                    'column': int(col_num),
+                    'severity': severity,
+                    'message': message
+                })
 
             # Check for 'sorry' only in the actual proof we generated
-            has_sorries = 'sorry' in actual_proof.lower()
+            has_sorries = any(['sorry' in line["message"].lower() for line in errors if line["line"] >= line_number])
 
             # Only fail on actual errors (not warnings)
             # Also check for "unsolved goals" in error messages
