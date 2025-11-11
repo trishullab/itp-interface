@@ -407,6 +407,31 @@ class SimpleLean4SyncExecutor:
                     nested_calc_count += 1
         return nested_calc_count
 
+    def _check_for_have_issues(self, tactics: List[LeanLineInfo], errors: List[ErrorInfo]) -> Optional[str]:
+        # See all goal related error messages
+        goal_related : List[ErrorInfo] = []
+        for error in errors:
+            if error.message.startswith(SimpleLean4SyncExecutor.unsolved_message):
+                # Check if the last tactic before this error was a 'have' tactic
+                goal_related.append(error)
+        for tactic in tactics:
+            if tactic.text.strip().startswith("have"):
+                # Check if there is any goal related error after this tactic
+                for error in goal_related:
+                    if error.position.line == tactic.end_line:
+                        # This is an unclosed `have` goal, check if the proof is attempted in the same line
+                        whole_have_tactic_decl_line = tactic.text.strip()
+                        if whole_have_tactic_decl_line.endswith("by"):
+                            # This is not a problem, proof is in the next line
+                            continue
+                        else:
+                            # The proof was attempted in the same line but did not close the goal                        
+                            return "Could not close the `have` goal properly." + \
+                            f"The proofs provided for `{whole_have_tactic_decl_line}` did not close the goal." + \
+                            " Try just introducing the `have` goal by itself first (by ending with `by`)," + \
+                            " and then provide the proof in the next line."
+        return None
+
     def _update_proof_context(self, idx : int, tactics: List[LeanLineInfo], errors: List[ErrorInfo]):
         proof_goal_messages: list[str] = []
         error_messages: list[str] = []
@@ -432,9 +457,14 @@ class SimpleLean4SyncExecutor:
             proof_is_running = True
         if len(error_messages) == 0:
             assert proof_is_running, f"Proof is not running but no error message is present, errors:\n{errors}, \nlemma: \n{self.curr_lemma_name}, \nlemma_stmt: \n{self.curr_lemma}, \nline_num: \n{self.line_num}"
-            self._nested_have_counts = self._get_nested_haves_count(tactics, errors)
-            self._nested_calc_counts = self._get_nested_calc_count(tactics, errors)
-            self._set_proof_context(proof_is_running, proof_goal_messages, last_tactic)
+            have_error_message = self._check_for_have_issues(tactics, errors)
+            if have_error_message is None:
+                self._nested_have_counts = self._get_nested_haves_count(tactics, errors)
+                self._nested_calc_counts = self._get_nested_calc_count(tactics, errors)
+                self._set_proof_context(proof_is_running, proof_goal_messages, last_tactic)
+            else:
+                self._backtrack_tactic_line(idx)
+                self.lean_error_messages = [have_error_message]
         else:
             goal_related : List[ErrorInfo] = []
             has_indentation_error = False
@@ -481,9 +511,9 @@ class SimpleLean4SyncExecutor:
                 " Please break down the tactic into smaller steps. And execute them one by one."
             ]
             return
-        if "sorry" in stmt and self._proof_running:
+        if ("sorry" in stmt or "admit" in stmt) and self._proof_running:
             # We don't need to run the sorry statements. This should be treated as a failed proof step
-            self.lean_error_messages = ["The tactic 'sorry' was found in the statement, this is not allowed"]
+            self.lean_error_messages = ["The tactic 'sorry/admit' was found in the statement, this is not allowed"]
             return
         elif len(stmt.strip()) == 0 and self._proof_running:
             # We don't need to run the empty statements. This should be treated as a failed proof step
