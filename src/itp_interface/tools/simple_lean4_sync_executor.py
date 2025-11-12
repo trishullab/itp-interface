@@ -285,7 +285,7 @@ class SimpleLean4SyncExecutor:
         tactics_so_far = self._get_tactics_so_far()
         assert len(tactics_so_far) > 0, "There should be at least one tactic so far"
         _ , _, theorem_stmt = self._last_theorem
-        return theorem_stmt + tactics_so_far
+        return theorem_stmt + "\n" + tactics_so_far + "\n"
 
     def _backtrack_tactic_line(self, idx: int):
         # identify the keys to remove
@@ -354,7 +354,8 @@ class SimpleLean4SyncExecutor:
     def _set_proof_context(self, 
         proof_is_running: bool, 
         proof_goal_messages: List[str],
-        last_tactic: LeanLineInfo):
+        last_tactic: LeanLineInfo,
+        errors: List[ErrorInfo]):
         self._proof_running = proof_is_running
         if self._proof_running:
             proof_goals = []
@@ -363,13 +364,23 @@ class SimpleLean4SyncExecutor:
             else:
                 proof_goals = [g_text for g_text in proof_goal_messages
                 if g_text is not None and len(g_text) > 0]
-            self.proof_context = self._parse_proof_context(proof_goals)
-            if self.proof_context == ProofContext.empty() and \
-                ((self._enforce_qed and last_tactic.text.strip() == "done") or not self._enforce_qed):
-                self._reset_proof_context()
+            if len(proof_goals) == 0 and len(errors) > 0:
+                # This means there are some errors which are similar to 
+                # masquerading as missing alignment or indentation errors
+                # Ask to fix indentation or add an extra return to get the states
+                self.lean_error_messages = [
+                    "The tactic seems to be correct but seems to have indentation issues."
+                    " Please check the proof steps and try adding appropriate indentation or add line breaks to fix the issue."
+                ]
+            else:
+                self.proof_context = self._parse_proof_context(proof_goals)
+                if self.proof_context == ProofContext.empty() and \
+                    ((self._enforce_qed and last_tactic.text.strip() == "done") or not self._enforce_qed):
+                    self._reset_proof_context()
+                self.lean_error_messages.clear()
         else:
             self.proof_context : ProofContext | None = None
-        self.lean_error_messages.clear()
+            self.lean_error_messages.clear()
     
     def _get_nested_haves_count(self, tactics: List[LeanLineInfo], errors: List[ErrorInfo]) -> int:
         # See all goal related error messages
@@ -461,7 +472,7 @@ class SimpleLean4SyncExecutor:
             if have_error_message is None:
                 self._nested_have_counts = self._get_nested_haves_count(tactics, errors)
                 self._nested_calc_counts = self._get_nested_calc_count(tactics, errors)
-                self._set_proof_context(proof_is_running, proof_goal_messages, last_tactic)
+                self._set_proof_context(proof_is_running, proof_goal_messages, last_tactic, errors)
             else:
                 self._backtrack_tactic_line(idx)
                 self.lean_error_messages = [have_error_message]
@@ -535,7 +546,7 @@ class SimpleLean4SyncExecutor:
         proof_should_run = False
         if theorem_started:
             # Load the theorem context at once
-            self.tactic_parser.parse(
+            full_parse_tacitcs, errors = self.tactic_parser.parse(
                 self._content_till_last_theorem_stmt,
                 fail_on_error=True,
                 parse_type=RequestType.CHKPT_TACTICS
@@ -549,7 +560,6 @@ class SimpleLean4SyncExecutor:
         while not code_was_executed:
             # Run the statement in tactic mode
             code = self._get_lean_code_with_tactics(idx, stmt)
-            self.logger.info(f"Running tactic on lean server at line {self.line_num}:\n{code}")
             tactics, error_info = self.tactic_parser.parse(
                 code,
                 fail_on_error=False,
