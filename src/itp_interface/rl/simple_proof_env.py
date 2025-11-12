@@ -288,6 +288,8 @@ class ProofEnv(Env):
 
     def collect_proof_search_result(self, additional_info: typing.Dict[str, typing.Any] = None) -> ProofSearchResult:
         assert self._loaded, "Env not loaded, call reset() first"
+        if not hasattr(self, 'proof_search_res'):
+            self.proof_search_res = None
         if self.proof_search_res is not None:
             return self.proof_search_res
         self.goal_end_time = time.time()
