@@ -1,7 +1,6 @@
 import unittest
 import os
 from itp_interface.tools.tactic_parser import build_lean4_project, build_tactic_parser_if_needed
-from itp_interface.tools.simple_lean4_sync_executor import SimpleLean4SyncExecutor
 
 def pretty_print(s1, s2, proof_step, done):
     print(f"Current Goal:")
@@ -287,6 +286,7 @@ class Lean4Test(unittest.TestCase):
 "_ = (n + 1)*(n + 1) := by \n   rw [Nat.right_distrib n 1 (n + 1)]"
 ]
         with env:
+            env.set_max_proof_step_length(10000)
             proof_was_finished = False
             for proof_step in proof_steps:
                 state, _, next_state, _, done, info = env.step(ProofAction(
@@ -347,6 +347,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
 "_ = (n + 1)*(n + 1) := by \n   rw [Nat.right_distrib n 1 (n + 1)]"
 ]
         with env:
+            env.set_max_proof_step_length(10000)
             proof_was_finished = False
             for proof_step in proof_steps:
                 state, _, next_state, _, done, info = env.step(ProofAction(
@@ -415,6 +416,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
 "done"
 ]
         with env:
+            env.set_max_proof_step_length(10000)
             proof_finished = False
             for proof_step in proof_steps:
                 state, _, next_state, _, done, info = env.step(ProofAction(
@@ -523,18 +525,19 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
 'rw [Nat.gcd_rec]',
 'rw [Nat.gcd_rec]',
 'have eq₂ : (21 * n + 4) % (14 * n + 3) = 7 * n + 1 := by',
-'    have eq₁ : 21 * n + 4 = (14 * n + 3) + (7 * n + 1) := by ring',
-'    rw [eq₁, Nat.add_mod, Nat.mod_self, zero_add]',
-'    have h₂ : 7 * n + 1 < 14 * n + 3 := by', 'linarith',
-'    rw [Nat.mod_eq_of_lt]',
-'    rw [Nat.mod_eq_of_lt]',
-'    exact h₂',
-'    rw [Nat.mod_eq_of_lt]',
-'    exact h₂',
-'    exact h₂',
+'  have eq₁ : 21 * n + 4 = (14 * n + 3) + (7 * n + 1) := by ring',
+'  rw [eq₁, Nat.add_mod, Nat.mod_self, zero_add]',
+'  have h₂ : 7 * n + 1 < 14 * n + 3 := by', 'linarith',
+'  rw [Nat.mod_eq_of_lt]',
+'  rw [Nat.mod_eq_of_lt]',
+'  exact h₂',
+'  rw [Nat.mod_eq_of_lt]',
+'  exact h₂',
+'  exact h₂',
 'rw [eq₂]'
         ]
         with env:
+            env.set_max_proof_step_length(10000)
             for proof_step in proof_steps:
                 state, m_action, next_state, _, done, info = env.step(ProofAction(
                     ProofAction.ActionType.RUN_TACTIC, 
@@ -675,10 +678,9 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
             assert proof_was_finished, "Proof was not finished"
 
 def main():
-    SimpleLean4SyncExecutor.max_threshold_for_tactic_length = 10000
-    unittest.main()
+    # unittest.main()
     # Run only the Lean 4 tests
-    # t = Lean4Test()
+    t = Lean4Test()
     # t.test_simple_lean4_multiline_multigoal()
     # t.test_simple_lean4()
     # t.test_lean4_backtracking()
@@ -686,7 +688,7 @@ def main():
     # t.test_simple_lean_calc()
     # t.test_simple_lean_calc_with_validation()
     # t.test_simple_lean4_with_error()
-    # t.test_simple_lean4_have_test()
+    t.test_simple_lean4_have_test()
     # t.test_simple_lean_enforce_done_test()
 
 

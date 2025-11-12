@@ -115,6 +115,7 @@ class SimpleLean4SyncExecutor:
         self._last_tactic_was_modified = False
         self._last_modified_tactic : str | None = None
         self._recursion_depth = 0
+        self.max_threshold_for_tactic_length = 575 # Max 575 characters for a tactic
         if self._enable_search:
             pass
         pass
@@ -166,6 +167,7 @@ class SimpleLean4SyncExecutor:
         self._last_tactic_was_modified = False
         self._last_modified_tactic : str | None = None
         self._recursion_depth = 0
+        self.max_threshold_for_tactic_length = 575 # Max 575 characters for a tactic
         if self._enable_search:
             pass
         pass
@@ -394,7 +396,7 @@ class SimpleLean4SyncExecutor:
             if tactic.text.strip().startswith("have"):
                 # Check if there is any goal related error after this tactic
                 for error in goal_related:
-                    if error.position.line == tactic.end_line:
+                    if error.position.line == tactic.end_line or error.position.line - 1 == tactic.end_line:
                         nested_have_count += 1
         return nested_have_count
     
@@ -515,10 +517,10 @@ class SimpleLean4SyncExecutor:
     def _run_stmt_on_lean_server(self, idx : int, stmt: str, theorem_started: bool = False):
         assert self.tactic_parser is not None, "Tactic parser is not initialized"
         assert self._content_till_last_theorem_stmt is not None, "Content till last theorem statement should not be None"
-        if len(stmt) > SimpleLean4SyncExecutor.max_threshold_for_tactic_length:
+        if len(stmt) > self.max_threshold_for_tactic_length:
             self.lean_error_messages = [
                 "The tactic length exceeds the maximum threshold of"
-                f" {SimpleLean4SyncExecutor.max_threshold_for_tactic_length} characters."
+                f" {self.max_threshold_for_tactic_length} characters."
                 " Please break down the tactic into smaller steps. And execute them one by one."
             ]
             return

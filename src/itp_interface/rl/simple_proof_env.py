@@ -286,8 +286,10 @@ class ProofEnv(Env):
         self.logger.info("-"*50)
         pass
 
-    def dump_proof(self, dump_file_name: str = None, additional_info: typing.Dict[str, typing.Any] = None):
+    def collect_proof_search_result(self, additional_info: typing.Dict[str, typing.Any] = None) -> ProofSearchResult:
         assert self._loaded, "Env not loaded, call reset() first"
+        if self.proof_search_res is not None:
+            return self.proof_search_res
         self.goal_end_time = time.time()
         self.time_taken = self.goal_end_time - self.goal_start_time
         proof_steps = [TheoremProvingTrainingDataFormat(proof_steps=tactic.proof_steps) for _, tactic in self._p_tree.tactics]
@@ -306,6 +308,27 @@ class ProofEnv(Env):
             longest_success_path=-1,
             additional_info=additional_info,
             language=self.language)
+        return self.proof_search_res
+
+    def max_proof_step_length(self) -> int|None:
+        assert self._loaded, "Env not loaded, call reset() first"
+        # Only happens for Lean 4
+        if self.language != ProofAction.Language.LEAN4:
+            return None
+        assert isinstance(self._dynamic_proof_executor, DynamicLean4ProofExecutor), "Dynamic proof executor must be of type DynamicLean4ProofExecutor"
+        return self._dynamic_proof_executor.max_threshold_for_tactic_length
+    
+    def set_max_proof_step_length(self, max_length: int):
+        assert self._loaded, "Env not loaded, call reset() first"
+        # Only happens for Lean 4
+        if self.language != ProofAction.Language.LEAN4:
+            raise NotImplementedError("set_max_proof_step_length is only implemented for Lean 4")
+        assert isinstance(self._dynamic_proof_executor, DynamicLean4ProofExecutor), "Dynamic proof executor must be of type DynamicLean4ProofExecutor"
+        self._dynamic_proof_executor.max_threshold_for_tactic_length = max_length
+        
+    def dump_proof(self, dump_file_name: str = None, additional_info: typing.Dict[str, typing.Any] = None):
+        assert self._loaded, "Env not loaded, call reset() first"
+        self.proof_search_res = self.collect_proof_search_result(additional_info=additional_info)
         self.logger.info(f"Dumping proof search result:\n {self.proof_search_res}")
         if dump_file_name is not None:
             opening_mode = 'a' if os.path.exists(dump_file_name) else 'w'
