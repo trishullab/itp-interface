@@ -747,7 +747,26 @@ if __name__ == "__main__":
         print_tactics(tactics)
         if errors:
             print(f"Error: {errors}")
+
     p_path = "/home/amthakur/Projects/copra/data/test/miniF2F-lean4"
+    with TacticParser(project_path=p_path) as parser:
+        # Example 1a: Simple proof with multiple tactics
+        lean_code = """import MiniF2F.Minif2fImport
+open BigOperators Real Nat Topology
+
+ theorem amc12_2000_p1
+  (i m o : ℕ)
+  (h₀ : i ≠ m ∧ m ≠ o ∧ o ≠ i)
+  (h₁ : i*m*o = 2001) :
+  i+m+o ≤ 671 :=by
+have hprimes : i ∈ {3, 23, 29} ∧ m ∈ {3, 23, 29} ∧ o ∈ {3, 23, 29} := by
+"""        
+        print("Parsing example 1a...")
+        tactics, errors = parser.parse(lean_code, fail_on_error=False)
+        print_tactics(tactics)
+        if errors:
+            print(f"Error: {errors}")
+
     with TacticParser(project_path=p_path) as parser:
         # Example 1a: Simple proof with multiple tactics
         lean_code = """
@@ -762,6 +781,27 @@ theorem mathd_algebra_33
   z / x = 7 / 25 :=
 by
 have h1': x = 5 * y / 2 := by ring
+"""
+        print("Parsing example 1a...")
+        tactics, errors = parser.parse(lean_code, fail_on_error=False)
+        print_tactics(tactics)
+        if errors:
+            print(f"Error: {errors}")
+    
+    with TacticParser(project_path=p_path) as parser:
+        # Example 1a: Simple proof with multiple tactics
+        lean_code = """import MiniF2F.Minif2fImport
+open BigOperators Real Nat Topology
+
+theorem mathd_numbertheory_495
+  (a b : ℕ)
+  (h₀ : 0 < a ∧ 0 < b)
+  (h₁ : a % 10 = 2)
+  (h₂ : b % 10 = 4)
+  (h₃ : Nat.gcd a b = 6) :
+  108 ≤ Nat.lcm a b :=
+by
+apply? 
 """
         print("Parsing example 1a...")
         tactics, errors = parser.parse(lean_code, fail_on_error=False)
@@ -793,7 +833,7 @@ example (p q r: Prop) (h1: p → q) (h2: q → r) : p → r := by
         lean_code2 = "example (r: Nat) (p q : Prop) (hp : p) (hq : q) : p ∧ q := by\n  apply And.intro\n  exact hp\n  exact hq"
 
         print("\nParsing example 2...")
-        tactics2, errors = parser.parse(lean_code2)
+        tactics2, errors = parser.parse(lean_code2, fail_on_error=False)
         print_tactics(tactics2)
         if errors:
             print(f"Error: {errors}")
