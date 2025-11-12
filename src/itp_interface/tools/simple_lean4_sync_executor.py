@@ -524,6 +524,12 @@ class SimpleLean4SyncExecutor:
                 " Please break down the tactic into smaller steps. And execute them one by one."
             ]
             return
+        if '✝' in stmt:
+            self.lean_error_messages = [
+                "The tactic tries to use hypothesis ending with '✝', which are hidden."
+                " Please use the `rename_i` tactic to rename such hypotheses, before using them."
+            ]
+            return
         if ("sorry" in stmt or "admit" in stmt) and self._proof_running:
             # We don't need to run the sorry statements. This should be treated as a failed proof step
             self.lean_error_messages = ["The tactic 'sorry/admit' was found in the statement, this is not allowed"]
