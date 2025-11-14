@@ -10,8 +10,9 @@ import typing
 import uuid
 from itp_interface.tools.simple_lean4_sync_executor import SimpleLean4SyncExecutor
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
-from itp_interface.tools.training_data_format import MergableCollection, TrainingDataMetadataFormat, ExtractionDataCollection, TheoremProvingTrainingDataFormat
+from itp_interface.tools.training_data_format import MergableCollection, TrainingDataMetadataFormat, ExtractionDataCollection
 from itp_interface.tools.training_data import TrainingData, DataLayoutFormat
+from itp_interface.tools.tactic_parser import FileDependencyAnalysis
 
 class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
     def __init__(self,
@@ -62,13 +63,19 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
         self.logger.info(f"Extracted {len(file_dep_analyses)} FileDependencyAnalysis objects from {file_namespace}")
         self.logger.info(f"file_dep_analyses: {file_dep_analyses}")
         assert len(file_dep_analyses) == 1, "Expected exactly one FileDependencyAnalysis object"
-        file_dep_analysis = file_dep_analyses[0]
-        for decls in file_dep_analysis.declarations:
-            line_info = decls.decl_info
-            if theorems is not None and line_info.name not in theorems:
-                continue
-            training_data.merge(decls)
-            cnt += 1
+        for fda in file_dep_analyses:
+            for decl in fda.declarations:
+                new_fda = FileDependencyAnalysis(
+                file_path=fda.file_path,
+                module_name=fda.module_name,
+                imports=fda.imports,
+                declarations=[])
+                line_info = decl.decl_info
+                if theorems is not None and line_info.name not in theorems:
+                    continue
+                new_fda.declarations.append(decl)
+                training_data.merge(new_fda)
+                cnt += 1
         training_data.meta.last_proof_id = theorem_id
         self.logger.info(f"===============Finished processing {file_namespace}=====================")
         self.logger.info(f"Total declarations processed in this transform: {cnt}")

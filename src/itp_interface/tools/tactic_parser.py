@@ -106,6 +106,7 @@ class LeanLineInfo(BaseModel):
     name: Optional[str] = None
     doc_string: Optional[str] = None
     namespace: Optional[str] = None
+    proof: Optional[str] = None  # Full proof text (if available)
 
     def __repr__(self) -> str:
         return f"LeanLineInfo(text={self.text!r}, line={self.line}, column={self.column})"
@@ -188,7 +189,8 @@ class DeclWithDependencies(BaseModel):
             decl_type=decl_dict.get('declType'),
             name=decl_dict.get('name'),
             doc_string=decl_dict.get('docString'),
-            namespace=decl_dict.get('namespace')
+            namespace=decl_dict.get('namespace'),
+            proof=decl_dict.get('proof')
         )
 
         # Parse dependencies
@@ -248,6 +250,23 @@ class FileDependencyAnalysis(BaseModel):
 
     def __repr__(self) -> str:
         return f"FileDependencyAnalysis({self.module_name}, {len(self.declarations)} decls)"
+    
+    def to_json(self, indent=0) -> str:
+        if indent == 0:
+            return self.model_dump_json()
+        else:
+            return self.model_dump_json(indent=indent)
+    
+    @staticmethod
+    def load_from_string(json_text: str) -> 'FileDependencyAnalysis':
+        return FileDependencyAnalysis.model_validate_json(json_text)
+    
+    @staticmethod
+    def load_from_file(file_path: str) -> 'FileDependencyAnalysis':
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = f.read()
+        return FileDependencyAnalysis.load_from_string(data)
+    
 
 # Create an enum for parsing request type
 class RequestType(Enum):
@@ -737,6 +756,19 @@ def print_tactics(tactics: List[LeanLineInfo], logger: Optional[logging.Logger] 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     project_path = str(Path(__file__).parent.parent.parent / "data" / "test" / "lean4_proj")
+
+    with TacticParser() as parser:
+        # Example 0: Empty proof
+        lean_code = """theorem test : ∀ {a : Nat}, a + 0 = a
+| 0 => by simp
+| n + 1  => by simp
+"""
+
+        print("Parsing example 0...")
+        tactics, errors = parser.parse(lean_code)
+        print_tactics(tactics)
+        if errors:
+            print(f"Error: {errors}")
 
     with TacticParser() as parser:
         # Example 1: Simple proof
