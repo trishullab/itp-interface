@@ -8,6 +8,6 @@ dfs_metadata_filename_for_retrieval:
 is_extraction_request: true
 datasets:
   - project: src/data/test/lean4_proj
-    files:
-      - path: Lean4Proj/Basic.lean
-        declarations: "*"
+    files: []
+    exclude_files:
+      - src/data/test/lean4_proj/.lake

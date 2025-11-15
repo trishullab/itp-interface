@@ -79,6 +79,7 @@ class ExtractFile(object):
 class EvalDataset(object):
     project: str
     files: typing.Union[typing.List[EvalFile], typing.List[ExtractFile]]
+    exclude_files: typing.List[str] = field(default_factory=list)
 
 @dataclass_json
 @dataclass
@@ -135,7 +136,6 @@ class EvalProofResults(object):
 
 
 def parse_config(cfg):
-    is_extraction_request = False
     env_settings_cfg = cfg["env_settings"]
     env_settings = EnvSettings(
         name=env_settings_cfg["name"],
@@ -179,7 +179,6 @@ def parse_config(cfg):
                 eval_files.append(EvalFile(
                     path=file_cfg["path"],
                     theorems=theorems))
-                is_extraction_request = False
             elif "declarations" in file_cfg:
                 declarations = None
                 if type(file_cfg["declarations"]) == str:
@@ -189,12 +188,12 @@ def parse_config(cfg):
                 eval_files.append(ExtractFile(
                     path=file_cfg["path"],
                     declarations=declarations))
-                is_extraction_request = True
             else:
                 raise ValueError(f"File config must have either 'theorems' or 'declarations': {file_cfg}")
         eval_datasets.append(EvalDataset(
             project=dataset_cfg["project"],
-            files=eval_files))
+            files=eval_files,
+            exclude_files=dataset_cfg.get("exclude_files", [])))
     language = ProofAction.Language(benchmark_cfg["language"])
     benchmark = EvalBenchmark(
         name=benchmark_cfg["name"],
@@ -205,6 +204,6 @@ def parse_config(cfg):
         few_shot_metadata_filename_for_retrieval=benchmark_cfg["few_shot_metadata_filename_for_retrieval"],
         dfs_data_path_for_retrieval=benchmark_cfg["dfs_data_path_for_retrieval"],
         dfs_metadata_filename_for_retrieval=benchmark_cfg["dfs_metadata_filename_for_retrieval"],
-        is_extraction_request=is_extraction_request and benchmark_cfg.get("is_extraction_request", False),
+        is_extraction_request=benchmark_cfg.get("is_extraction_request", False),
         setup_cmds=benchmark_cfg["setup_cmds"] if "setup_cmds" in benchmark_cfg else [])
     return Experiments(env_settings=env_settings, run_settings=eval_settings, benchmark=benchmark)
