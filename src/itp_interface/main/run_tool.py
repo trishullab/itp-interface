@@ -607,4 +607,6 @@ def main(cfg):
 if __name__ == "__main__":
     # from itp_interface.tools.ray_utils import RayUtils
     # RayUtils.init_ray(num_of_cpus=20, object_store_memory_in_gb=50, memory_in_gb=1, runtime_env={"working_dir": root_dir, "excludes": [".log", "data"]})
+    from itp_interface.tools.ray_utils import RayUtils
+    RayUtils.init_ray(num_of_cpus=20, object_store_memory_in_gb=100, memory_in_gb=50)
     main()

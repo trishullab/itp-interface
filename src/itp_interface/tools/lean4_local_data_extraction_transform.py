@@ -23,12 +23,14 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
                 buffer_size : int = 10000,
                 logger = None,
                 max_parallelism : int = 4,
-                db_path : typing.Optional[str] = None):
+                db_path : typing.Optional[str] = None,
+                enable_file_export: bool = True):
         super().__init__(TrainingDataGenerationType.LOCAL, buffer_size, logger)
         self.depth = depth
         self.max_search_results = max_search_results
         self.max_parallelism = max_parallelism
         self.db_path = db_path  # Store path, don't create connection yet (for Ray actors)
+        self.enable_file_export = enable_file_export
 
     def get_meta_object(self) -> TrainingDataMetadataFormat:
         return TrainingDataMetadataFormat(
@@ -149,19 +151,19 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
                         timestamp = str(int(uuid.uuid1().time_low))
                         random_id = str(uuid.uuid4())
                         decl_id = f"{timestamp}_{random_id}"
-
-                    new_fda = FileDependencyAnalysis(
-                    file_path=str(fda_rel_path),
-                    module_name=fda_module_name,
-                    imports=fda.imports,
-                    declarations=[])
-                    line_info = decl.decl_info
-                    if theorems is not None and line_info.name not in theorems:
-                        continue
-                    decl.decl_id = decl_id
-                    new_fda.declarations.append(decl)
-                    training_data.merge(new_fda)
-                    cnt += 1
+                    if self.enable_file_export:
+                        new_fda = FileDependencyAnalysis(
+                        file_path=str(fda_rel_path),
+                        module_name=fda_module_name,
+                        imports=fda.imports,
+                        declarations=[])
+                        line_info = decl.decl_info
+                        if theorems is not None and line_info.name not in theorems:
+                            continue
+                        decl.decl_id = decl_id
+                        new_fda.declarations.append(decl)
+                        training_data.merge(new_fda)
+                        cnt += 1
                     last_decl_id = decl_id
 
             if last_decl_id:
