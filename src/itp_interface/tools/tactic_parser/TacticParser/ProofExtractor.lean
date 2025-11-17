@@ -83,7 +83,8 @@ def get_in_between_content (fileContent : String) (startLine : Nat) (endLine : N
 /-- Extract proof from a declaration by testing candidate delimiters -/
 unsafe def extractProofFromDecl
   (declInfo : DeclInfo)
-  (cmdState : Command.State) : IO DeclInfo := do
+  (cmdState : Command.State)
+  (extra_content: Option String := none) : IO DeclInfo := do
   -- Only process theorem, lemma, example
   if !is_proof_extraction_needed declInfo then
     panic! s!"extractProofFromDecl called on non-proof decl: {declInfo.declType}"
@@ -101,14 +102,20 @@ unsafe def extractProofFromDecl
     -- IO.println s!"beforeDelimiter:\n{beforeDelimiter}\n---"
 
     -- Build test text with full context
-    let statementOnly := match candidate.delimiterType with
+    let mut statementOnly := match candidate.delimiterType with
       | "|" => beforeDelimiter.trim ++ " := sorry"
       | ":=" => beforeDelimiter ++ " := sorry"
       | "where" => beforeDelimiter ++ " := sorry"
       | _ => beforeDelimiter ++ " := sorry"
 
-    -- IO.println s!"statementOnly:\n{statementOnly}\n---"
 
+    -- If extra content is provided, prepend it
+    statementOnly :=
+      match extra_content with
+      | some extra => extra ++ (if extra.endsWith "\n" then statementOnly else "\n" ++ statementOnly)
+      | none => statementOnly
+
+    -- IO.println s!"statementOnly:\n{statementOnly}\n---"
     -- Try to parse
     let success ← tryParseSuccessfully statementOnly cmdState
     if success then
@@ -125,18 +132,17 @@ unsafe def extractProofFromDecl
 
 unsafe def parse_between
 (fileContent : String)
-(decl: DeclInfo)
 (prev: Nat)
 (next: Nat)
 (cmd_state : Option Command.State)
-: IO (Nat × CheckpointedParseResult) := do
+: IO CheckpointedParseResult := do
     -- IO.println s!"Extracting proof for segment between lines {prev} and {next}"
     let contextBeforeDecl := get_in_between_content fileContent prev next
     -- IO.println s!"Processing declaration at line {decl.startPos.line}-{decl.endPos.line}"
     -- IO.println s!"Declaration text:\n{decl.text}\n---"
     -- IO.println s!"--- Context Before Decl ----\n{contextBeforeDecl}\n--- Context Before Decl ----\n"
     let chkpt_parse_res ← parseTactics contextBeforeDecl none cmd_state
-    return (next, chkpt_parse_res)
+    return chkpt_parse_res
 
 /-- Extract proofs from multiple declarations -/
 unsafe def extractProofsFromDecls (decls : Array DeclInfo) (fileContent : String) : IO (Array DeclInfo) := do
@@ -144,61 +150,27 @@ unsafe def extractProofsFromDecls (decls : Array DeclInfo) (fileContent : String
   let mut prev := 0
   let mut cmd_state : Option Command.State := none
   let mut next := 0
+  let mut extra_content : Option String := none
   for decl in decls do
     if is_proof_extraction_needed decl then
       next := decl.startPos.line - 1
-      let tup ← parse_between fileContent decl prev next cmd_state
-      let chkpt_parse_res := tup.2
+      let chkpt_parse_res ← parse_between fileContent prev next cmd_state
       -- IO.println s!"--- Context Before Decl ----\n{contextBeforeDecl}\n--- Context Before Decl ----\n"
-      let parse_res := chkpt_parse_res.1
-      let mut decl_fixed := decl
+      let parse_res := chkpt_parse_res.parseResult
       if parse_res.errors.size > 0 then
-        -- we should reparse with 1 less line to avoid partial lines
-        let last_line_num := decl.startPos.line - 1
-        let new_decl := { decl with startPos := { decl.startPos with line := last_line_num } }
-        next := last_line_num - 1
-        -- IO.println s!"Reparsing context before declaration at line {decl.startPos.line} with one less line"
-        let tup ← parse_between fileContent decl prev next cmd_state
-        let chkpt_parse_res := tup.2
-        let mut missing_decl_text := get_in_between_content fileContent last_line_num last_line_num
-        missing_decl_text := missing_decl_text.trim
-        decl_fixed := { new_decl with text := missing_decl_text ++ "\n" ++ decl.text }
-        if chkpt_parse_res.parseResult.errors.size > 0 then
-          IO.println s!"Reparsing failed again for context before declaration at line {decl.startPos.line}-{decl.endPos.line}"
-          IO.println s!"Errors:"
-          for error in chkpt_parse_res.parseResult.errors do
-            IO.println s!"Error while parsing context before declaration at line {decl.startPos.line}:
-              {error.message} at {error.position.line}:{error.position.column}"
-          IO.println s!"--- Context Before Decl ----\n{get_in_between_content fileContent prev next}\n--- Context Before Decl ----\n"
-          IO.println s!"Decl text:\n{decl_fixed.text}\n---"
-          panic! "Failed to parse context before declaration after reparsing"
-        cmd_state := chkpt_parse_res.2
-        prev := next
-        next := tup.1
+        -- supply the extra content to compile from
+        extra_content := get_in_between_content fileContent prev next
+        -- IO.println s!"Re-parsing declaration at lines: \n{extra_content.get!}"
+        -- IO.println s!"\nDeclaration text:\n{decl.text}\n---"
+        -- DO NOT update cmd_state yet
       else
-        cmd_state := chkpt_parse_res.2
-        prev := next
-        next := tup.1
-      -- for error in parse_res.errors do
-      --   IO.println s!"Error while parsing context before declaration at line {decl.startPos.line}: {error.message} at {error.position.line}:{error.position.column}"
-      -- if parse_res.errors.size > 0 then
-      --   IO.println s!"--- Context Before Decl ----\n{contextBeforeDecl}\n--- Context Before Decl ----\n"
-      --   IO.println s!"Failed to parse context before declaration at line {decl.startPos.line}"
-      --   panic! "Failed to parse context"
-      -- IO.println s!"Context before decl:\n{contextBeforeDecl}\n---"
-      -- let cmd_state_error_pair ← get_cmd_state contextBeforeDecl cmd_state
-      -- cmd_state := cmd_state_error_pair.1
-      -- let errors := cmd_state_error_pair.2
-      -- for err in errors do
-      --   IO.println s!"Error while updating cmd_state: {err.message} at {err.position.line}:{err.position.column}"
-      -- if cmd_state.isNone ∨ errors.size > 0 then
-      --   IO.println s!"Failed to update cmd_state before processing declaration at line {decl.startPos.line}"
-      --   panic! "Failed to update cmd_state"
-      -- else
+        cmd_state := chkpt_parse_res.chkptState
+        extra_content := none
+        prev := next + 1
       let cmd_st ← match cmd_state with
         | some st => pure st
         | none => panic! "Failed to get valid cmd_state before processing declaration"
-      let processed ← extractProofFromDecl decl_fixed cmd_st
+      let processed ← extractProofFromDecl decl cmd_st extra_content
       result := result.push processed
     else
       result := result.push decl
