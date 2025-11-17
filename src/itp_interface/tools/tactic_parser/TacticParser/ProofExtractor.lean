@@ -23,8 +23,8 @@ instance : Ord DelimiterCandidate where
   compare a b := compare a.position b.position
 
 /-- Try to parse a text snippet and return true if it parses without errors -/
-def tryParseSuccessfully (text : String) (cmdState : Command.State): IO Bool := do
-  let chkpt_result ← parseTactics text none (some cmdState)
+def tryParseSuccessfully (text : String) (cmdState : Option Command.State): IO Bool := do
+  let chkpt_result ← parseTactics text none cmdState
   let parse_res := chkpt_result.1
   let new_cmd_state := chkpt_result.2
   pure (parse_res.errors.size == 0 ∧ new_cmd_state.isSome)
@@ -83,7 +83,7 @@ def get_in_between_content (fileContent : String) (startLine : Nat) (endLine : N
 /-- Extract proof from a declaration by testing candidate delimiters -/
 unsafe def extractProofFromDecl
   (declInfo : DeclInfo)
-  (cmdState : Command.State)
+  (cmdState : Option Command.State)
   (extra_content: Option String := none) : IO DeclInfo := do
   -- Only process theorem, lemma, example
   if !is_proof_extraction_needed declInfo then
@@ -157,7 +157,7 @@ unsafe def extractProofsFromDecls (decls : Array DeclInfo) (fileContent : String
       let chkpt_parse_res ← parse_between fileContent prev next cmd_state
       -- IO.println s!"--- Context Before Decl ----\n{contextBeforeDecl}\n--- Context Before Decl ----\n"
       let parse_res := chkpt_parse_res.parseResult
-      if parse_res.errors.size > 0 then
+      if parse_res.errors.size > 0 ∨ chkpt_parse_res.chkptState.isNone then
         -- supply the extra content to compile from
         extra_content := get_in_between_content fileContent prev next
         -- IO.println s!"Re-parsing declaration at lines: \n{extra_content.get!}"
@@ -167,10 +167,10 @@ unsafe def extractProofsFromDecls (decls : Array DeclInfo) (fileContent : String
         cmd_state := chkpt_parse_res.chkptState
         extra_content := none
         prev := next + 1
-      let cmd_st ← match cmd_state with
-        | some st => pure st
-        | none => panic! "Failed to get valid cmd_state before processing declaration"
-      let processed ← extractProofFromDecl decl cmd_st extra_content
+      -- let cmd_st ← match cmd_state with
+      --   | some st => pure st
+      --   | none => panic! "Failed to get valid cmd_state before processing declaration"
+      let processed ← extractProofFromDecl decl cmd_state extra_content
       result := result.push processed
     else
       result := result.push decl

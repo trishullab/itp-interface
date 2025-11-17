@@ -753,6 +753,14 @@ def print_tactics(tactics: List[LeanLineInfo], logger: Optional[logging.Logger] 
         else:
             print(msg)
 
+def print_errors(errors: List[ErrorInfo], logger: Optional[logging.Logger] = None):
+    for error in errors:
+        msg = f"Error at Line {error.position.line}, Col {error.position.column}: {error.message}"
+        if logger:
+            logger.error(msg)
+        else:
+            print(msg)
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     project_path = str(Path(__file__).parent.parent.parent / "data" / "test" / "lean4_proj")
@@ -770,6 +778,16 @@ if __name__ == "__main__":
         if errors:
             print(f"Error: {errors}")
 
+    pp = "src/data/test/Mathlib"
+
+    with TacticParser(project_path=pp) as parser:
+        with open(os.path.join(pp, "Basic.lean")) as f:
+            lean_code = f.read()
+        tactics, errors = parser.parse(lean_code, fail_on_error=False)
+        print_tactics(tactics)
+        if errors:
+            print_errors(errors)
+
     with TacticParser() as parser:
         # Example 1: Simple proof
         lean_code = "example : True := by trivial"
@@ -778,7 +796,7 @@ if __name__ == "__main__":
         tactics, errors = parser.parse(lean_code)
         print_tactics(tactics)
         if errors:
-            print(f"Error: {errors}")
+            print_errors(errors)
 
     p_path = "/home/amthakur/Projects/copra/data/test/miniF2F-lean4"
     with TacticParser(project_path=p_path) as parser:
@@ -797,7 +815,7 @@ have hprimes : i ∈ {3, 23, 29} ∧ m ∈ {3, 23, 29} ∧ o ∈ {3, 23, 29} := 
         tactics, errors = parser.parse(lean_code, fail_on_error=False)
         print_tactics(tactics)
         if errors:
-            print(f"Error: {errors}")
+            print_errors(errors)
 
     with TacticParser(project_path=p_path) as parser:
         # Example 1a: Simple proof with multiple tactics
@@ -818,7 +836,7 @@ have h1': x = 5 * y / 2 := by ring
         tactics, errors = parser.parse(lean_code, fail_on_error=False)
         print_tactics(tactics)
         if errors:
-            print(f"Error: {errors}")
+            print_errors(errors)
     
     with TacticParser(project_path=p_path) as parser:
         # Example 1a: Simple proof with multiple tactics
@@ -839,7 +857,7 @@ apply?
         tactics, errors = parser.parse(lean_code, fail_on_error=False)
         print_tactics(tactics)
         if errors:
-            print(f"Error: {errors}")
+            print_errors(errors)
 
     with TacticParser() as parser:
         # Example 1b: Simple have proofs
@@ -856,7 +874,7 @@ example (p q r: Prop) (h1: p → q) (h2: q → r) : p → r := by
         tactics, errors = parser.parse(lean_code, fail_on_error=False)
         print_tactics(tactics)
         if errors:
-            print(f"Error: {errors}")
+            print_errors(errors)
 
 
 
@@ -868,7 +886,7 @@ example (p q r: Prop) (h1: p → q) (h2: q → r) : p → r := by
         tactics2, errors = parser.parse(lean_code2, fail_on_error=False)
         print_tactics(tactics2)
         if errors:
-            print(f"Error: {errors}")
+            print_errors(errors)
         
         # Check if linarith is parsed correctly
         lean_code3 = """
@@ -885,7 +903,7 @@ b = 5:= by
         tactics3, errors = parser.parse(lean_code3)
         print_tactics(tactics3)
         if errors:
-            print(f"Error: {errors}")
+            print_errors(errors)
     
     file_path = str(Path(__file__).parent.parent.parent / "data" / "test" / "lean4_proj" / "Lean4Proj" / "Basic.lean")
 
@@ -895,7 +913,7 @@ b = 5:= by
         tactics4, errors = parser.parse_file(file_path)
         print_tactics(tactics4)
         if errors:
-            print(f"Error: {errors}")
+            print_errors(errors)
 
     with TacticParser(project_path=project_path) as parser:
         # Example 2: Multiline with params
@@ -905,7 +923,7 @@ b = 5:= by
         tactics5, errors = parser.parse(lean_code4)
         print_tactics(tactics5)
         if errors:
-            print(f"Error: {errors}")
+            print_errors(errors)
     
     with TacticParser(project_path=project_path) as parser:
         # Example 6: Parse tactics from file with multiple theorems
@@ -913,7 +931,7 @@ b = 5:= by
         tactics6, errors = parser.parse(lean_code3 + "\n" + lean_code4, parse_type=RequestType.PARSE_TACTICS)
         print_tactics(tactics6)
         if errors:
-            print(f"Error: {errors}")
+            print_errors(errors)
         
     with TacticParser(project_path=project_path) as parser:
         # Example 7: Parse tactics which are wrong
@@ -922,7 +940,7 @@ b = 5:= by
         tactics7, errors = parser.parse(lean_code5, fail_on_error=False)
         print_tactics(tactics7)
         if errors:
-            print(f"Error: {errors}")
+            print_errors(errors)
     
     with TacticParser(project_path=project_path) as parser:
         # Example 8: Parse tactics just before `by`
@@ -931,7 +949,7 @@ b = 5:= by
         tactics8, errors = parser.parse(lean_code8, fail_on_error=False)
         print_tactics(tactics8)
         if errors:
-            print(f"Error: {errors}")
+            print_errors(errors)
     
     with TacticParser(project_path=project_path) as parser:
         # Example 9: Parse tactics just before `by`
@@ -940,7 +958,7 @@ b = 5:= by
         tactics9, errors = parser.parse(lean_code9, fail_on_error=False)
         print_tactics(tactics9)
         if errors:
-            print(f"Error: {errors}")
+            print_errors(errors)
     
     with TacticParser(project_path=project_path) as parser:
         # Example 10: Test checkpointing
@@ -958,7 +976,7 @@ linarith
         tactics10, errors = parser.parse(lean_code10, fail_on_error=True, parse_type=RequestType.CHKPT_TACTICS)
         print_tactics(tactics10)
         if errors:
-            print(f"Error: {errors}")
+            print_errors(errors)
         # Now just execute from the checkpoint
         lean_code10b = """
 theorem temp2: 1 + 2 = 3 :=
@@ -970,7 +988,7 @@ have h_temp := temp1
         print_tactics(tactics10b)
         if errors:
             # The error should contain h_temp
-            print(f"Error: {errors}")
+            print_errors(errors)
         
         print("\nBreaking checkpoint...")
         new_lean_code10c = lean_code10 + lean_code10b
@@ -978,4 +996,4 @@ have h_temp := temp1
         # ^This will reimport everything all run all theorems from scratch
         print_tactics(tactics10c)
         if errors:
-            print(f"Error: {errors}")
+            print_errors(errors)
