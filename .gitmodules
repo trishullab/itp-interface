@@ -13,3 +13,6 @@
 [submodule "src/itp_interface/tools/repl"]
 	path = src/itp_interface/tools/repl
 	url = https://github.com/amit9oct/repl.git
+[submodule "src/data/test/batteries"]
+	path = src/data/test/batteries
+	url = https://github.com/leanprover-community/batteries.git
