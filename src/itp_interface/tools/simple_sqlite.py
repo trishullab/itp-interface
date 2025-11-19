@@ -697,20 +697,45 @@ class LeanDeclarationDB:
 
         stats = {}
 
-        cursor.execute("SELECT COUNT(*) FROM files")
-        stats['total_files'] = cursor.fetchone()[0]
+        try:
+            cursor.execute("SELECT COUNT(*) FROM files")
+            result = cursor.fetchone()
+            stats['total_files'] = result[0] if result else 0
+        except Exception as e:
+            print(f"Warning: Error fetching files count: {e}")
+            stats['total_files'] = 0
 
-        cursor.execute("SELECT COUNT(*) FROM declarations")
-        stats['total_declarations'] = cursor.fetchone()[0]
+        try:
+            cursor.execute("SELECT COUNT(*) FROM declarations")
+            result = cursor.fetchone()
+            stats['total_declarations'] = result[0] if result else 0
+        except Exception as e:
+            print(f"Warning: Error fetching declarations count: {e}")
+            stats['total_declarations'] = 0
 
-        cursor.execute("SELECT COUNT(*) FROM declaration_dependencies")
-        stats['total_dependencies'] = cursor.fetchone()[0]
+        try:
+            cursor.execute("SELECT COUNT(*) FROM declaration_dependencies")
+            result = cursor.fetchone()
+            stats['total_dependencies'] = result[0] if result else 0
+        except Exception as e:
+            print(f"Warning: Error fetching dependencies count: {e}")
+            stats['total_dependencies'] = 0
 
-        cursor.execute("SELECT COUNT(*) FROM declarations WHERE file_path IS NULL")
-        stats['unresolved_declarations'] = cursor.fetchone()[0]
+        try:
+            cursor.execute("SELECT COUNT(*) FROM declarations WHERE file_path IS NULL")
+            result = cursor.fetchone()
+            stats['unresolved_declarations'] = result[0] if result else 0
+        except Exception as e:
+            print(f"Warning: Error fetching unresolved declarations count: {e}")
+            stats['unresolved_declarations'] = 0
 
-        cursor.execute("SELECT COUNT(*) FROM imports")
-        stats['total_imports'] = cursor.fetchone()[0]
+        try:
+            cursor.execute("SELECT COUNT(*) FROM imports")
+            result = cursor.fetchone()
+            stats['total_imports'] = result[0] if result else 0
+        except Exception as e:
+            print(f"Warning: Error fetching imports count: {e}")
+            stats['total_imports'] = 0
 
         return stats
 

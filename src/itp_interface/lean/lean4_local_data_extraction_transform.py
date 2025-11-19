@@ -10,6 +10,7 @@ import typing
 import uuid
 from pathlib import Path
 from itp_interface.lean.simple_lean4_sync_executor import SimpleLean4SyncExecutor
+from itp_interface.lean.parsing_helpers import LeanDeclParser, LeanParseResult, LeanDeclType
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
 from itp_interface.tools.training_data_format import MergableCollection, TrainingDataMetadataFormat, ExtractionDataCollection
 from itp_interface.tools.training_data import TrainingData, DataLayoutFormat
@@ -65,16 +66,71 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
             return str(new_path)
         return str(path)
     
+    def _check_if_lean_core_file(self, file_path: Path) -> bool:
+        parts = file_path.parts
+        # If `leanprover--lean4---v4.24.0/src/lean/` is in the path, it's a core file
+        for i in range(len(parts) - 4):
+            if (parts[i].startswith("leanprover--lean4---v") and
+                parts[i+1] == "src" and
+                parts[i+2] == "lean"):
+                return True
+        return False
+    
+    def _check_if_lean_core_module(self, module_name: str) -> bool:
+        parts = module_name.split('.')
+        # leanprover--lean4---v4.24.0.src.lean
+        idx = None
+        for i in range(len(parts) - 2):
+            if parts[i].startswith("leanprover--lean4---v"):
+                idx = i
+        if idx is not None:
+            for i in range(idx, len(parts)):
+                if parts[i] == "src" and i + 1 < len(parts) and parts[i + 1] == "lean":
+                    return True
+        return False
+
+    def _strip_core_file_path(self, file_path: Path) -> str:
+        # Take only the parts after `leanprover--lean4---v4.24.0/src/lean/`
+        parts = file_path.parts
+        for i in range(len(parts) - 4):
+            if (parts[i].startswith("leanprover--lean4---v") and
+                parts[i+1] == "src" and
+                parts[i+2] == "lean"):
+                new_parts = parts[i+3:]
+                new_path = Path(*new_parts)
+                return str(new_path)
+        return str(file_path)
+
+    def _strip_core_module_name(self, module_name: str) -> str:
+        parts = module_name.split('.')
+        # leanprover--lean4---v4.24.0.src.lean
+        idx: int | None = None
+        for i in range(len(parts) - 2):
+            if parts[i].startswith("leanprover--lean4---v"):
+                idx = i
+        if idx is not None:
+            for i in range(idx, len(parts)):
+                if parts[i] == "src" and i + 1 < len(parts) and parts[i + 1] == "lean":
+                    new_parts = parts[i + 2:]
+                    return '.'.join(new_parts)
+        return module_name
+
     def _get_file_path(self, project_path: str, file_path: str) -> str:
         fp = Path(file_path)
         pp = Path(project_path)
         fp_abs = fp.resolve()
         pp_abs = pp.resolve()
+        if self._check_if_lean_core_file(fp_abs):
+            stripped_path = self._strip_core_file_path(fp_abs)
+            return stripped_path
         relative_path = fp_abs.relative_to(pp_abs)
         rel_file_path = self._remove_lake_file_prefix(relative_path)
         return str(rel_file_path)
     
     def _get_module_name(self, project_path: str, module_name: str) -> str:
+        if self._check_if_lean_core_module(module_name):
+            stripped_module = self._strip_core_module_name(module_name)
+            return stripped_module
         pp = Path(project_path)
         pp_abs = pp.resolve()
         pp_module = str(pp_abs).replace('/', '.')
@@ -122,6 +178,28 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
         self,
         project_path: str,
         decl: DeclWithDependencies) -> None:
+        # Filter all unknown types
+        if decl.decl_info.decl_type == LeanDeclType.UNKNOWN.value:
+            # Check if we have docstring or not
+            if decl.decl_info.doc_string is None or decl.decl_info.doc_string.strip() != "":
+                parser = LeanDeclParser(decl.decl_info.text)
+                parse_result = parser.parse()
+                if parse_result.doc_string is not None:
+                    decl.decl_info.doc_string = parse_result.doc_string.strip()
+                if parse_result.decl_type != LeanDeclType.UNKNOWN:
+                    decl.decl_info.decl_type = str(parse_result.decl_type)
+                if parse_result.text is not None:
+                    full_text = []
+                    if parse_result.text_before is not None:
+                        full_text.append(parse_result.text_before.strip())
+                    full_text.append(parse_result.text.strip())
+                    text = "\n".join(full_text)
+                    decl.decl_info.text = text
+                # Update the proof if not already present
+                if decl.decl_info.proof is None and parse_result.proof is not None:
+                    decl.decl_info.proof = parse_result.proof.strip()
+                if parse_result.name is not None:
+                    decl.decl_info.name = parse_result.name.strip()
         pass
 
 
@@ -159,6 +237,7 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
             assert len(file_dep_analyses) == 1, "Expected exactly one FileDependencyAnalysis object"
 
             last_decl_id = None
+            self._preprocess_declarations(project_path, file_dep_analyses)
             self._remap_local_dependency(project_path, file_dep_analyses)
 
             for fda in file_dep_analyses:
@@ -221,7 +300,9 @@ if __name__ == "__main__":
     # project_dir = 'data/test/lean4_proj/'
     project_dir = 'data/test/Mathlib'
     # file_name = 'data/test/lean4_proj/Lean4Proj/Basic.lean'
-    file_name = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Algebra/Divisibility/Basic.lean'
+    # file_name = 'data/test/Mathlib/.lake/packages/mathlib/Mathlib/Algebra/Divisibility/Basic.lean'
+    home_path = str(Path.home())
+    file_name = f'{home_path}/.elan/toolchains/leanprover--lean4---v4.24.0/src/lean/Init/Prelude.lean'
     project_id = project_dir #.replace('/', '.')
     time_str = time.strftime("%Y%m%d-%H%M%S")
     output_path = f".log/local_data_generation_transform/data/{time_str}"

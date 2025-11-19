@@ -22,9 +22,13 @@ class LeanDeclType(Enum):
     MUTUAL = "mutual"
     UNKNOWN = "unknown"
 
+    def __str__(self) -> str:
+        return str(self.value).lower()
+
 @dataclass
 class LeanParseResult:
     decl_type: LeanDeclType
+    name: Optional[str] = None
     text_before: Optional[str] = None
     doc_string: Optional[str] = None
     text: Optional[str] = None
@@ -37,7 +41,6 @@ class LeanDeclParser:
     """
     
     # Keywords that mark the start of a declaration
-    # We generate this set from the Enum values for fast lookup
     DECL_KEYWORDS = {m.value for m in LeanDeclType if m != LeanDeclType.UNKNOWN}
 
     # Types for which we should NOT attempt to extract a proof/body
@@ -48,18 +51,24 @@ class LeanDeclParser:
         LeanDeclType.CLASS
     }
 
+    # Types that typically don't have a name
+    NO_NAME_TYPES = {
+        LeanDeclType.EXAMPLE,
+        LeanDeclType.MUTUAL,
+        LeanDeclType.UNKNOWN
+    }
+
     def __init__(self, text: str):
         self.text = text
         self.n = len(text)
         self.tokens = [] 
         self.docstring_range = None # (start, end)
-        self.docstring_content = None
         
         # Key Indices and Info
         self.decl_start = -1
         self.proof_start = -1
-        self.context_end = 0
         self.decl_type: LeanDeclType = LeanDeclType.UNKNOWN
+        self.decl_name: Optional[str] = None
 
     def parse(self) -> LeanParseResult:
         self._tokenize()
@@ -107,9 +116,9 @@ class LeanDeclParser:
                         else:
                             i += 1
                     
+                    # Capture the FIRST docstring found
                     if is_doc and self.docstring_range is None:
                         self.docstring_range = (start_idx, i)
-                        self.docstring_content = self.text[start_idx:i]
                     continue
 
             # 2. Handle Strings/Chars
@@ -139,10 +148,16 @@ class LeanDeclParser:
             char = self.text[i]
             
             # Nesting tracking
-            if char in "([{": nesting += 1
-            elif char in ")]}": nesting = max(0, nesting - 1)
+            if char in "([{": 
+                nesting += 1
+                i += 1
+                continue
+            elif char in ")]}": 
+                nesting = max(0, nesting - 1)
+                i += 1
+                continue
             
-            # Token detection
+            # Token detection (only at top level)
             if nesting == 0:
                 # Check for 'in' keyword (standalone)
                 if self._is_keyword_at(i, "in"):
@@ -187,6 +202,7 @@ class LeanDeclParser:
         """
         candidate_decl = -1
         decl_keyword_str = None
+        decl_keyword_end = -1
         
         # Pass 1: Find Declaration Start
         for t_type, t_start, t_end in self.tokens:
@@ -199,6 +215,7 @@ class LeanDeclParser:
                     candidate_decl = t_start
                 if decl_keyword_str is None:
                     decl_keyword_str = self.text[t_start:t_end]
+                    decl_keyword_end = t_end
             
             elif t_type == "ATTR":
                 if candidate_decl == -1:
@@ -216,6 +233,10 @@ class LeanDeclParser:
             else:
                 self.decl_type = LeanDeclType.UNKNOWN
             
+            # Extract Name
+            if self.decl_type not in self.NO_NAME_TYPES and decl_keyword_end != -1:
+                self.decl_name = self._extract_name_after(decl_keyword_end)
+
             # Pass 2: Find Proof Start
             skip_proof = self.decl_type in self.NO_PROOF_TYPES
             
@@ -225,8 +246,70 @@ class LeanDeclParser:
                         self.proof_start = t_start
                         break
         else:
-            # Fallback: No declaration found
             pass
+
+    def _extract_name_after(self, idx: int) -> Optional[str]:
+        """
+        Finds the first identifier after the given index, skipping comments and whitespace.
+        Returns None if it hits a symbol (e.g. '(', '{', ':') before a name.
+        """
+        i = idx
+        while i < self.n:
+            c = self.text[i]
+            
+            # Skip Whitespace
+            if c.isspace():
+                i += 1
+                continue
+            
+            # Skip Line Comments
+            if self.text.startswith("--", i):
+                i = self.text.find('\n', i)
+                if i == -1: return None
+                continue
+            
+            # Skip Block Comments
+            if self.text.startswith("/-", i):
+                # Quick skip for simple block comments, logic same as tokenizer
+                depth = 1
+                i += 2
+                while i < self.n and depth > 0:
+                    if self.text.startswith("/-", i):
+                        depth += 1
+                        i += 2
+                    elif self.text.startswith("-/", i):
+                        depth -= 1
+                        i += 2
+                    else:
+                        i += 1
+                continue
+            
+            # Identifier Start Check
+            # Lean identifiers can be French-quoted «name» or standard
+            # If it starts with a symbol like (, {, [, :, it's anonymous
+            if not (c.isalnum() or c == '_' or c == '«'):
+                return None
+            
+            # Extract
+            start = i
+            if c == '«':
+                end = self.text.find('»', start)
+                if end != -1:
+                    return self.text[start:end+1]
+                else:
+                    # Malformed? Just return rest of line
+                    return None
+            else:
+                # Standard identifier (alphanum + . + _)
+                while i < self.n:
+                    curr = self.text[i]
+                    if curr.isalnum() or curr == '_' or curr == '.':
+                        i += 1
+                    else:
+                        break
+                return self.text[start:i]
+            
+        return None
 
     def _construct_result(self) -> LeanParseResult:
         # Case 1: No declaration found
@@ -249,7 +332,6 @@ class LeanDeclParser:
         raw_decl = self.text[split_idx:decl_end]
         doc_content = None
 
-        # Handle Docstring Extraction logic
         if self.docstring_range:
             ds_start, ds_end = self.docstring_range
             doc_content = self.text[ds_start:ds_end]
@@ -260,18 +342,13 @@ class LeanDeclParser:
                 pre_part2 = self.text[ds_end:split_idx]
                 raw_pre = pre_part1 + pre_part2
 
-        # Final cleanup
-        text_before = raw_pre.strip() or None
-        text = raw_decl.strip() or None
-        doc = doc_content or None
-        proof = proof_content or None
-
         return LeanParseResult(
             decl_type=self.decl_type,
-            text_before=text_before,
-            doc_string=doc,
-            text=text,
-            proof=proof
+            name=self.decl_name,
+            text_before=raw_pre.strip() or None,
+            doc_string=doc_content or None,
+            text=raw_decl.strip() or None,
+            proof=proof_content or None
         )
 
     # --- Helpers ---
