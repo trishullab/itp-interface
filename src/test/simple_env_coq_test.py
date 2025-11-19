@@ -1,0 +1,131 @@
+import unittest
+import os
+
+def pretty_print(s1, s2, proof_step, done):
+    print(f"Current Goal:")
+    print('-'*30)
+    for goal in s1.training_data_format.start_goals:
+        hyps = '\n'.join([hyp for hyp in goal.hypotheses])
+        print(hyps)
+        print('|- ', end='')
+        print(goal.goal)
+        print(f'*'*30)
+    print(f"="*30)
+    print(f"Action: {proof_step}")
+    print(f"="*30)
+    print(f"Next Goal:")
+    print('-'*30)
+    if s2 is not None:
+        for goal in s2.training_data_format.start_goals:
+            hyps = '\n'.join([hyp for hyp in goal.hypotheses])
+            print(hyps)
+            print('|- ', end='')
+            print(goal.goal)
+            print(f'*'*30)
+    print(f"="*30)
+    print(f"DONE: {done}")
+    print('-'*30)
+    if s2 is None and done:
+        print("No more goals. Proof Finished!")
+
+class CoqHelper():
+    def __init__(self):
+        self.current_switch = None
+
+    def build_coq_project(self, project_folder):
+        try:
+            with os.popen("opam switch show") as proc:
+                self.current_switch = proc.read().strip()
+        except:
+            self.current_switch = None
+        # Check if the switch exists
+        # opam switch create simple_grp_theory 4.14.2
+        if os.system("opam switch simple_grp_theory") != 0:
+            cmds = [
+                'opam switch create simple_grp_theory 4.14.2',
+                'opam switch simple_grp_theory',
+                'eval $(opam env)',
+                'opam repo add coq-released https://coq.inria.fr/opam/released',
+                'opam pin add -y coq-lsp 0.1.8+8.18'
+            ]
+            final_cmd = ' && '.join(cmds)
+            os.system(final_cmd)
+        # IMPORTANT NOTE: Make sure to switch to the correct switch before running the code.
+        os.system("opam switch simple_grp_theory && eval $(opam env)")
+        # Clean the project
+        os.system(f"eval $(opam env) && cd {project_folder} && make clean")
+        # Build the project
+        with os.popen(f"eval $(opam env) && cd {project_folder} && make") as proc:
+            print("Building Coq project...")
+            print('-'*15 + 'Build Logs' + '-'*15)
+            print(proc.read())
+            print('-'*15 + 'End Build Logs' + '-'*15)
+
+    def switch_to_current_switch(self):
+        if self.current_switch is not None:
+            try:
+                proc = os.popen(f"opam switch {self.current_switch} && eval $(opam env)")
+                print(proc.read())
+            finally:
+                proc.close()
+
+
+class CoqTest(unittest.TestCase):
+    def test_simple_coq(self):
+        from itp_interface.rl.proof_state import ProofState
+        from itp_interface.rl.proof_action import ProofAction
+        from itp_interface.rl.simple_proof_env import ProofEnv
+        from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
+        from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
+        project_folder = "src/data/test/coq/custom_group_theory/theories"
+        file_path = "src/data/test/coq/custom_group_theory/theories/grpthm.v"
+        # Build the project
+        # cd src/data/test/coq/custom_group_theory/theories && make
+        helper = CoqHelper()
+        helper.build_coq_project(project_folder)
+        language = ProofAction.Language.COQ
+        theorem_name = "algb_identity_sum"
+        # Theorem algb_identity_sum :
+        # forall a, algb_add a e = a.
+        proof_exec_callback = ProofExecutorCallback(
+            project_folder=project_folder,
+            file_path=file_path,
+            language=language,
+            always_use_retrieval=False,
+            keep_local_context=True
+        )
+        always_retrieve_thms = False
+        retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
+        env = ProofEnv("test_coq", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms)
+        proof_steps = [
+            'intros.',
+            'destruct a.',
+            '- reflexivity.',
+            '- reflexivity.'
+        ]
+        with env:
+            for proof_step in proof_steps:
+                state, _, next_state, _, done, info = env.step(ProofAction(
+                    ProofAction.ActionType.RUN_TACTIC,
+                    language,
+                    tactics=[proof_step]))
+                if info.error_message is not None:
+                    print(f"Error: {info.error_message}")
+                # This prints StateChanged, StateUnchanged, Failed, or Done
+                print(info.progress)
+                print('-'*30)
+                if done:
+                    print("Proof Finished!!")
+                else:
+                    s1 : ProofState = state
+                    s2 : ProofState = next_state
+                    pretty_print(s1, s2, proof_step, done)
+        helper.switch_to_current_switch()
+
+
+def main():
+    unittest.main()
+
+
+if __name__ == '__main__':
+    main()

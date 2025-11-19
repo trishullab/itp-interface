@@ -29,10 +29,7 @@ def pretty_print(s1, s2, proof_step, done):
     if s2 is None and done:
         print("No more goals. Proof Finished!")
 
-class Helper():
-    def __init__(self):
-        self.current_switch = None
-    
+class LeanHelper():
     def build_lean4_project(self, project_folder):
         build_tactic_parser_if_needed()
         # Build the project
@@ -40,43 +37,6 @@ class Helper():
         if not os.path.exists(path_to_lake_folder):
             build_lean4_project(project_folder)
 
-
-    def build_coq_project(self, project_folder):
-        try:
-            with os.popen("opam switch show") as proc:
-                self.current_switch = proc.read().strip()
-        except:
-            self.current_switch = None
-        # Check if the switch exists
-        # opam switch create simple_grp_theory 4.14.2
-        if os.system("opam switch simple_grp_theory") != 0:
-            cmds = [
-                'opam switch create simple_grp_theory 4.14.2',
-                'opam switch simple_grp_theory', 
-                'eval $(opam env)',
-                'opam repo add coq-released https://coq.inria.fr/opam/released',
-                'opam pin add -y coq-lsp 0.1.8+8.18'
-            ]
-            final_cmd = ' && '.join(cmds)
-            os.system(final_cmd)
-        # IMPORTANT NOTE: Make sure to switch to the correct switch before running the code.
-        os.system("opam switch simple_grp_theory && eval $(opam env)")
-        # Clean the project
-        os.system(f"eval $(opam env) && cd {project_folder} && make clean")
-        # Build the project
-        with os.popen(f"eval $(opam env) && cd {project_folder} && make") as proc:
-            print("Building Coq project...")
-            print('-'*15 + 'Build Logs' + '-'*15)
-            print(proc.read())
-            print('-'*15 + 'End Build Logs' + '-'*15)
-
-    def switch_to_current_switch(self):
-        if self.current_switch is not None:
-            try:
-                proc = os.popen(f"opam switch {self.current_switch} && eval $(opam env)")
-                print(proc.read())
-            finally:
-                proc.close()
 
 class Lean4Test(unittest.TestCase):
     def test_simple_lean4(self):
@@ -89,7 +49,7 @@ class Lean4Test(unittest.TestCase):
         file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
         # Build the project
         # cd src/data/test/lean4_proj && lake build
-        helper = Helper()
+        helper = LeanHelper()
         helper.build_lean4_project(project_folder)
         language = ProofAction.Language.LEAN4
         theorem_name = '{\"namespace\":\"Lean4Proj2\",\"name\":\"test3\"}'
@@ -119,8 +79,8 @@ class Lean4Test(unittest.TestCase):
             proof_was_finished = False
             for proof_step in proof_steps:
                 state, _, next_state, _, done, info = env.step(ProofAction(
-                    ProofAction.ActionType.RUN_TACTIC, 
-                    language, 
+                    ProofAction.ActionType.RUN_TACTIC,
+                    language,
                     tactics=[proof_step]))
                 if info.error_message is not None:
                     print(f"Error: {info.error_message}")
@@ -145,7 +105,7 @@ class Lean4Test(unittest.TestCase):
         project_folder = "src/data/test/lean4_proj"
         file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
         # Build the project
-        helper = Helper()
+        helper = LeanHelper()
         helper.build_lean4_project(project_folder)
         language = ProofAction.Language.LEAN4
         theorem_name = '{\"namespace\":\"Lean4Proj2\",\"name\":\"test3\"}'
@@ -176,77 +136,26 @@ class Lean4Test(unittest.TestCase):
                     print(f"Backtracking at step {idx + 1} i.e. {proof_step}")
                     state, _, next_state, _, done, info = env.step(
                     ProofAction(
-                        ProofAction.ActionType.BACKTRACK, 
+                        ProofAction.ActionType.BACKTRACK,
                         language))
                     assert next_state == prev_state, "Backtracking failed"
                     # Replay the last action
                     last_proof_step = proof_steps[idx-1]
                     state, _, next_state, _, done, info = env.step(
                         ProofAction(
-                            ProofAction.ActionType.RUN_TACTIC, 
-                            language, 
+                            ProofAction.ActionType.RUN_TACTIC,
+                            language,
                             tactics=[last_proof_step]))
                 state, _, next_state, _, done, info = env.step(
                 ProofAction(
-                    ProofAction.ActionType.RUN_TACTIC, 
-                    language, 
+                    ProofAction.ActionType.RUN_TACTIC,
+                    language,
                     tactics=[proof_step]))
                 prev_state = state
                 if done:
                     print("Proof Finished!!")
                     proof_was_finished = True
             assert proof_was_finished, "Proof was not finished"
-
-    def test_simple_coq(self):
-        from itp_interface.rl.proof_state import ProofState
-        from itp_interface.rl.proof_action import ProofAction
-        from itp_interface.rl.simple_proof_env import ProofEnv
-        from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
-        from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
-        project_folder = "src/data/test/coq/custom_group_theory/theories"
-        file_path = "src/data/test/coq/custom_group_theory/theories/grpthm.v"
-        # Build the project
-        # cd src/data/test/coq/custom_group_theory/theories && make
-        helper = Helper()
-        helper.build_coq_project(project_folder)
-        language = ProofAction.Language.COQ
-        theorem_name = "algb_identity_sum"
-        # Theorem algb_identity_sum : 
-        # forall a, algb_add a e = a.
-        proof_exec_callback = ProofExecutorCallback(
-            project_folder=project_folder,
-            file_path=file_path,
-            language=language,
-            always_use_retrieval=False,
-            keep_local_context=True
-        )
-        always_retrieve_thms = False
-        retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
-        env = ProofEnv("test_coq", proof_exec_callback, theorem_name, retrieval_strategy=retrieval_strategy, max_proof_depth=10, always_retrieve_thms=always_retrieve_thms)
-        proof_steps = [
-            'intros.',
-            'destruct a.',
-            '- reflexivity.',
-            '- reflexivity.'
-        ]
-        with env:
-            for proof_step in proof_steps:
-                state, _, next_state, _, done, info = env.step(ProofAction(
-                    ProofAction.ActionType.RUN_TACTIC, 
-                    language, 
-                    tactics=[proof_step]))
-                if info.error_message is not None:
-                    print(f"Error: {info.error_message}")
-                # This prints StateChanged, StateUnchanged, Failed, or Done
-                print(info.progress)
-                print('-'*30)
-                if done:
-                    print("Proof Finished!!")
-                else:
-                    s1 : ProofState = state
-                    s2 : ProofState = next_state
-                    pretty_print(s1, s2, proof_step, done)
-        helper.switch_to_current_switch()
 
     def test_simple_lean_calc(self):
         from itp_interface.rl.proof_state import ProofState
@@ -258,7 +167,7 @@ class Lean4Test(unittest.TestCase):
         file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
         # Build the project
         # cd src/data/test/lean4_proj && lake build
-        helper = Helper()
+        helper = LeanHelper()
         helper.build_lean4_project(project_folder)
         language = ProofAction.Language.LEAN4
         theorem_name = "{\"namespace\":\"Lean4Proj1\",\"name\":\"test_calc\"}"
@@ -290,8 +199,8 @@ class Lean4Test(unittest.TestCase):
             proof_was_finished = False
             for proof_step in proof_steps:
                 state, _, next_state, _, done, info = env.step(ProofAction(
-                    ProofAction.ActionType.RUN_TACTIC, 
-                    language, 
+                    ProofAction.ActionType.RUN_TACTIC,
+                    language,
                     tactics=[proof_step]))
                 if info.error_message is not None:
                     print(f"Error: {info.error_message}")
@@ -319,7 +228,7 @@ class Lean4Test(unittest.TestCase):
         file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
         # Build the project
         # cd src/data/test/lean4_proj && lake build
-        helper = Helper()
+        helper = LeanHelper()
         helper.build_lean4_project(project_folder)
         language = ProofAction.Language.LEAN4
         theorem_name = "{\"namespace\":\"Lean4Proj1\",\"name\":\"test_calc\"}"
@@ -351,8 +260,8 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
             proof_was_finished = False
             for proof_step in proof_steps:
                 state, _, next_state, _, done, info = env.step(ProofAction(
-                    ProofAction.ActionType.RUN_TACTIC, 
-                    language, 
+                    ProofAction.ActionType.RUN_TACTIC,
+                    language,
                     tactics=[proof_step]))
                 if info.error_message is not None:
                     print(f"Error: {info.error_message}")
@@ -386,7 +295,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
         file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
         # Build the project
         # cd src/data/test/lean4_proj && lake build
-        helper = Helper()
+        helper = LeanHelper()
         helper.build_lean4_project(project_folder)
         language = ProofAction.Language.LEAN4
         theorem_name = "{\"namespace\":\"Lean4Proj1\",\"name\":\"test_calc\"}"
@@ -420,8 +329,8 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
             proof_finished = False
             for proof_step in proof_steps:
                 state, _, next_state, _, done, info = env.step(ProofAction(
-                    ProofAction.ActionType.RUN_TACTIC, 
-                    language, 
+                    ProofAction.ActionType.RUN_TACTIC,
+                    language,
                     tactics=[proof_step]))
                 if info.error_message is not None:
                     print(f"Error: {info.error_message}")
@@ -450,7 +359,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
         file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
         # Build the project
         # cd src/data/test/lean4_proj && lake build
-        helper = Helper()
+        helper = LeanHelper()
         helper.build_lean4_project(project_folder)
         language = ProofAction.Language.LEAN4
         theorem_name = '{\"namespace\":\"Lean4Proj2\",\"name\":\"test3\"}'
@@ -477,8 +386,8 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
         with env:
             for proof_step in proof_steps:
                 state, _, next_state, _, done, info = env.step(ProofAction(
-                    ProofAction.ActionType.RUN_TACTIC, 
-                    language, 
+                    ProofAction.ActionType.RUN_TACTIC,
+                    language,
                     tactics=[proof_step]))
                 if info.error_message is not None:
                     print(f"Error: {info.error_message}")
@@ -502,7 +411,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
         file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
         # Build the project
         # cd src/data/test/lean4_proj && lake build
-        helper = Helper()
+        helper = LeanHelper()
         helper.build_lean4_project(project_folder)
         language = ProofAction.Language.LEAN4
         theorem_name = '{\"namespace\":\"Lean4Proj2\",\"name\":\"imo_1959_p1\"}'
@@ -540,8 +449,8 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
             env.set_max_proof_step_length(10000)
             for proof_step in proof_steps:
                 state, m_action, next_state, _, done, info = env.step(ProofAction(
-                    ProofAction.ActionType.RUN_TACTIC, 
-                    language, 
+                    ProofAction.ActionType.RUN_TACTIC,
+                    language,
                     tactics=[proof_step]))
                 if info.error_message is not None:
                     print(f"Error: {info.error_message}")
@@ -560,7 +469,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
                     s1 : ProofState = state
                     s2 : ProofState = next_state
                     pretty_print(s1, s2, proof_step, done)
-    
+
     def test_simple_lean4_with_error(self):
         from itp_interface.rl.proof_state import ProofState
         from itp_interface.rl.proof_action import ProofAction
@@ -571,7 +480,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
         file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
         # Build the project
         # cd src/data/test/lean4_proj && lake build
-        helper = Helper()
+        helper = LeanHelper()
         helper.build_lean4_project(project_folder)
         language = ProofAction.Language.LEAN4
         theorem_name = '{\"namespace\":\"Lean4Proj2\",\"name\":\"test3\"}'
@@ -599,8 +508,8 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
         with env:
             for i, proof_step in enumerate(proof_steps):
                 state, _, next_state, _, done, info = env.step(ProofAction(
-                    ProofAction.ActionType.RUN_TACTIC, 
-                    language, 
+                    ProofAction.ActionType.RUN_TACTIC,
+                    language,
                     tactics=[proof_step]))
                 if info.error_message is not None:
                     print(f"Error: {info.error_message}")
@@ -631,7 +540,7 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
         file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
         # Build the project
         # cd src/data/test/lean4_proj && lake build
-        helper = Helper()
+        helper = LeanHelper()
         helper.build_lean4_project(project_folder)
         language = ProofAction.Language.LEAN4
         theorem_name = '{\"namespace\":\"Lean4Proj2\",\"name\":\"complicated_have\"}'
@@ -659,8 +568,8 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
             proof_was_finished = False
             for proof_step in proof_steps:
                 state, action, next_state, _, done, info = env.step(ProofAction(
-                    ProofAction.ActionType.RUN_TACTIC, 
-                    language, 
+                    ProofAction.ActionType.RUN_TACTIC,
+                    language,
                     tactics=[proof_step]))
                 proof_step = action.kwargs.get('tactics', ['INVALID'])[0]
                 if info.error_message is not None:
@@ -677,19 +586,9 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
                     pretty_print(s1, s2, proof_step, done)
             assert proof_was_finished, "Proof was not finished"
 
+
 def main():
     unittest.main()
-    # Run only the Lean 4 tests
-    # t = Lean4Test()
-    # t.test_simple_lean4_multiline_multigoal()
-    # t.test_simple_lean4()
-    # t.test_lean4_backtracking()
-    # t.test_simple_lean4_done_test()
-    # t.test_simple_lean_calc()
-    # t.test_simple_lean_calc_with_validation()
-    # t.test_simple_lean4_with_error()
-    # t.test_simple_lean4_have_test()
-    # t.test_simple_lean_enforce_done_test()
 
 
 if __name__ == '__main__':
