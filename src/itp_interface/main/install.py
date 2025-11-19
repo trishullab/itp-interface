@@ -20,8 +20,8 @@ def generate_random_string(length, allowed_chars=None):
 def install_itp_interface():
     print("Installing itp_interface")
     itp_dir = os.path.dirname(os.path.dirname(file_path))
-    tools_dir = os.path.join(itp_dir, "tools")
-    tactic_parser_dir = os.path.join(tools_dir, "tactic_parser")
+    lean_dir = os.path.join(itp_dir, "lean")
+    tactic_parser_dir = os.path.join(lean_dir, "tactic_parser")
     assert os.path.exists(tactic_parser_dir), f"tactic_parser_dir: {tactic_parser_dir} does not exist"
     assert os.path.exists(os.path.join(tactic_parser_dir, "lean-toolchain")), f"lean-toolchain does not exist in {tactic_parser_dir}, build has failed"
     print("tactic_parser_dir: ", tactic_parser_dir)

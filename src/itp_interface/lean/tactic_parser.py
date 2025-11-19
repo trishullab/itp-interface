@@ -278,8 +278,8 @@ class RequestType(Enum):
 
 def get_path_to_tactic_parser_project() -> str:
     """Get the path to the tactic parser project directory."""
-    tools_dir = os.path.dirname(__file__)
-    tactic_parser_path = os.path.join(tools_dir, "tactic_parser")
+    lean_dir = os.path.dirname(__file__)
+    tactic_parser_path = os.path.join(lean_dir, "tactic_parser")
     abs_path = os.path.abspath(tactic_parser_path)
     return abs_path
 
