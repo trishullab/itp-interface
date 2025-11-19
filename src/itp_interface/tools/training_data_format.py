@@ -12,7 +12,7 @@ from dataclasses_json import dataclass_json
 from collections import OrderedDict
 from typing import List, Optional, Union, runtime_checkable, Protocol
 from pydantic import BaseModel
-from itp_interface.tools.tactic_parser import FileDependencyAnalysis
+from itp_interface.lean.tactic_parser import FileDependencyAnalysis
 
 @runtime_checkable
 class TrainingDataFormat(Protocol):

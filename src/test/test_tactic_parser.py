@@ -11,7 +11,7 @@ from pathlib import Path
 # Add parent directory to path to import tactic_parser
 sys.path.insert(0, str(Path(__file__).parent.parent / "itp_interface" / "tools"))
 
-from itp_interface.tools.tactic_parser import TacticParser, print_tactics
+from itp_interface.lean.tactic_parser import TacticParser, print_tactics
 
 project_path = str(Path(__file__).parent.parent / "data" / "test" / "lean4_proj")
 

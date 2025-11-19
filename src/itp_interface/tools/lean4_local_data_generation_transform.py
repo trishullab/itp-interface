@@ -6,7 +6,7 @@ if root_dir not in sys.path:
     sys.path.append(root_dir)
 import typing
 import uuid
-from itp_interface.tools.simple_lean4_sync_executor import SimpleLean4SyncExecutor
+from itp_interface.lean.simple_lean4_sync_executor import SimpleLean4SyncExecutor
 from itp_interface.tools.lean4_context_helper import Lean4ContextHelper
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
 from itp_interface.tools.training_data_format import MergableCollection, TrainingDataMetadataFormat, TheoremProvingTrainingDataCollection, TheoremProvingTrainingDataFormat

@@ -3,7 +3,7 @@ import random
 import string
 import logging
 import traceback
-from itp_interface.tools.tactic_parser import build_tactic_parser_if_needed
+from itp_interface.lean.tactic_parser import build_tactic_parser_if_needed
 
 file_path = os.path.abspath(__file__)
 

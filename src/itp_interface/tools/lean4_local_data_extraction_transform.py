@@ -9,11 +9,11 @@ if root_dir not in sys.path:
 import typing
 import uuid
 from pathlib import Path
-from itp_interface.tools.simple_lean4_sync_executor import SimpleLean4SyncExecutor
+from itp_interface.lean.simple_lean4_sync_executor import SimpleLean4SyncExecutor
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
 from itp_interface.tools.training_data_format import MergableCollection, TrainingDataMetadataFormat, ExtractionDataCollection
 from itp_interface.tools.training_data import TrainingData, DataLayoutFormat
-from itp_interface.tools.tactic_parser import FileDependencyAnalysis
+from itp_interface.lean.tactic_parser import FileDependencyAnalysis, DeclWithDependencies
 from itp_interface.tools.simple_sqlite import LeanDeclarationDB
 
 class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
@@ -87,6 +87,44 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
         module_name = self._remove_lake_package_prefix(module_name)
         return module_name
 
+    def _remap_local_dependency(self,
+        project_path: str,
+        file_dep_analyses: typing.List[FileDependencyAnalysis]) -> None:
+            # Map local dependencies
+            all_decls = {}
+            for fda in file_dep_analyses:
+                for decl in fda.declarations:
+                    name = decl.decl_info.name
+                    all_decls[name] = decl
+            for fda in file_dep_analyses:
+                fda_rel_path = self._get_file_path(project_path, fda.file_path)
+                # Remove the pp_module prefix from the fda module name
+                fda_module_name = self._get_module_name(project_path, fda.module_name)
+                for decl in fda.declarations:
+                    for decl_dep in decl.dependencies:
+                        if decl_dep.name in all_decls:
+                            if decl_dep.file_path is None:
+                                decl_dep.file_path = fda_rel_path
+                                if decl_dep.module_name is None:
+                                    decl_dep.module_name = fda_module_name
+                                if decl_dep.namespace is None:
+                                    decl_dep.namespace = decl.decl_info.namespace
+    
+    def _preprocess_declarations(self,
+        project_path: str,
+        file_dep_analyses: typing.List[FileDependencyAnalysis]) -> None:
+        # Preprocess declarations to set file paths and module names
+        for fda in file_dep_analyses:
+            for decl in fda.declarations:
+                self._preprocess_declaration(project_path, decl)
+    
+    def _preprocess_declaration(
+        self,
+        project_path: str,
+        decl: DeclWithDependencies) -> None:
+        pass
+
+
     def __call__(self,
         training_data: TrainingData,
         project_id : str,
@@ -121,6 +159,8 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
             assert len(file_dep_analyses) == 1, "Expected exactly one FileDependencyAnalysis object"
 
             last_decl_id = None
+            self._remap_local_dependency(project_path, file_dep_analyses)
+
             for fda in file_dep_analyses:
                 fda_rel_path = self._get_file_path(project_path, fda.file_path)
                 # Remove the pp_module prefix from the fda module name
@@ -132,11 +172,6 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
                     self.logger.info(f"Inserted file and {len(fda.imports)} imports for {fda_rel_path}")
 
                 for decl in fda.declarations:
-                    # self.logger.info(f"Processing module: {project_path}")
-                    # self.logger.info(f"Relative file path: {fda_rel_path}")
-                    # self.logger.info(f"Original Module name: {fda.module_name}")
-                    # self.logger.info(f"Rel Module name: {fda_module_name}")
-
                     # Get or create decl_id from database (or generate new one if no DB)
                     if db:
                         decl_id = db.process_declaration(

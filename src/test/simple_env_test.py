@@ -1,6 +1,6 @@
 import unittest
 import os
-from itp_interface.tools.tactic_parser import build_lean4_project, build_tactic_parser_if_needed
+from itp_interface.lean.tactic_parser import build_lean4_project, build_tactic_parser_if_needed
 
 def pretty_print(s1, s2, proof_step, done):
     print(f"Current Goal:")

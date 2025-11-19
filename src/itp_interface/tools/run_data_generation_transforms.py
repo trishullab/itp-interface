@@ -24,7 +24,7 @@ except ImportError:
     RayUtils = None
 from itp_interface.tools.coq_executor import CoqExecutor
 from itp_interface.tools.lean_cmd_executor import Lean3Executor
-from itp_interface.tools.simple_lean4_sync_executor import SimpleLean4SyncExecutor
+from itp_interface.lean.simple_lean4_sync_executor import SimpleLean4SyncExecutor
 from itp_interface.tools.isabelle_executor import IsabelleExecutor
 from itp_interface.tools.coq_local_data_generation_transform import LocalDataGenerationTransform as CoqLocalDataGenerationTransform
 from itp_interface.tools.lean_local_data_generation_transform import LocalDataGenerationTransform as LeanLocalDataGenerationTransform
