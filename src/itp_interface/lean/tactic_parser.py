@@ -778,16 +778,6 @@ if __name__ == "__main__":
         if errors:
             print(f"Error: {errors}")
 
-    pp = "src/data/test/Mathlib"
-
-    with TacticParser(project_path=pp) as parser:
-        with open(os.path.join(pp, "Basic.lean")) as f:
-            lean_code = f.read()
-        tactics, errors = parser.parse(lean_code, fail_on_error=False)
-        print_tactics(tactics)
-        if errors:
-            print_errors(errors)
-
     with TacticParser() as parser:
         # Example 1: Simple proof
         lean_code = "example : True := by trivial"
