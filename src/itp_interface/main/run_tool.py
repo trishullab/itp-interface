@@ -26,6 +26,7 @@ except ImportError:
     RayResourcePoolActor = None
     TimedRayExec = None
     RayUtils = None
+from pathlib import Path
 from itp_interface.rl.proof_action import ProofAction
 from itp_interface.tools.isabelle_server import IsabelleServer
 from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
@@ -33,7 +34,7 @@ from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
 from itp_interface.tools.coq_local_data_generation_transform import LocalDataGenerationTransform as CoqLocalDataGenerationTransform
 from itp_interface.tools.lean_local_data_generation_transform import LocalDataGenerationTransform as LeanLocalDataGenerationTransform
 from itp_interface.tools.lean4_local_data_generation_transform import Local4DataGenerationTransform
-from itp_interface.tools.lean4_local_data_extraction_transform import Local4DataExtractionTransform
+from itp_interface.lean.lean4_local_data_extraction_transform import Local4DataExtractionTransform
 from itp_interface.tools.isabelle_local_data_generation_transform import LocalDataGenerationTransform as IsabelleLocalDataGenerationTransform
 from itp_interface.tools.run_data_generation_transforms import RunDataGenerationTransforms
 from itp_interface.tools.log_utils import setup_logger
@@ -120,14 +121,35 @@ def _get_all_lemmas_impl(
     logger.info(f"Discovered {len(lemmas_to_prove)} lemmas")
     return lemmas_to_prove
 
-
 def _get_all_lean_files_in_folder_recursively(
-        project_folder: str) -> typing.List[str]:
+    project_folder: str, exclude_list: typing.List[str], include_list: typing.List[str]) -> typing.List[str]:
     lean_files = []
+    for include in include_list:
+        # the include list should be a full path
+        include_path = Path(include)
+        include_path = include_path.expanduser().resolve()
+        # Get all files recursively under include_path
+        for root, dirs, files in os.walk(include_path):
+            for file in files:
+                if file.endswith(".lean"):
+                    full_path = os.path.join(root, file)
+                    full_path_obj = Path(full_path)
+                    full_path = full_path_obj.expanduser().resolve()
+                    if str(full_path) not in lean_files:
+                        lean_files.append(str(full_path))
+
+    project_folder_path = Path(project_folder)
     for root, dirs, files in os.walk(project_folder):
         for file in files:
             if file.endswith(".lean"):
-                lean_files.append(os.path.join(root, file))
+                # Get full file path
+                full_path = os.path.join(root, file)
+                # Check if the full path starts with any exclude path
+                if any(full_path.startswith(exclude) for exclude in exclude_list):
+                    continue
+                full_path_obj = Path(full_path)
+                rel_to_project = str(full_path_obj.relative_to(project_folder_path))
+                lean_files.append(rel_to_project)
     return lean_files
 
 # Create Ray remote version if Ray is available
@@ -248,7 +270,7 @@ def create_yaml(project_to_theorems, name, eval_benchmark: EvalBenchmark, output
     with open(output_file, 'w') as yaml_file:
         yaml.dump(data, yaml_file, sort_keys=False)
 
-def add_transform(experiment: Experiments, clone_dir: str, resources: list, transforms: list, logger: logging.Logger = None):
+def add_transform(experiment: Experiments, clone_dir: str, resources: list, transforms: list, logger: logging.Logger = None, str_time: str = None):
     global ray_resource_pool
     if experiment.run_settings.transform_type == TransformType.LOCAL:
         if experiment.benchmark.language == ProofAction.Language.LEAN:
@@ -260,10 +282,31 @@ def add_transform(experiment: Experiments, clone_dir: str, resources: list, tran
             os.makedirs(clone_dir, exist_ok=True)
         elif experiment.benchmark.language == ProofAction.Language.LEAN4:
             if experiment.benchmark.is_extraction_request:
-                transform = Local4DataExtractionTransform(
+                output_dir_path = os.path.join(experiment.run_settings.output_dir, str_time)
+                db_path = None
+                if os.environ.get("EXTRACTION_DB_PATH") is not None:
+                    db_path = os.environ.get("EXTRACTION_DB_PATH", "")
+                    if not os.path.exists(db_path) and db_path.strip() != "":
+                        db_path = None
+                if db_path is None:
+                    os.makedirs(output_dir_path, exist_ok=True)
+                    db_path = os.path.join(output_dir_path, "lean4_extraction_db.sqlite")
+                transform1 = Local4DataExtractionTransform(
                     experiment.run_settings.dep_depth, 
                     buffer_size=experiment.run_settings.buffer_size, 
-                    logger=logger)
+                    logger=logger,
+                    db_path=db_path,
+                    enable_file_export=False,
+                    enable_dependency_extraction=False)
+                transforms.append(transform1) # First just add the definitions
+                transform = Local4DataExtractionTransform(
+                    experiment.run_settings.dep_depth,
+                    buffer_size=experiment.run_settings.buffer_size,
+                    logger=logger,
+                    db_path=db_path,
+                    enable_file_export=True,
+                    enable_dependency_extraction=True
+                ) # This will be later appended to the transforms list
             else:
                 transform = Local4DataGenerationTransform(
                     experiment.run_settings.dep_depth, 
@@ -320,8 +363,10 @@ def get_decl_lemmas_to_parse(
         if experiment.benchmark.language == ProofAction.Language.LEAN4 \
             and experiment.benchmark.is_extraction_request:
             if len(dataset.files) == 0:
+                logger.warning(f"No files specified for Lean4 extraction in dataset {dataset.project}, extracting from all Lean4 files in the project")
                 # List all the files recursively in the project folder
-                files_in_dataset = _get_all_lean_files_in_folder_recursively(dataset.project)
+                files_in_dataset = _get_all_lean_files_in_folder_recursively(dataset.project, dataset.exclude_files, dataset.include_files)
+                logger.info(f"Found {len(files_in_dataset)} Lean4 files in the project {dataset.project}")
                 for file_path in files_in_dataset:
                     file_to_theorems[file_path] = ["*"]
                     file_args[file_path] = {}
@@ -459,7 +504,7 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
         transforms = []
         str_time = time.strftime("%Y%m%d-%H%M%S")
         clone_dir = os.path.join(experiment.run_settings.output_dir, "clone{}".format(str_time))
-        clone_dir = add_transform(experiment, clone_dir, resources, transforms, logger)
+        clone_dir = add_transform(experiment, clone_dir, resources, transforms, logger, str_time)
         # Find all the lemmas to prove
         project_to_theorems = {}
         other_args = {}
@@ -592,4 +637,6 @@ def main(cfg):
 if __name__ == "__main__":
     # from itp_interface.tools.ray_utils import RayUtils
     # RayUtils.init_ray(num_of_cpus=20, object_store_memory_in_gb=50, memory_in_gb=1, runtime_env={"working_dir": root_dir, "excludes": [".log", "data"]})
+    from itp_interface.tools.ray_utils import RayUtils
+    RayUtils.init_ray(num_of_cpus=20, object_store_memory_in_gb=100, memory_in_gb=50)
     main()

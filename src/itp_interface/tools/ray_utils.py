@@ -15,11 +15,40 @@ import os
 class RayUtils(object):
 
     @staticmethod
+    def connect_to_ray():
+        if os.environ.get("RAY_INITIALIZED", "0") == "0":
+            return None
+        root_dir = f"{os.path.abspath(__file__).split('itp_interface')[-2]}"
+        os.environ["PYTHONPATH"] = f"{root_dir}:{os.environ.get('PYTHONPATH', '')}"
+        from filelock import FileLock
+        import json
+        os.environ["RAY_OBJECT_STORE_ALLOW_SLOW_STORAGE"] = "1"
+        lock_path = os.environ.get("RAY_LOCK_FILE_PATH", ".log/locks/ray.lock")
+        ray_session_path = os.environ.get("RAY_SESSION_PATH", ".log/ray/session_latest")
+        temp_lock = FileLock(lock_path)
+        try:
+            temp_lock.acquire(timeout=10)
+            temp_lock.release()
+        except:
+            if os.path.exists(ray_session_path):
+                with open(ray_session_path, "r") as f:
+                    ray_session = f.read()
+                    ray_session = json.loads(ray_session)
+                ray_address = ray_session["address"]
+                obj = ray.init(address=ray_address)
+            return obj
+        return None
+
+    @staticmethod
     def init_ray(num_of_cpus: int = 10, object_store_memory_in_gb: float = 25, memory_in_gb: float = 0.5, runtime_env: typing.Dict[str, str] = None):
         gb = 2**30
         object_store_memory = int(object_store_memory_in_gb * gb)
         memory = int(memory_in_gb * gb)
+        obj = RayUtils.connect_to_ray()
+        if obj is not None:
+            return obj
         os.environ["RAY_INITIALIZED"] = "1"
+        os.environ["RAY_OBJECT_STORE_ALLOW_SLOW_STORAGE"] = "1"
         obj = ray.init(num_cpus=num_of_cpus, object_store_memory=object_store_memory, _memory=memory, ignore_reinit_error=True, runtime_env=runtime_env)
         return obj
 

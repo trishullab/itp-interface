@@ -1,0 +1,40 @@
+name: mathlib_benchmark_lean_ext
+num_files: 1
+language: LEAN4
+few_shot_data_path_for_retrieval: 
+few_shot_metadata_filename_for_retrieval: 
+dfs_data_path_for_retrieval: 
+dfs_metadata_filename_for_retrieval: 
+is_extraction_request: true
+datasets:
+  - project: src/data/test/Mathlib
+    files: []
+    exclude_files:
+      - src/data/test/Mathlib/.lake/packages/aesop
+      - src/data/test/Mathlib/.lake/packages/batteries
+      - src/data/test/Mathlib/.lake/packages/Cli
+      - src/data/test/Mathlib/.lake/packages/importGraph
+      - src/data/test/Mathlib/.lake/packages/LeanSearchClient
+      - src/data/test/Mathlib/.lake/packages/plausible
+      - src/data/test/Mathlib/.lake/packages/proofwidgets
+      - src/data/test/Mathlib/.lake/packages/Qq
+      - src/data/test/Mathlib/.lake/packages/mathlib/.devcontainer
+      - src/data/test/Mathlib/.lake/packages/mathlib/.github
+      - src/data/test/Mathlib/.lake/packages/mathlib/.docker
+      - src/data/test/Mathlib/.lake/packages/mathlib/.lake
+      - src/data/test/Mathlib/.lake/packages/mathlib/.vscode
+      - src/data/test/Mathlib/.lake/packages/mathlib/Archive
+      - src/data/test/Mathlib/.lake/packages/mathlib/Cache
+      - src/data/test/Mathlib/.lake/packages/mathlib/docs
+      - src/data/test/Mathlib/.lake/packages/mathlib/Counterexamples
+      - src/data/test/Mathlib/.lake/packages/mathlib/DownstreamTest
+      - src/data/test/Mathlib/.lake/packages/mathlib/LongestPole
+      - src/data/test/Mathlib/.lake/packages/mathlib/MathlibTest
+      - src/data/test/Mathlib/.lake/packages/mathlib/scripts
+      - src/data/test/Mathlib/.lake/packages/mathlib/widget
+      - src/data/test/Mathlib/.lake/packages/mathlib/Counterexamples.lean
+      - src/data/test/Mathlib/.lake/packages/mathlib/lakefile.lean
+      - src/data/test/Mathlib/.lake/packages/mathlib/Mathlib.lean
+      - src/data/test/Mathlib/.lake/packages/mathlib/Archive.lean
+      - src/data/test/Mathlib/lakefile.lean
+      - src/data/test/Mathlib/ReplMathlibTests.lean

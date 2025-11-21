@@ -19,7 +19,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          submodules: true  # Ensure submodules are checked out
+          submodules: false  # Ensure submodules are checked out
 
       - name: Install Python and pip
         run: |
@@ -53,6 +53,79 @@ jobs:
           source $HOME/.elan/env
           install-itp-interface
 
+      - name: Build lean4_proj
+        shell: bash
+        run: |
+          source $HOME/.elan/env
+          cd src/data/test/lean4_proj && lake exe cache get && lake build
+
+      - name: List repository files (debug step)
+        run: find . -type f
+
+      - name: Clean up logs
+        run: |
+          rm -rf .log
+          echo "Cleaned .log directory for fresh parallel execution test"
+
+      - name: Run Simple Env Lean Test
+        shell: bash
+        run: |
+          source $HOME/.elan/env
+          python src/test/simple_env_lean_test.py
+
+      - name: Clean up logs
+        run: |
+          rm -rf .log
+          echo "Cleaned .log directory for fresh parallel execution test"        
+
+      - name: Ray Cleanup
+        shell: bash
+        run: |
+          rm -rf /tmp/* --verbose
+
+      - name: Clean up logs
+        run: |
+          rm -rf .log
+          echo "Cleaned .log directory for fresh parallel execution test"
+
+      - name: Run Data Gen Test
+        shell: bash
+        run: |
+          source $HOME/.elan/env
+          python src/test/simple_data_gen_test.py
+
+      - name: Clean up logs
+        run: |
+          rm -rf .log
+          echo "Cleaned .log directory for fresh parallel execution test"
+
+      - name: Ray Cleanup
+        shell: bash
+        run: |
+          rm -rf /tmp/* --verbose
+
+      - name: Run Data Extraction Test
+        shell: bash
+        run: |
+          source $HOME/.elan/env
+          python src/test/simple_data_extract_test.py
+
+      - name: Clean up logs
+        run: |
+          rm -rf .log
+          echo "Cleaned .log directory for fresh parallel execution test"
+
+      - name: Ray Cleanup
+        shell: bash
+        run: |
+          rm -rf /tmp/* --verbose
+
+      - name: Clean up .lake in lean4_proj
+        shell: bash
+        run: |
+          rm -rf src/data/test/lean4_proj/.lake
+          echo "Cleaned .lake directory in lean4_proj for fresh parallel execution test"
+
       - name: Check and Init opam version
         run: |
           opam --version
@@ -66,41 +139,9 @@ jobs:
           opam repo add coq-released https://coq.inria.fr/opam/released
           opam pin add -y coq-lsp 0.1.8+8.18
 
-      - name: List repository files (debug step)
-        run: find . -type f
-
-      - name: Run Simple Env Test
+      - name: Run Simple Env Coq Test
         shell: bash
         run: |
           eval $(opam env)
           source $HOME/.elan/env
-          python src/test/simple_env_test.py
-        
-      - name: Ray Cleanup
-        shell: bash
-        run: |
-          rm -rf /tmp/* --verbose
-
-      - name: Run Data Gen Test
-        shell: bash
-        run: |
-          eval $(opam env)
-          source $HOME/.elan/env
-          python src/test/simple_data_gen_test.py
-
-      - name: Ray Cleanup
-        shell: bash
-        run: |
-          rm -rf /tmp/* --verbose
-
-      - name: Run Data Extraction Test
-        shell: bash
-        run: |
-          eval $(opam env)
-          source $HOME/.elan/env
-          python src/test/simple_data_extract_test.py
-
-      - name: Ray Cleanup
-        shell: bash
-        run: |
-          rm -rf /tmp/* --verbose
+          python src/test/simple_env_coq_test.py

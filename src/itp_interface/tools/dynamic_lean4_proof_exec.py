@@ -6,7 +6,7 @@ import os
 import copy
 import enum
 import logging
-from itp_interface.tools.simple_lean4_sync_executor import SimpleLean4SyncExecutor
+from itp_interface.lean.simple_lean4_sync_executor import SimpleLean4SyncExecutor
 from itp_interface.tools.training_data_format import Goal, TheoremProvingTrainingDataFormat
 from itp_interface.tools.lean_parse_utils import LeanLineByLineReader
 from itp_interface.tools.lean_context_helper import Lean3ContextHelper

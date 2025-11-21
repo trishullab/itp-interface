@@ -10,7 +10,7 @@ import json
 import typing
 import bisect
 import subprocess
-from itp_interface.tools.tactic_parser import (
+from itp_interface.lean.tactic_parser import (
     TacticParser, 
     ErrorInfo, 
     LeanLineInfo, 

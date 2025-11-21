@@ -71,6 +71,7 @@ structure DeclInfo where
   text : String
   docString : Option String  -- Extracted documentation comment
   namespc : Option String  -- Current namespace
+  proof : Option String := none  -- Extracted proof (for theorem, lemma, example)
   deriving Repr
 
 instance : ToJson DeclInfo where
@@ -83,7 +84,8 @@ instance : ToJson DeclInfo where
     ("end_column", d.endPos.column),
     ("text", toJson d.text),
     ("doc_string", toJson d.docString),
-    ("namespace", toJson d.namespc)
+    ("namespace", toJson d.namespc),
+    ("proof", toJson d.proof)
   ]
 
 /-- Information about an import statement -/

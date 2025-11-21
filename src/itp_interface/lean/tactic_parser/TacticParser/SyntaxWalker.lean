@@ -308,6 +308,10 @@ unsafe def parseInCurrentContext (input : String) (filePath : Option String := n
     let extentStruct := lineExtents.map getInfoNodeStruct
     -- Go over all line extents and reassign the end_pos of the next node
     let mut adjusted_trees : Array InfoNodeStruct := #[]
+    -- IO.println s!"Total line extents found: {lineExtents.size}"
+    if lineExtents.size == 0 then
+      let parseResult : ParseResult := { trees := #[], errors := errorInfos }
+      return { parseResult := parseResult, chkptState := cmdState , lineNum := none }
     for i in [1:lineExtents.size] do
       let prev_node := extentStruct[i - 1]!.getD default
       let curr_node := extentStruct[i]!.getD default
@@ -350,6 +354,7 @@ unsafe def parseTacticsWithElaboration (input : String) (filePath : Option Strin
     -- Initialize Lean from current directory (finds .lake/build if present)
     Lean.initSearchPath (← Lean.findSysroot)
     Lean.enableInitializersExecution
+    -- IO.println "Initialized Lean environment for elaboration-based parsing."
     return ← parseInCurrentContext input filePath chkptState
   catch e =>
     let errorInfo := ErrorInfo.mk (s!"Error in parseTacticsWithElaboration: {e}") { line := 0, column := 0 }

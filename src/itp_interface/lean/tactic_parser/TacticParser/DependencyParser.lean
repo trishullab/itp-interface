@@ -3,6 +3,7 @@ import Lean.Data.Json
 import Lean.Elab.Frontend
 import TacticParser.Types
 import TacticParser.LineParser
+import TacticParser.ProofExtractor
 
 namespace TacticParser
 
@@ -261,6 +262,9 @@ unsafe def analyzeFileDependencies (filepath : System.FilePath) : IO FileDepende
   -- Parse all declarations using LineParser
   let decls ← parseFile filepath
 
+  -- Extract proofs from theorem/lemma/example declarations
+  let declsWithProofs ← extractProofsFromDecls decls content
+
   -- Load environment with all imports and elaborate the file
   Lean.initSearchPath (← Lean.findSysroot)
   Lean.enableInitializersExecution
@@ -282,7 +286,7 @@ unsafe def analyzeFileDependencies (filepath : System.FilePath) : IO FileDepende
 
   -- Analyze each declaration
   let mut declsWithDeps : Array DeclWithDependencies := #[]
-  for declInfo in decls do
+  for declInfo in declsWithProofs do
     -- Construct the fully qualified name for this declaration
     let declName := match declInfo.namespc with
       | some ns =>

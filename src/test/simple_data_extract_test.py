@@ -17,7 +17,7 @@ def pretty_print_file_contents(dir_path):
     print(f"Printing all files in the directory: {dir_path}")
     for f in os.listdir(dir_path):
         file_path = os.path.join(dir_path, f)
-        if os.path.isfile(file_path):
+        if os.path.isfile(file_path) and any(file_path.endswith(ext) for ext in [".json", ".yaml", ".yml", ".txt", ".log"]):
             print('-'*50)
             print(f"Contents of {file_path}:")
             with open(file_path, "r") as file:
@@ -63,7 +63,7 @@ class TestExtract(unittest.TestCase):
         # Print the directory contents
         last_dir_path = os.path.join(".log/data_generation/benchmark/simple_benchmark_lean_ext", last_dir)
         print("Last Directory Contents:", os.listdir(last_dir_path))
-        train_data = os.path.join(last_dir_path, "train")
+        train_data = os.path.join(last_dir_path, "train", "1")
         list_files = os.listdir(train_data)
         print("Train Directory Contents:", list_files)
         data_files = [f for f in list_files if f.endswith(".json") and f.startswith("local_data_")]
