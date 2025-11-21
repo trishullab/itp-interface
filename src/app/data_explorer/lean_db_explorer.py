@@ -158,9 +158,20 @@ def tab_dependencies(db: LeanDeclarationDB):
     """Dependency Explorer tab interface."""
     st.header("🌲 Dependency Explorer")
 
-    # Declaration selector
+    # Declaration selector with option to search by name or decl_id
     st.markdown("**Select a declaration:**")
-    decl_name = st.text_input("Declaration name", placeholder="e.g., dvd_trans, Nat.add")
+
+    search_mode = st.radio(
+        "Search by",
+        ["Declaration name", "Declaration ID"],
+        horizontal=True,
+        help="Search by name or directly by decl_id"
+    )
+
+    if search_mode == "Declaration name":
+        decl_input = st.text_input("Declaration name", placeholder="e.g., dvd_trans, Nat.add")
+    else:
+        decl_input = st.text_input("Declaration ID", placeholder="e.g., Nat.add_comm_123abc")
 
     col1, col2, col3 = st.columns(3)
 
@@ -172,47 +183,67 @@ def tab_dependencies(db: LeanDeclarationDB):
         max_depth = st.number_input("Max depth", min_value=1, max_value=20, value=5)
 
     if show_deps or show_dependents:
-        if not decl_name:
-            st.warning("Please enter a declaration name")
+        if not decl_input:
+            st.warning(f"Please enter a declaration {search_mode.lower()}")
             return
 
-        # Find declaration by name
-        search_df = db_utils.search_declarations(db, name_pattern=decl_name)
+        # Find declaration by name or ID
+        decl_id = None
+        display_name = decl_input
 
-        if search_df.empty:
-            st.error(f"Declaration '{decl_name}' not found")
-            return
+        if search_mode == "Declaration name":
+            search_df = db_utils.search_declarations(db, name_pattern=decl_input)
 
-        if len(search_df) > 1:
-            st.warning(f"Found {len(search_df)} declarations with this name. Using the first one.")
-            st.dataframe(search_df[['name', 'namespace', 'file_path', 'decl_type']])
+            if search_df.empty:
+                st.error(f"Declaration '{decl_input}' not found")
+                return
 
-        decl_id = search_df.iloc[0]['decl_id']
+            if len(search_df) > 1:
+                st.warning(f"Found {len(search_df)} declarations with this name. Using the first one.")
+                st.dataframe(search_df[['decl_id', 'name', 'namespace', 'file_path', 'decl_type']])
 
-        with st.spinner("Analyzing dependencies..."):
-            if show_deps:
-                decls, subgraph = graph_utils.get_dependencies_closure(db, decl_id, max_depth)
-                title = f"Dependencies of {decl_name}"
-            else:
-                decls, subgraph = graph_utils.get_dependents_closure(db, decl_id, max_depth)
-                title = f"Dependents of {decl_name}"
-
-        if decls:
-            st.success(f"Found {len(decls)} related declarations")
-
-            # Show tabs for table and graph views
-            tab1, tab2 = st.tabs(["📊 Table View", "📈 Graph View"])
-
-            with tab1:
-                df = pd.DataFrame(decls)
-                st.dataframe(df[['name', 'namespace', 'decl_type', 'file_path', 'line']],
-                             use_container_width=True, height=400)
-
-            with tab2:
-                fig = graph_utils.visualize_graph(subgraph, title)
-                st.plotly_chart(fig, use_container_width=True)
+            decl_id = search_df.iloc[0]['decl_id']
+            display_name = search_df.iloc[0]['name']
         else:
-            st.info("No dependencies found")
+            # Direct decl_id lookup
+            decl = db.get_declaration_by_decl_id(decl_input)
+            if decl:
+                decl_id = decl_input
+                display_name = decl.get('name', decl_input)
+                # Show the declaration info
+                st.info(f"Found: {display_name} (Type: {decl.get('decl_type', 'unknown')})")
+            else:
+                st.error(f"Declaration with ID '{decl_input}' not found")
+                return
+
+        try:
+            with st.spinner("Analyzing dependencies..."):
+                if show_deps:
+                    decls, subgraph = graph_utils.get_dependencies_closure(db, decl_id, max_depth)
+                    title = f"Dependencies of {display_name}"
+                else:
+                    decls, subgraph = graph_utils.get_dependents_closure(db, decl_id, max_depth)
+                    title = f"Dependents of {display_name}"
+
+            if decls:
+                st.success(f"Found {len(decls)} related declarations")
+
+                # Show tabs for table and graph views
+                tab1, tab2 = st.tabs(["📊 Table View", "📈 Graph View"])
+
+                with tab1:
+                    df = pd.DataFrame(decls)
+                    st.dataframe(df[['decl_id', 'name', 'namespace', 'decl_type', 'file_path', 'line']],
+                                 use_container_width=True, height=400)
+
+                with tab2:
+                    fig = graph_utils.visualize_graph(subgraph, title)
+                    st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No dependencies found")
+        except Exception as e:
+            st.error(f"Error analyzing dependencies: {str(e)}")
+            st.exception(e)
 
 
 def tab_forests(db: LeanDeclarationDB):
@@ -221,7 +252,8 @@ def tab_forests(db: LeanDeclarationDB):
 
     st.markdown("""
     A **forest** is a connected component in the dependency graph. Declarations in the same
-    forest are connected through dependency relationships.
+    forest are connected through dependency relationships. **Root nodes** are declarations
+    with no dependencies within the forest (no incoming edges).
     """)
 
     # Initialize session state for forests
@@ -263,7 +295,7 @@ def tab_forests(db: LeanDeclarationDB):
         st.dataframe(df, use_container_width=True)
 
         # Show declarations in selected forest
-        st.markdown("### View Forest Declarations")
+        st.markdown("### View Forest Details")
         forest_id = st.number_input(
             "Forest ID to view",
             min_value=1,
@@ -271,40 +303,102 @@ def tab_forests(db: LeanDeclarationDB):
             value=1
         )
 
-        if st.button("Show Declarations in Forest"):
+        col1, col2 = st.columns(2)
+        with col1:
+            show_all_decls = st.button("Show All Declarations")
+        with col2:
+            show_roots = st.button("Show Root Nodes Only")
+
+        if show_all_decls or show_roots:
+            if G is None:
+                st.error("Graph not available. Please click 'Find All Forests' first.")
+                return
+
             forest = forests[forest_id - 1]
-            st.info(f"Forest #{forest_id} contains {len(forest)} declarations")
+            stats = graph_utils.get_forest_statistics(G, forest)
 
-            # Get all declarations in this forest
-            forest_decls = []
-            for decl_id in forest:
-                decl = db.get_declaration_by_decl_id(decl_id)
-                if decl:
-                    # Truncate text and proof for display
-                    text = decl.get('text', '')
-                    proof = decl.get('proof', '')
-                    forest_decls.append({
-                        'decl_id': decl['decl_id'],
-                        'name': decl['name'],
-                        'namespace': decl.get('namespace', ''),
-                        'decl_type': decl.get('decl_type', ''),
-                        'text': text[:100] + '...' if text and len(text) > 100 else text,
-                        'proof': proof[:100] + '...' if proof and len(proof) > 100 else proof,
-                        'file_path': decl.get('file_path', ''),
-                        'line': decl.get('line', '')
-                    })
+            if show_roots:
+                st.markdown(f"#### 🌱 Root Nodes of Forest #{forest_id}")
+                st.info(f"Found {stats['num_roots']} root nodes (declarations with no dependencies)")
 
-            forest_df = pd.DataFrame(forest_decls)
-            st.dataframe(forest_df, use_container_width=True, height=500)
+                # Get root node details
+                root_decls = []
+                subgraph = G.subgraph(forest)
+                root_ids = [node for node in forest if subgraph.in_degree(node) == 0]
 
-            # Download button
-            csv = forest_df.to_csv(index=False)
-            st.download_button(
-                label="Download Forest Declarations",
-                data=csv,
-                file_name=f"forest_{forest_id}_declarations.csv",
-                mime="text/csv"
-            )
+                for decl_id in root_ids:
+                    decl = db.get_declaration_by_decl_id(decl_id)
+                    if decl:
+                        # Count direct dependents
+                        num_dependents = subgraph.out_degree(decl_id)
+                        root_decls.append({
+                            'decl_id': decl['decl_id'],
+                            'name': decl['name'],
+                            'namespace': decl.get('namespace', ''),
+                            'decl_type': decl.get('decl_type', ''),
+                            'dependents_count': num_dependents,
+                            'file_path': decl.get('file_path', ''),
+                            'line': decl.get('line', '')
+                        })
+
+                if root_decls:
+                    root_df = pd.DataFrame(root_decls)
+                    # Sort by number of dependents
+                    root_df = root_df.sort_values('dependents_count', ascending=False)
+                    st.dataframe(root_df, use_container_width=True, height=500)
+
+                    # Download button
+                    csv = root_df.to_csv(index=False)
+                    st.download_button(
+                        label="Download Root Nodes",
+                        data=csv,
+                        file_name=f"forest_{forest_id}_roots.csv",
+                        mime="text/csv"
+                    )
+                else:
+                    st.warning("No root nodes found in this forest.")
+
+            else:  # show_all_decls
+                st.info(f"Forest #{forest_id} contains {len(forest)} declarations")
+
+                # Get all declarations in this forest
+                forest_decls = []
+                subgraph = G.subgraph(forest)
+
+                for decl_id in forest:
+                    decl = db.get_declaration_by_decl_id(decl_id)
+                    if decl:
+                        # Check if it's a root node
+                        is_root = subgraph.in_degree(decl_id) == 0
+                        # Truncate text and proof for display
+                        text = decl.get('text', '')
+                        proof = decl.get('proof', '')
+                        forest_decls.append({
+                            'decl_id': decl['decl_id'],
+                            'name': decl['name'],
+                            'namespace': decl.get('namespace', ''),
+                            'decl_type': decl.get('decl_type', ''),
+                            'is_root': '🌱' if is_root else '',
+                            'text': text[:100] + '...' if text and len(text) > 100 else text,
+                            'proof': proof[:100] + '...' if proof and len(proof) > 100 else proof,
+                            'file_path': decl.get('file_path', ''),
+                            'line': decl.get('line', '')
+                        })
+
+                if forest_decls:
+                    forest_df = pd.DataFrame(forest_decls)
+                    st.dataframe(forest_df, use_container_width=True, height=500)
+
+                    # Download button
+                    csv = forest_df.to_csv(index=False)
+                    st.download_button(
+                        label="Download Forest Declarations",
+                        data=csv,
+                        file_name=f"forest_{forest_id}_declarations.csv",
+                        mime="text/csv"
+                    )
+                else:
+                    st.warning("No declarations found in this forest.")
     else:
         st.info("Click 'Find All Forests' to analyze the dependency graph")
 

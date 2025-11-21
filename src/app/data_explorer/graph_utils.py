@@ -20,20 +20,26 @@ def build_dependency_graph(db: LeanDeclarationDB) -> nx.DiGraph:
     """
     Build a directed graph from the dependency relationships.
 
+    Only includes declarations with non-None decl_type (filters out unresolved declarations).
+    This is a read-only operation - the database is not modified.
+
     Args:
         db: LeanDeclarationDB instance
 
     Returns:
-        NetworkX directed graph where edges point from dependent to dependency
-        (A -> B means A depends on B)
+        NetworkX directed graph where edges point from dependency to dependent
+        (B -> A means "A depends on B")
+        - Root nodes (depend on nothing): in_degree == 0
+        - Leaf nodes (nothing depends on them): out_degree == 0
     """
     G = nx.DiGraph()
 
-    # Add all declarations as nodes
+    # Add all declarations as nodes, excluding those with None decl_type
     cursor = db.conn.cursor()
     cursor.execute("""
         SELECT decl_id, name, namespace, decl_type, file_path
         FROM declarations
+        WHERE decl_type IS NOT NULL
     """)
 
     for row in cursor.fetchall():
@@ -44,13 +50,18 @@ def build_dependency_graph(db: LeanDeclarationDB) -> nx.DiGraph:
                    file_path=file_path)
 
     # Add all dependency edges
+    # Edge direction: to_id -> from_id means "from_id depends on to_id"
+    # This way, root nodes (declarations that depend on nothing) have in_degree == 0
     cursor.execute("""
         SELECT from_decl_id, to_decl_id
         FROM declaration_dependencies
     """)
 
     for from_id, to_id in cursor.fetchall():
-        G.add_edge(from_id, to_id)
+        # Only add edge if both nodes exist in the graph (not filtered out)
+        if to_id in G.nodes and from_id in G.nodes:
+            # Flip edge direction: dependency -> dependent
+            G.add_edge(to_id, from_id)
 
     return G
 
@@ -91,37 +102,51 @@ def get_dependencies_closure(
     Returns:
         Tuple of (list of declaration dicts, subgraph)
     """
-    G = build_dependency_graph(db)
+    try:
+        G = build_dependency_graph(db)
 
-    if decl_id not in G:
-        return [], nx.DiGraph()
+        if decl_id not in G:
+            return [], nx.DiGraph()
 
-    # Get all reachable nodes (BFS limited by depth)
-    visited = set()
-    queue = [(decl_id, 0)]
-    visited.add(decl_id)
+        # Get all dependencies (follow incoming edges since edge direction is flipped)
+        # Edge B -> A means "A depends on B", so dependencies of A are predecessors
+        visited = set()
+        queue = [(decl_id, 0)]
+        visited.add(decl_id)
 
-    while queue:
-        current, depth = queue.pop(0)
-        if depth >= max_depth:
-            continue
+        while queue:
+            current, depth = queue.pop(0)
+            if depth >= max_depth:
+                continue
 
-        for neighbor in G.successors(current):
-            if neighbor not in visited:
-                visited.add(neighbor)
-                queue.append((neighbor, depth + 1))
+            try:
+                # Follow incoming edges to find dependencies
+                for neighbor in G.predecessors(current):
+                    if neighbor not in visited:
+                        visited.add(neighbor)
+                        queue.append((neighbor, depth + 1))
+            except Exception as e:
+                print(f"Warning: Error processing predecessors of {current}: {e}")
+                continue
 
-    # Create subgraph
-    subgraph = G.subgraph(visited).copy()
+        # Create subgraph
+        subgraph = G.subgraph(visited).copy()
 
-    # Get declaration info for all nodes
-    decls = []
-    for node_id in visited:
-        decl = db.get_declaration_by_decl_id(node_id)
-        if decl:
-            decls.append(decl)
+        # Get declaration info for all nodes
+        decls = []
+        for node_id in visited:
+            try:
+                decl = db.get_declaration_by_decl_id(node_id)
+                if decl:
+                    decls.append(decl)
+            except Exception as e:
+                print(f"Warning: Error fetching declaration {node_id}: {e}")
+                continue
 
-    return decls, subgraph
+        return decls, subgraph
+    except Exception as e:
+        print(f"Error in get_dependencies_closure: {e}")
+        raise
 
 
 def get_dependents_closure(
@@ -140,37 +165,51 @@ def get_dependents_closure(
     Returns:
         Tuple of (list of declaration dicts, subgraph)
     """
-    G = build_dependency_graph(db)
+    try:
+        G = build_dependency_graph(db)
 
-    if decl_id not in G:
-        return [], nx.DiGraph()
+        if decl_id not in G:
+            return [], nx.DiGraph()
 
-    # Get all nodes that can reach this node (reverse BFS)
-    visited = set()
-    queue = [(decl_id, 0)]
-    visited.add(decl_id)
+        # Get all dependents (follow outgoing edges since edge direction is flipped)
+        # Edge B -> A means "A depends on B", so dependents of B are successors
+        visited = set()
+        queue = [(decl_id, 0)]
+        visited.add(decl_id)
 
-    while queue:
-        current, depth = queue.pop(0)
-        if depth >= max_depth:
-            continue
+        while queue:
+            current, depth = queue.pop(0)
+            if depth >= max_depth:
+                continue
 
-        for neighbor in G.predecessors(current):
-            if neighbor not in visited:
-                visited.add(neighbor)
-                queue.append((neighbor, depth + 1))
+            try:
+                # Follow outgoing edges to find dependents
+                for neighbor in G.successors(current):
+                    if neighbor not in visited:
+                        visited.add(neighbor)
+                        queue.append((neighbor, depth + 1))
+            except Exception as e:
+                print(f"Warning: Error processing successors of {current}: {e}")
+                continue
 
-    # Create subgraph
-    subgraph = G.subgraph(visited).copy()
+        # Create subgraph
+        subgraph = G.subgraph(visited).copy()
 
-    # Get declaration info for all nodes
-    decls = []
-    for node_id in visited:
-        decl = db.get_declaration_by_decl_id(node_id)
-        if decl:
-            decls.append(decl)
+        # Get declaration info for all nodes
+        decls = []
+        for node_id in visited:
+            try:
+                decl = db.get_declaration_by_decl_id(node_id)
+                if decl:
+                    decls.append(decl)
+            except Exception as e:
+                print(f"Warning: Error fetching declaration {node_id}: {e}")
+                continue
 
-    return decls, subgraph
+        return decls, subgraph
+    except Exception as e:
+        print(f"Error in get_dependents_closure: {e}")
+        raise
 
 
 def visualize_graph(G: nx.DiGraph, title: str = "Dependency Graph") -> go.Figure:
@@ -255,8 +294,7 @@ def visualize_graph(G: nx.DiGraph, title: str = "Dependency Graph") -> go.Figure
     # Create figure
     fig = go.Figure(data=[edge_trace, node_trace],
                     layout=go.Layout(
-                        title=title,
-                        titlefont_size=16,
+                        title=dict(text=title, font=dict(size=16)),
                         showlegend=False,
                         hovermode='closest',
                         margin=dict(b=0, l=0, r=0, t=40),
@@ -272,7 +310,7 @@ def get_forest_statistics(G: nx.DiGraph, forest: Set[str]) -> Dict[str, Any]:
     Get statistics for a forest (connected component).
 
     Args:
-        G: NetworkX directed graph
+        G: NetworkX directed graph (edge B->A means "A depends on B")
         forest: Set of decl_ids in the forest
 
     Returns:
@@ -280,10 +318,12 @@ def get_forest_statistics(G: nx.DiGraph, forest: Set[str]) -> Dict[str, Any]:
     """
     subgraph = G.subgraph(forest)
 
-    # Find root nodes (nodes with no incoming edges from within forest)
+    # Find root nodes (declarations that depend on nothing)
+    # With edge direction B->A meaning "A depends on B", roots have in_degree == 0
     roots = [node for node in forest if subgraph.in_degree(node) == 0]
 
-    # Find leaf nodes (nodes with no outgoing edges from within forest)
+    # Find leaf nodes (declarations that nothing depends on)
+    # With edge direction B->A meaning "A depends on B", leaves have out_degree == 0
     leaves = [node for node in forest if subgraph.out_degree(node) == 0]
 
     return {

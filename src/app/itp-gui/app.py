@@ -19,7 +19,7 @@ import traceback
 from typing import Optional, Dict, Any, List
 import json
 
-from itp_interface.tools.simple_lean4_sync_executor import SimpleLean4SyncExecutor
+from itp_interface.lean.simple_lean4_sync_executor import SimpleLean4SyncExecutor
 from itp_interface.lean_server.lean_context import ProofContext
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
