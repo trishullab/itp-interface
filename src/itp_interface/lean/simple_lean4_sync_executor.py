@@ -226,10 +226,10 @@ class SimpleLean4SyncExecutor:
         return True
 
     def extract_all_theorems_and_definitions(self, json_output_path: str|None = None, file_path: str|None = None) -> List[FileDependencyAnalysis]:
-        assert self.main_file is not None, "main_file must be set to extract theorems and definitions"
         assert self.tactic_parser is not None, "tactic_parser must be initialized to extract theorems and definitions"
 
         file_path = file_path if file_path is not None else self.main_file
+        assert file_path is not None, "Either file_path or main_file must be provided to extract theorems and definitions"
         assert os.path.exists(file_path), f"file_path must exist to extract theorems and definitions ({file_path})"
         json_output_path = json_output_path if json_output_path is not None else file_path + ".dependency_analysis.json"
         file_dependency_analysis, _ = self.tactic_parser.parse_file(
