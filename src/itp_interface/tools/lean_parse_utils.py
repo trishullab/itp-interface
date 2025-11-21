@@ -42,7 +42,7 @@ class LeanLineByLineReader(object):
             self.file_content = Lean3Utils.remove_comments(self.file_content)
 
     def instruction_step_generator(self) -> ClonableIterator:
-        lines = self.file_content.split('\n')
+        lines = self.file_content.splitlines()
         if not self.no_strip:
             lines = [line.strip() for line in lines]
         return LeanLineByLineReader.LineByLineIterator(lines)

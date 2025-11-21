@@ -1,8 +1,7 @@
-import sys
-import re
 from enum import Enum
 from dataclasses import dataclass
-from typing import Optional, Set
+from typing import Optional
+from itp_interface.lean.tactic_parser import DeclWithDependencies, FileDependencyAnalysis
 
 class LeanDeclType(Enum):
     LEMMA = "lemma"
@@ -374,3 +373,35 @@ class LeanDeclParser:
 def parse_lean_text(text: str) -> LeanParseResult:
     parser = LeanDeclParser(text)
     return parser.parse()
+
+def preprocess_declarations(
+    file_dep_analyses: list[FileDependencyAnalysis]) -> None:
+    # Preprocess declarations to set file paths and module names
+    for fda in file_dep_analyses:
+        for decl in fda.declarations:
+            preprocess_declaration(decl)
+
+def preprocess_declaration(
+    decl: DeclWithDependencies) -> None:
+    # Filter all unknown types
+    if decl.decl_info.decl_type == LeanDeclType.UNKNOWN.value:
+        # Check if we have docstring or not
+        if decl.decl_info.doc_string is None or decl.decl_info.doc_string.strip() != "":
+            parser = LeanDeclParser(decl.decl_info.text)
+            parse_result = parser.parse()
+            if parse_result.doc_string is not None:
+                decl.decl_info.doc_string = parse_result.doc_string.strip()
+            if parse_result.decl_type != LeanDeclType.UNKNOWN:
+                decl.decl_info.decl_type = str(parse_result.decl_type)
+            if parse_result.text is not None:
+                full_text = []
+                if parse_result.text_before is not None:
+                    full_text.append(parse_result.text_before.strip())
+                full_text.append(parse_result.text.strip())
+                text = "\n".join(full_text)
+                decl.decl_info.text = text
+            # Update the proof if not already present
+            if decl.decl_info.proof is None and parse_result.proof is not None:
+                decl.decl_info.proof = parse_result.proof.strip()
+            if parse_result.name is not None:
+                decl.decl_info.name = parse_result.name.strip()
