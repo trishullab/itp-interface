@@ -10,4 +10,4 @@ defaults:
 
 run_settings:
  output_dir: .log/data_generation/benchmark/simple_benchmark_lean_ext
- pool_size: 2
+ pool_size: 1
