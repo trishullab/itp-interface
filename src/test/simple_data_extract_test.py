@@ -63,7 +63,7 @@ class TestExtract(unittest.TestCase):
         # Print the directory contents
         last_dir_path = os.path.join(".log/data_generation/benchmark/simple_benchmark_lean_ext", last_dir)
         print("Last Directory Contents:", os.listdir(last_dir_path))
-        train_data = os.path.join(last_dir_path, "train")
+        train_data = os.path.join(last_dir_path, "train", "0")
         list_files = os.listdir(train_data)
         print("Train Directory Contents:", list_files)
         data_files = [f for f in list_files if f.endswith(".json") and f.startswith("local_data_")]
