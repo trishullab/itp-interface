@@ -193,7 +193,8 @@ class LeanDeclarationDB:
         name: str,
         namespace: Optional[str] = None,
         file_path: Optional[str] = None,
-        module_name: Optional[str] = None
+        module_name: Optional[str] = None,
+        assert_exists: bool = False
     ) -> str:
         """
         Get existing decl_id or create a new one for a declaration.
@@ -217,14 +218,20 @@ class LeanDeclarationDB:
         cursor.execute("""
             SELECT decl_id FROM declarations
             WHERE name = ?
-              AND (namespace IS ? OR (namespace IS NULL AND ? IS NULL))
-              AND (file_path IS ? OR (file_path IS NULL AND ? IS NULL))
-              AND (module_name IS ? OR (module_name IS NULL AND ? IS NULL))
-        """, (name, namespace, namespace, file_path, file_path, module_name, module_name))
+              AND (namespace IS ? OR (namespace IS NULL AND ? IS NULL) OR (namespace IS NOT NULL AND ? IS NULL))
+              AND (file_path IS ? OR (file_path IS NULL AND ? IS NULL) OR (file_path IS NOT NULL AND ? IS NULL))
+              AND (module_name IS ? OR (module_name IS NULL AND ? IS NULL) OR (module_name IS NOT NULL AND ? IS NULL))
+        """, (name, 
+             namespace, namespace, namespace, 
+             file_path, file_path, file_path,
+             module_name, module_name, module_name))
 
         row = cursor.fetchone()
         if row:
             return row[0]  # Return existing ID
+
+        if assert_exists:
+            raise ValueError(f"Declaration not found: name={name}, namespace={namespace}, file_path={file_path}, module_name={module_name}")
 
         # Generate new ID and insert minimal record
         new_decl_id = self._generate_unique_id()
@@ -241,10 +248,13 @@ class LeanDeclarationDB:
             cursor.execute("""
                 SELECT decl_id FROM declarations
                 WHERE name = ?
-                  AND (namespace IS ? OR (namespace IS NULL AND ? IS NULL))
-                  AND (file_path IS ? OR (file_path IS NULL AND ? IS NULL))
-                  AND (module_name IS ? OR (module_name IS NULL AND ? IS NULL))
-            """, (name, namespace, namespace, file_path, file_path, module_name, module_name))
+                AND (namespace IS ? OR (namespace IS NULL AND ? IS NULL) OR (namespace IS NOT NULL AND ? IS NULL))
+                AND (file_path IS ? OR (file_path IS NULL AND ? IS NULL) OR (file_path IS NOT NULL AND ? IS NULL))
+                AND (module_name IS ? OR (module_name IS NULL AND ? IS NULL) OR (module_name IS NOT NULL AND ? IS NULL))
+            """, (name, 
+                namespace, namespace, namespace, 
+                file_path, file_path, file_path,
+                module_name, module_name, module_name))
             row = cursor.fetchone()
             if row:
                 return row[0]
@@ -355,7 +365,8 @@ class LeanDeclarationDB:
         self,
         fda_file_path: str,
         fda_module_name: str,
-        decl
+        decl,
+        enable_dependency_extraction: bool = True
     ) -> str:
         """
         Process a declaration from a FileDependencyAnalysis object.
@@ -378,41 +389,52 @@ class LeanDeclarationDB:
             name=decl.decl_info.name,
             namespace=decl.decl_info.namespace,
             file_path=fda_file_path,
-            module_name=fda_module_name
-        )
-
-        # Update with full declaration info
-        self.upsert_declaration_full_info(
-            decl_id=decl_id,
-            name=decl.decl_info.name,
-            namespace=decl.decl_info.namespace,
-            file_path=fda_file_path,
             module_name=fda_module_name,
-            decl_type=decl.decl_info.decl_type,
-            text=decl.decl_info.text,
-            line=decl.decl_info.line,
-            column=decl.decl_info.column,
-            end_line=decl.decl_info.end_line,
-            end_column=decl.decl_info.end_column,
-            doc_string=decl.decl_info.doc_string,
-            proof=decl.decl_info.proof
+            # If we are extracting dependencies, we expect the declaration to exist
+            assert_exists=enable_dependency_extraction
         )
 
-        # Process dependencies
-        for dep in decl.dependencies:
-            # Get or create ID for the dependency
-            dep_decl_id = self.get_or_create_decl_id(
-                name=dep.name,
-                namespace=dep.namespace,
-                file_path=dep.file_path,
-                module_name=dep.module_name
+        if not enable_dependency_extraction:
+            # Update with full declaration info
+            # This is a new declaration, so we can safely update all info
+            self.upsert_declaration_full_info(
+                decl_id=decl_id,
+                name=decl.decl_info.name,
+                namespace=decl.decl_info.namespace,
+                file_path=fda_file_path,
+                module_name=fda_module_name,
+                decl_type=decl.decl_info.decl_type,
+                text=decl.decl_info.text,
+                line=decl.decl_info.line,
+                column=decl.decl_info.column,
+                end_line=decl.decl_info.end_line,
+                end_column=decl.decl_info.end_column,
+                doc_string=decl.decl_info.doc_string,
+                proof=decl.decl_info.proof
             )
+        else:
+            # Process dependencies
+            for dep in decl.dependencies:
+                # Get or create ID for the dependency
+                try:
+                    dep_decl_id = self.get_or_create_decl_id(
+                        name=dep.name,
+                        namespace=dep.namespace,
+                        file_path=dep.file_path,
+                        module_name=dep.module_name,
+                        # At this point all dependencies should exist
+                        assert_exists=True
+                    )
+                except ValueError as e:
+                    # This dependency is probably from outside the project
+                    # Let's just skip it
+                    continue
 
-            # Propagate the decl_id back to the dependency object
-            dep.decl_id = dep_decl_id
+                # Propagate the decl_id back to the dependency object
+                dep.decl_id = dep_decl_id
 
-            # Insert dependency edge
-            self.insert_dependency_edge(decl_id, dep_decl_id)
+                # Insert dependency edge
+                self.insert_dependency_edge(decl_id, dep_decl_id)
 
         return decl_id
 

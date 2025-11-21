@@ -10,6 +10,7 @@ import logging
 import typing
 import shutil
 import gc
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from itp_interface.tools.training_data import TrainingData, DataLayoutFormat
 
@@ -290,6 +291,7 @@ class RunDataGenerationTransforms(object):
         job_idx = 0
         project_names = list(projects.keys())
         project_names.sort()
+        file_index = 0
         for project in project_names:
             # Create temporary directory for each project
             proj_name = os.path.basename(project)
@@ -305,9 +307,26 @@ class RunDataGenerationTransforms(object):
                 some_files_processed = True
                 job_more_args = file_args.get(file_path, {})
                 # Create temporary directory for each file
-                full_file_path = os.path.join(project_path, file_path)
-                relative_file_path = file_path
-                relative_file_path = relative_file_path.replace("/", ".").replace(".v", "").replace(".lean", "").replace(".thy", "")
+                fp = Path(file_path)
+                pp = Path(project_path)
+                if fp.is_absolute():
+                    # then leave it as is
+                    full_file_path = file_path
+                else:
+                    # Check if the file path is relative to the project path
+                    fp = fp.resolve()
+                    pp = pp.resolve()
+                    # Now check if fp is relative to pp
+                    fp_is_rel_to_pp = fp.is_relative_to(pp)
+                    if fp_is_rel_to_pp:
+                        full_file_path = str(fp.relative_to(pp))
+                    else:
+                        # Just make it relative to project path
+                        full_file_path = os.path.join(project_path, file_path)
+                assert os.path.exists(full_file_path), f"File path {full_file_path} does not exist"
+                file_index += 1
+
+                relative_file_path = f"transformer_{file_index}"
                 temp_file_dir = os.path.join(temp_project_dir, relative_file_path)
                 os.makedirs(temp_file_dir, exist_ok=True)
                 log_file = os.path.join(self.logging_dir, f"{relative_file_path}.log")
@@ -410,10 +429,13 @@ class RunDataGenerationTransforms(object):
         shutil.rmtree(temp_output_dir)
 
     def run_all_local_transforms(self, pool_size: int, projects: typing.Dict[str, typing.Dict[str, str]], use_human_readable: bool, new_output_dir: str, log_error: bool, other_args: typing.Dict[str, typing.Dict[str, dict]] = {}):
+        os.makedirs(new_output_dir, exist_ok=True)
         for idx, transform in enumerate(self.transforms):
             last_transform = idx == len(self.transforms) - 1
             save_transform = self.save_intermidiate_transforms or last_transform
-            self.run_local_transform(pool_size, transform, projects, use_human_readable, new_output_dir, log_error, save_transform, preserve_temp=self.save_intermidiate_transforms, other_args=other_args)
+            temp_new_output_dir = str(Path(new_output_dir) / str(idx))
+            os.makedirs(temp_new_output_dir, exist_ok=True)
+            self.run_local_transform(pool_size, transform, projects, use_human_readable, temp_new_output_dir, log_error, save_transform, preserve_temp=self.save_intermidiate_transforms, other_args=other_args)
         pass
 
 # Create Ray remote version if Ray is available

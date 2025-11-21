@@ -8,7 +8,9 @@ if root_dir not in sys.path:
     sys.path.append(root_dir)
 import typing
 import uuid
+import json
 from pathlib import Path
+from filelock import FileLock
 from itp_interface.lean.simple_lean4_sync_executor import SimpleLean4SyncExecutor
 from itp_interface.lean.parsing_helpers import LeanDeclParser, LeanParseResult, LeanDeclType
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
@@ -25,13 +27,29 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
                 logger = None,
                 max_parallelism : int = 4,
                 db_path : typing.Optional[str] = None,
-                enable_file_export: bool = True):
+                enable_file_export: bool = False,
+                enable_dependency_extraction: bool = False):
         super().__init__(TrainingDataGenerationType.LOCAL, buffer_size, logger)
         self.depth = depth
         self.max_search_results = max_search_results
         self.max_parallelism = max_parallelism
         self.db_path = db_path  # Store path, don't create connection yet (for Ray actors)
         self.enable_file_export = enable_file_export
+        self.enable_dependency_extraction = enable_dependency_extraction
+        # Everything except UNKNOWN
+        self.supported_declaration_types = [ str(dt) for dt in LeanDeclType if dt != LeanDeclType.UNKNOWN]
+        if self.db_path is not None:
+            temp_db_path = Path(self.db_path)
+            cache_path = temp_db_path.parent / "cache"
+            os.makedirs(str(cache_path), exist_ok=True)
+            mapping_path = cache_path / f"{temp_db_path.stem}_declaration_mapping.json"
+            self.cache_path = str(cache_path)
+            self.mapping_path = str(mapping_path)
+            self._lock_path = os.path.join(self.cache_path, "lean_declaration_mapping.lock")
+        else:
+            self.cache_path = None
+            self.mapping_path = None
+            self._lock_path = None
 
     def get_meta_object(self) -> TrainingDataMetadataFormat:
         return TrainingDataMetadataFormat(
@@ -147,11 +165,12 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
         project_path: str,
         file_dep_analyses: typing.List[FileDependencyAnalysis]) -> None:
             # Map local dependencies
-            all_decls = {}
+            all_decls : dict[str, DeclWithDependencies] = {}
             for fda in file_dep_analyses:
                 for decl in fda.declarations:
                     name = decl.decl_info.name
-                    all_decls[name] = decl
+                    if name is not None:
+                        all_decls[name] = decl
             for fda in file_dep_analyses:
                 fda_rel_path = self._get_file_path(project_path, fda.file_path)
                 # Remove the pp_module prefix from the fda module name
@@ -159,7 +178,10 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
                 for decl in fda.declarations:
                     for decl_dep in decl.dependencies:
                         if decl_dep.name in all_decls:
-                            if decl_dep.file_path is None:
+                            local_decl = all_decls[decl_dep.name]
+                            if decl_dep.file_path is None and \
+                            local_decl.decl_info.decl_type in self.supported_declaration_types:
+                                # We need to ensure that it is locally defined.
                                 decl_dep.file_path = fda_rel_path
                                 if decl_dep.module_name is None:
                                     decl_dep.module_name = fda_module_name
@@ -228,10 +250,34 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
             else:
                 theorems = set(theorems) if theorems is not None else None
             cnt = 0
-            temp_dir = os.path.join(training_data.folder, "temp")
-            os.makedirs(temp_dir, exist_ok=True)
+            temp_dir = os.path.join(training_data.folder, "temp") if self.cache_path is None else self.cache_path
+            temp_dir = temp_dir.rstrip('/')
+            if self.cache_path is None:
+                os.makedirs(temp_dir, exist_ok=True)
             json_output_path = f"{temp_dir}/{file_namespace.replace('.', '_')}.lean.deps.json"
-            file_dep_analyses = lean_executor.extract_all_theorems_and_definitions(json_output_path=json_output_path)
+            already_mapped = False
+            if self._lock_path is not None:
+                with FileLock(self._lock_path):
+                    assert self.mapping_path is not None
+                    if not os.path.exists(self.mapping_path):
+                        with open(self.mapping_path, "w") as f:
+                            json.dump({}, f)
+                    with open(self.mapping_path, "r") as f:
+                        mapping_data = json.load(f)
+                    if json_output_path in mapping_data:
+                        already_mapped = True
+                    else:
+                        mapping_data[json_output_path] = True
+                        with open(self.mapping_path, "w") as f:
+                            json.dump(mapping_data, f)
+            if already_mapped and os.path.exists(json_output_path):
+                # Read from existing file
+                self.logger.info(f"Using existing dependency extraction file: {json_output_path}")
+                with open(json_output_path, 'r') as f:
+                    data = json.load(f)
+                file_dep_analyses = [FileDependencyAnalysis.model_validate(data)]
+            else:   
+                file_dep_analyses = lean_executor.extract_all_theorems_and_definitions(json_output_path=json_output_path)
             self.logger.info(f"Extracted {len(file_dep_analyses)} FileDependencyAnalysis objects from {file_namespace}")
             self.logger.info(f"file_dep_analyses: {file_dep_analyses}")
             assert len(file_dep_analyses) == 1, "Expected exactly one FileDependencyAnalysis object"
@@ -253,15 +299,18 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
                 for decl in fda.declarations:
                     # Get or create decl_id from database (or generate new one if no DB)
                     if db:
+                        if decl.decl_info.decl_type not in self.supported_declaration_types:
+                            self.logger.info(f"Skipping declaration '{decl.decl_info.name}' of unsupported type '{decl.decl_info.decl_type}'")
+                            continue
                         decl_id = db.process_declaration(
                             fda_file_path=fda_rel_path,
                             fda_module_name=fda_module_name,
-                            decl=decl
+                            decl=decl,
+                            enable_dependency_extraction=self.enable_dependency_extraction
                         )
                         self.logger.info(f"Processed declaration '{decl.decl_info.name}' with ID: {decl_id}")
                     else:
                         # Fallback: generate unique ID without database
-                        import uuid
                         timestamp = str(int(uuid.uuid1().time_low))
                         random_id = str(uuid.uuid4())
                         decl_id = f"{timestamp}_{random_id}"
@@ -277,7 +326,7 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
                         decl.decl_id = decl_id
                         new_fda.declarations.append(decl)
                         training_data.merge(new_fda)
-                        cnt += 1
+                    cnt += 1
                     last_decl_id = decl_id
 
             if last_decl_id:

@@ -80,6 +80,7 @@ class EvalDataset(object):
     project: str
     files: typing.Union[typing.List[EvalFile], typing.List[ExtractFile]]
     exclude_files: typing.List[str] = field(default_factory=list)
+    include_files: typing.List[str] = field(default_factory=list)
 
 @dataclass_json
 @dataclass
@@ -193,7 +194,9 @@ def parse_config(cfg):
         eval_datasets.append(EvalDataset(
             project=dataset_cfg["project"],
             files=eval_files,
-            exclude_files=dataset_cfg.get("exclude_files", [])))
+            exclude_files=dataset_cfg.get("exclude_files", []),
+            include_files=dataset_cfg.get("include_files", [])
+        ))
     language = ProofAction.Language(benchmark_cfg["language"])
     benchmark = EvalBenchmark(
         name=benchmark_cfg["name"],

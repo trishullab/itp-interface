@@ -121,10 +121,23 @@ def _get_all_lemmas_impl(
     logger.info(f"Discovered {len(lemmas_to_prove)} lemmas")
     return lemmas_to_prove
 
-
 def _get_all_lean_files_in_folder_recursively(
-        project_folder: str, exclude_list: typing.List[str]) -> typing.List[str]:
+    project_folder: str, exclude_list: typing.List[str], include_list: typing.List[str]) -> typing.List[str]:
     lean_files = []
+    for include in include_list:
+        # the include list should be a full path
+        include_path = Path(include)
+        include_path = include_path.expanduser().resolve()
+        # Get all files recursively under include_path
+        for root, dirs, files in os.walk(include_path):
+            for file in files:
+                if file.endswith(".lean"):
+                    full_path = os.path.join(root, file)
+                    full_path_obj = Path(full_path)
+                    full_path = full_path_obj.expanduser().resolve()
+                    if str(full_path) not in lean_files:
+                        lean_files.append(str(full_path))
+
     project_folder_path = Path(project_folder)
     for root, dirs, files in os.walk(project_folder):
         for file in files:
@@ -270,13 +283,30 @@ def add_transform(experiment: Experiments, clone_dir: str, resources: list, tran
         elif experiment.benchmark.language == ProofAction.Language.LEAN4:
             if experiment.benchmark.is_extraction_request:
                 output_dir_path = os.path.join(experiment.run_settings.output_dir, str_time)
-                os.makedirs(output_dir_path, exist_ok=True)
-                db_path = os.path.join(output_dir_path, "lean4_extraction_db.sqlite")
-                transform = Local4DataExtractionTransform(
+                db_path = None
+                if os.environ.get("EXTRACTION_DB_PATH") is not None:
+                    db_path = os.environ.get("EXTRACTION_DB_PATH", "")
+                    if not os.path.exists(db_path) and db_path.strip() != "":
+                        db_path = None
+                if db_path is None:
+                    os.makedirs(output_dir_path, exist_ok=True)
+                    db_path = os.path.join(output_dir_path, "lean4_extraction_db.sqlite")
+                transform1 = Local4DataExtractionTransform(
                     experiment.run_settings.dep_depth, 
                     buffer_size=experiment.run_settings.buffer_size, 
                     logger=logger,
-                    db_path=db_path)
+                    db_path=db_path,
+                    enable_file_export=False,
+                    enable_dependency_extraction=False)
+                transforms.append(transform1) # First just add the definitions
+                transform = Local4DataExtractionTransform(
+                    experiment.run_settings.dep_depth,
+                    buffer_size=experiment.run_settings.buffer_size,
+                    logger=logger,
+                    db_path=db_path,
+                    enable_file_export=True,
+                    enable_dependency_extraction=True
+                ) # This will be later appended to the transforms list
             else:
                 transform = Local4DataGenerationTransform(
                     experiment.run_settings.dep_depth, 
@@ -335,7 +365,7 @@ def get_decl_lemmas_to_parse(
             if len(dataset.files) == 0:
                 logger.warning(f"No files specified for Lean4 extraction in dataset {dataset.project}, extracting from all Lean4 files in the project")
                 # List all the files recursively in the project folder
-                files_in_dataset = _get_all_lean_files_in_folder_recursively(dataset.project, dataset.exclude_files)
+                files_in_dataset = _get_all_lean_files_in_folder_recursively(dataset.project, dataset.exclude_files, dataset.include_files)
                 logger.info(f"Found {len(files_in_dataset)} Lean4 files in the project {dataset.project}")
                 for file_path in files_in_dataset:
                     file_to_theorems[file_path] = ["*"]

@@ -8,7 +8,6 @@ class LeanDeclType(Enum):
     LEMMA = "lemma"
     THEOREM = "theorem"
     DEF = "def"
-    DEFINITION = "definition"
     STRUCTURE = "structure"
     CLASS = "class"
     INDUCTIVE = "inductive"
