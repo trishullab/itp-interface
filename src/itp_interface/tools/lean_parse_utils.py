@@ -21,7 +21,10 @@ class LeanLineByLineReader(object):
             return line
         
         def set_to_index(self, index: int):
-            assert 0 <= index < len(self.lines), f"Index {index} out of bounds for lines of length {len(self.lines)}"
+            assert 0 <= index, f"Index {index} out of bounds for lines of length {len(self.lines)}"
+            if index >= len(self.lines):
+                new_lines = [''] * (index - len(self.lines) + 1)
+                self.lines.extend(new_lines)
             self.current_index = index
         
         def clone(self) -> 'LeanLineByLineReader.LineByLineIterator':
