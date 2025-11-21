@@ -72,6 +72,9 @@ class DynamicProofExecutor(SimpleLean4SyncExecutor):
         self.logger = logger
         pass
 
+    def associated_file(self) -> str | None:
+        return self.proof_file
+
     def get_focussed_goals(self) -> typing.List[Goal]:
         if not self.is_in_proof_mode():
             return []

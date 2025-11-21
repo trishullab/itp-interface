@@ -289,35 +289,42 @@ def get_path_to_tactic_parser_executable() -> str:
     tactic_parser_bin_path = os.path.join(abs_path, ".lake", "build", "bin", "tactic-parser")
     return tactic_parser_bin_path
 
+def toolchain_version_and_env_version():
+    lean_version_needed = os.getenv("LEAN_VERSION", None)
+    tactic_parser_project = get_path_to_tactic_parser_project()
+    # Check the version of the built parser
+    toolchain_file = os.path.join(tactic_parser_project, "lean-toolchain")
+    assert os.path.isfile(toolchain_file), f"lean-toolchain file not found at {toolchain_file}, something is wrong."
+    with open(toolchain_file, 'r') as f:
+        toolchain_content = f.read()
+    toolchain_content = toolchain_content.strip()
+    return toolchain_file, toolchain_content, lean_version_needed
+
+def change_toolchain_version(lean_version_needed: str, toolchain_file: str, toolchain_content: str):
+    # Replace the version in the toolchain file
+    # The version should be like 4.x.y
+    pattern = r'^4\.\d+\.\d+$'
+    if not re.match(pattern, lean_version_needed):
+        raise RuntimeError(f"Tactic parser built with Lean version {toolchain_content}, but version {lean_version_needed} is required." +
+        "Don't know how to build Lean which is not of the form 4.x.y. " +
+        "Please rebuild the tactic parser.")
+    toolchain_final = f"leanprover/lean4:v{lean_version_needed}"
+    with open(toolchain_file, 'w') as f:
+        f.write(toolchain_final)
+
 def is_tactic_parser_built() -> bool:
     """Check if the tactic parser executable exists."""
     path_to_exec = get_path_to_tactic_parser_executable()
+    toolchain_file, toolchain_content, lean_version_needed = toolchain_version_and_env_version()
     if not os.path.isfile(path_to_exec):
+        if lean_version_needed is not None:
+            change_toolchain_version(lean_version_needed, toolchain_file, toolchain_content)
         return False
     else:
-        lean_version_needed = os.getenv("LEAN_VERSION", None)
-        if lean_version_needed is None:
-            return True
-        tactic_parser_project = get_path_to_tactic_parser_project()
-        # Check the version of the built parser
-        toolchain_file = os.path.join(tactic_parser_project, "lean-toolchain")
-        assert os.path.isfile(toolchain_file), f"lean-toolchain file not found at {toolchain_file}, something is wrong."
-        with open(toolchain_file, 'r') as f:
-            toolchain_content = f.read()
-        toolchain_content = toolchain_content.strip()
-        if toolchain_content.endswith(lean_version_needed):
+        if lean_version_needed is None or toolchain_content.endswith(lean_version_needed):
             return True
         else:
-            # Replace the version in the toolchain file
-            # The version should be like 4.x.y
-            pattern = r'^4\.\d+\.\d+$'
-            if not re.match(pattern, lean_version_needed):
-                raise RuntimeError(f"Tactic parser built with Lean version {toolchain_content}, but version {lean_version_needed} is required." +
-                "Don't know how to build Lean which is not of the form 4.x.y. " +
-                "Please rebuild the tactic parser.")
-            toolchain_final = f"leanprover/lean4:v{lean_version_needed}"
-            with open(toolchain_file, 'w') as f:
-                f.write(toolchain_final)
+            change_toolchain_version(lean_version_needed, toolchain_file, toolchain_content)
             return False
 
 def build_lean4_project(project_folder, logger: Optional[logging.Logger] = None, has_executable: bool = False):

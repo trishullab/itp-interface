@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 from filelock import FileLock
 from itp_interface.lean.simple_lean4_sync_executor import SimpleLean4SyncExecutor
-from itp_interface.lean.parsing_helpers import LeanDeclParser, LeanParseResult, LeanDeclType
+from itp_interface.lean.parsing_helpers import LeanDeclType, preprocess_declarations
 from itp_interface.tools.coq_training_data_generator import GenericTrainingDataGenerationTransform, TrainingDataGenerationType
 from itp_interface.tools.training_data_format import MergableCollection, TrainingDataMetadataFormat, ExtractionDataCollection
 from itp_interface.tools.training_data import TrainingData, DataLayoutFormat
@@ -192,38 +192,7 @@ class Local4DataExtractionTransform(GenericTrainingDataGenerationTransform):
         project_path: str,
         file_dep_analyses: typing.List[FileDependencyAnalysis]) -> None:
         # Preprocess declarations to set file paths and module names
-        for fda in file_dep_analyses:
-            for decl in fda.declarations:
-                self._preprocess_declaration(project_path, decl)
-    
-    def _preprocess_declaration(
-        self,
-        project_path: str,
-        decl: DeclWithDependencies) -> None:
-        # Filter all unknown types
-        if decl.decl_info.decl_type == LeanDeclType.UNKNOWN.value:
-            # Check if we have docstring or not
-            if decl.decl_info.doc_string is None or decl.decl_info.doc_string.strip() != "":
-                parser = LeanDeclParser(decl.decl_info.text)
-                parse_result = parser.parse()
-                if parse_result.doc_string is not None:
-                    decl.decl_info.doc_string = parse_result.doc_string.strip()
-                if parse_result.decl_type != LeanDeclType.UNKNOWN:
-                    decl.decl_info.decl_type = str(parse_result.decl_type)
-                if parse_result.text is not None:
-                    full_text = []
-                    if parse_result.text_before is not None:
-                        full_text.append(parse_result.text_before.strip())
-                    full_text.append(parse_result.text.strip())
-                    text = "\n".join(full_text)
-                    decl.decl_info.text = text
-                # Update the proof if not already present
-                if decl.decl_info.proof is None and parse_result.proof is not None:
-                    decl.decl_info.proof = parse_result.proof.strip()
-                if parse_result.name is not None:
-                    decl.decl_info.name = parse_result.name.strip()
-        pass
-
+        preprocess_declarations(file_dep_analyses)
 
     def __call__(self,
         training_data: TrainingData,
