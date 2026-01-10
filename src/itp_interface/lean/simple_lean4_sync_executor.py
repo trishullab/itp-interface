@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from contextlib import nullcontext
 import os
 import base64
 import copy
@@ -11,6 +12,7 @@ import json
 import typing
 import bisect
 import subprocess
+from filelock import FileLock
 from itp_interface.lean.tactic_parser import (
     TacticParser, 
     ErrorInfo, 
@@ -610,48 +612,53 @@ class SimpleLean4SyncExecutor:
         assert self.main_file_iter is not None, "main_file_iter should not be None"
         assert self.tactic_parser is not None, "Tactic parser is not initialized"
         extraction_path = self._get_file_path_in_cache()
+        lock_file_path = self._get_lock_file_path_in_cache(extraction_path) if extraction_path is not None else None
+        # Use FileLock otherwise just a pass-through context manager
+        lock = FileLock(lock_file_path, timeout=self.timeout_in_sec*10) if lock_file_path is not None else nullcontext()
         can_fetch_from_cache = extraction_path is not None
         file_dep_analysis = None
-        if can_fetch_from_cache:
-            file_path = self.associated_file()
-            assert file_path is not None, "File path should not be None"
-            if os.path.exists(extraction_path):
-                temp_extraction_path_file = open(extraction_path, "r", encoding="utf-8")
-                file_dep_analysis_str = temp_extraction_path_file.read()
-                file_dep_analysis = [FileDependencyAnalysis.load_from_string(file_dep_analysis_str)]
+        with lock:
+            if can_fetch_from_cache:
+                file_path = self.associated_file()
+                assert file_path is not None, "File path should not be None"
+                if os.path.exists(extraction_path):
+                    temp_extraction_path_file = open(extraction_path, "r", encoding="utf-8")
+                    file_dep_analysis_str = temp_extraction_path_file.read()
+                    file_dep_analysis = [FileDependencyAnalysis.load_from_string(file_dep_analysis_str)]
+                else:
+                    file_dep_analysis = self.extract_all_theorems_and_definitions(
+                        json_output_path=extraction_path, file_path=file_path)
+                    assert file_dep_analysis is not None, "File dependency analysis should not be None"
+                    assert len(file_dep_analysis) > 0, "File dependency analysis should not be empty"
+                    
+                    temp_extraction_path_file = open(extraction_path, "w", encoding="utf-8")
+                    with temp_extraction_path_file:
+                        temp_extraction_path_file.write(file_dep_analysis[0].to_json())
+                with open(file_path, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
             else:
+                while True:
+                    try:
+                        stmt = next(self.main_file_iter)
+                    except StopIteration:
+                        break
+                    lines.append(stmt)
+                full_file = "\n".join(lines) + "\n"
+                # Dump the file in the temp file
+                with open(self.temp_file_full_path, "w", encoding="utf-8") as f:
+                    f.write(full_file)
+                file_path = self.temp_file_full_path
+                temp_extraction_path_file = NamedTemporaryFile(
+                    prefix="lean4_dep_analysis_",
+                    suffix=".json",
+                    delete_on_close=True)
+                extraction_path = temp_extraction_path_file.name
                 file_dep_analysis = self.extract_all_theorems_and_definitions(
                     json_output_path=extraction_path, file_path=file_path)
-                assert file_dep_analysis is not None, "File dependency analysis should not be None"
-                assert len(file_dep_analysis) > 0, "File dependency analysis should not be empty"
-                temp_extraction_path_file = open(extraction_path, "w", encoding="utf-8")
-                with temp_extraction_path_file:
-                    temp_extraction_path_file.write(file_dep_analysis[0].to_json())
-            with open(file_path, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-        else:
-            while True:
-                try:
-                    stmt = next(self.main_file_iter)
-                except StopIteration:
-                    break
-                lines.append(stmt)
-            full_file = "\n".join(lines) + "\n"
-            # Dump the file in the temp file
-            with open(self.temp_file_full_path, "w", encoding="utf-8") as f:
-                f.write(full_file)
-            file_path = self.temp_file_full_path
-            temp_extraction_path_file = NamedTemporaryFile(
-                prefix="lean4_dep_analysis_",
-                suffix=".json",
-                delete_on_close=True)
-            extraction_path = temp_extraction_path_file.name
-            file_dep_analysis = self.extract_all_theorems_and_definitions(
-                json_output_path=extraction_path, file_path=file_path)
-            temp_extraction_path_file.close()
-            # Remove the temp file
-            if os.path.exists(self.temp_file_full_path):
-                os.remove(self.temp_file_full_path)
+                temp_extraction_path_file.close()
+                # Remove the temp file
+                if os.path.exists(self.temp_file_full_path):
+                    os.remove(self.temp_file_full_path)
         assert file_dep_analysis is not None, "File dependency analysis should not be None"
         assert len(file_dep_analysis) > 0, "File dependency analysis should not be empty"
         preprocess_declarations(file_dep_analysis)
@@ -755,6 +762,9 @@ class SimpleLean4SyncExecutor:
             fp_encoded = f"b64_{fp_encoded}"
             file_name_with_timestamp = f"{fp_encoded}_{file_mtime_str}.json"
             return os.path.join(temp_cache_dir, file_name_with_timestamp)
+    
+    def _get_lock_file_path_in_cache(self, file_path: str) -> str:
+        return file_path + ".lock"
 
     def validate_proof(self, timeout_sec: int = 30, keep_temp_file: bool = True) -> typing.Dict[str, typing.Any]:
         """
