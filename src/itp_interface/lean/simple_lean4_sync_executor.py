@@ -36,6 +36,8 @@ class SimpleLean4SyncExecutor:
     have_regex = r"(^\s*have\s+([^:]*):([\s|\S]*?))(:=\s*by)([\s|\S]*)"
     have_match = re.compile(have_regex, re.MULTILINE)
     theorem_has_by_match = re.compile(theorem_has_by, re.MULTILINE)
+    ends_with_by_sorry = r":=[\s]*by\s+sorry[\s]*$"
+    ends_with_by_sorry_match = re.compile(ends_with_by_sorry, re.MULTILINE)
     unsolved_message = "unsolved goals"
     no_goals = "No goals to be solved"
     no_goals_alternative = "no goals to be solved"
@@ -56,7 +58,8 @@ class SimpleLean4SyncExecutor:
         enable_search: bool = False,
         keep_local_context: bool = False,
         enforce_qed: bool = False,
-        logger: Optional[logging.Logger] = None):
+        logger: Optional[logging.Logger] = None,
+        starting_tactic_sequence: Optional[List[str]] = None):
         assert proof_step_iter is None or isinstance(proof_step_iter, ClonableIterator), \
             "proof_step_iter must be an iterator"
         assert main_file is not None or proof_step_iter is not None, \
@@ -121,6 +124,7 @@ class SimpleLean4SyncExecutor:
         self._last_modified_tactic : str | None = None
         self._recursion_depth = 0
         self.max_threshold_for_tactic_length = 575 # Max 575 characters for a tactic
+        self._starting_tactic_sequence = ['by'] if starting_tactic_sequence is None or len(starting_tactic_sequence) == 0 else starting_tactic_sequence
         if self._enable_search:
             pass
         pass
@@ -670,7 +674,11 @@ class SimpleLean4SyncExecutor:
 
         self._content_till_last_theorem_stmt = "\n".join(self._lines_executed)
         assert not theorem_text.endswith(':='), "Theorem text should not end with ':='"
-        theorem_text = theorem_text + " :="
+        if SimpleLean4SyncExecutor.ends_with_by_sorry_match.search(theorem_text):
+            # Remove the ':= by sorry' part
+            theorem_text = SimpleLean4SyncExecutor.ends_with_by_sorry_match.sub('', theorem_text).strip() + " :="
+        else:
+            theorem_text = theorem_text + " :="
         content_until_after_theorem = "\n".join(self._lines_executed) + "\n" + theorem_text
         self._content_till_after_theorem_stmt = content_until_after_theorem.strip()
         assert self._content_till_after_theorem_stmt.endswith(':='), "Content till last theorem statement should not end with ':='"
@@ -693,8 +701,9 @@ class SimpleLean4SyncExecutor:
         self._last_theorem = (given_theorem_name, theorem_text, theorem_text)
         self._theorem_started = True
         self._lines_executed.extend(lines_in_theorem_text)
-        self._run_stmt_on_lean_server(tactic_start_line, "by", theorem_started=True)
-        self._lines_executed.append('by')
+        starting_tactics = '\n'.join(self._starting_tactic_sequence)
+        self._run_stmt_on_lean_server(tactic_start_line, starting_tactics, theorem_started=True)
+        self._lines_executed.append(starting_tactics)
         # Reset the iterator to the line of the theorem
         if lines[tactic_start_line - 1].strip().endswith("by"):
             self.main_file_iter.set_to_index(tactic_start_line)
@@ -1026,11 +1035,21 @@ def get_theorem_name_resembling(file_path: str, theorem_name: str, use_cache: bo
                 return json.dumps(dict_thm)
         raise ValueError(f"The theorem '{theorem_name}' was not found in the file '{file_path}'")
 
-def execute_thm_line_by_line(file_path: str, project_root: str, theorem_name: str, logger: logging.Logger, with_print: bool=False):
+def execute_thm_line_by_line(file_path: str, project_root: str, theorem_name: str, logger: logging.Logger, with_print: bool=False, starting_tactic_sequence: List[str]=[]) -> None:
     pprint = lambda msg: print(msg) if with_print else None
-    with SimpleLean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger) as executor:
+    with SimpleLean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger, starting_tactic_sequence=starting_tactic_sequence) as executor:
         executor.set_run_exactly()
         executor._skip_to_theorem(theorem_name)
+        if len(starting_tactic_sequence) > 0:
+            # It can happen that the starting tactic sequence already finishes the proof
+            proof_context_empty = executor.proof_context is None or executor.proof_context == ProofContext.empty()
+            no_error_messages = len(executor.lean_error_messages) == 0
+            if proof_context_empty and no_error_messages:
+                pprint("Proof finished with starting tactic sequence")
+                return
+            if len(executor.lean_error_messages) > 0:
+                pprint(f"Error messages after starting tactic sequence:\n{executor.lean_error_messages}")
+                return
         assert executor.proof_context is not None, "Proof context should be present"
         proof_exec = False
         while not executor.execution_complete:
