@@ -225,6 +225,8 @@ class ProofEnv(Env):
             self._get_dfns_thms(history_idx)
         elif action.action_type == ProofAction.ActionType.BACKTRACK:
             self._backtrack(history_idx)
+        elif action.action_type == ProofAction.ActionType.FULL_BACKTRACK:
+            self._full_backtrack(history_idx)
         else:
             raise NotImplementedError(f"Action type {action.action_type} not implemented")
         self.inferences_used += 1
@@ -555,6 +557,37 @@ class ProofEnv(Env):
             reward = -1.0
             env_info.progress = ProgressState.FAILED
             env_info.error_message = "Cannot backtrack any further"
+        current_proof_state = self.state
+        done = self.done
+        self._history[history_idx] = (state, action, current_proof_state, reward, done, env_info)
+    
+    def _full_backtrack(self, history_idx: int = None):
+        assert self._loaded, "Env not loaded, call reset() first"
+        history_idx = len(self._history) - 1 if history_idx is None else history_idx
+        state, action, current_proof_state, reward, done, env_info = self._history[history_idx]
+        assert action.action_type == ProofAction.ActionType.FULL_BACKTRACK, "Action must be of type FULL_BACKTRACK"
+        assert isinstance(self._dynamic_proof_executor, DynamicLean4ProofExecutor), "Full backtrack is only implemented for Lean 4"
+        try:
+            self._dynamic_proof_executor.cancel_all_tactics()
+            self.current_proof_depth = 0
+            self._p_tree = ProofTree()
+            env_info.progress = ProgressState.STATE_CHANGED
+            env_info.error_message = "Full backtrack successful"
+            reward = 0.0
+        except Exception:
+            self.logger.exception("Exception occured while full backtracking")
+            history = copy.deepcopy(self._history)
+            self.reset() # To ensure that everything is fine we start again
+            # Run all the current steps in the proof tree
+            self.logger
+            for _tactic_idx, (_, tactic) in enumerate(self._p_tree.tactics):
+                _action = self._p_tree.actions[_tactic_idx]
+                self._run_tactics(tactic.proof_steps, self.state, _action, ProofEnvInfo(progress=ProgressState.STARTING))
+                # No need to capture in history as the history is already captured
+            self._history = history
+            env_info.progress = ProgressState.FAILED
+            env_info.error_message = "Full backtrack failed, resetting the environment and running all the tactics again"
+            self.logger.warning("Full backtrack failed, resetting the environment and running all the tactics again")
         current_proof_state = self.state
         done = self.done
         self._history[history_idx] = (state, action, current_proof_state, reward, done, env_info)

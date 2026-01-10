@@ -23,7 +23,10 @@ def scan_action(language, supported_actions):
         inp = input("Enter tactic(s) (';' separated): ")
         inp = inp.split(';')
         return ProofAction(action_type, language, tactics=inp)
-    elif action_type == ProofAction.ActionType.GET_DFNS_THMS or action_type == ProofAction.ActionType.BACKTRACK or action_type == ProofAction.ActionType.EXIT:
+    elif action_type == ProofAction.ActionType.GET_DFNS_THMS or \
+        action_type == ProofAction.ActionType.BACKTRACK or \
+        action_type == ProofAction.ActionType.FULL_BACKTRACK or \
+        action_type == ProofAction.ActionType.EXIT:
         return ProofAction(action_type, language)
     else:
         raise Exception(f"Invalid action type {action_type}")
