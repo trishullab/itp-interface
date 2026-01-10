@@ -63,7 +63,8 @@ def main():
             file_path=file_path,
             language=ProofAction.Language.LEAN4,
             always_use_retrieval=False,
-            keep_local_context=True
+            keep_local_context=True,
+            starting_tactic_sequence=["by", "apply And.intro"]
         )
         theorem_name = get_theorem_name_resembling(file_path, "test3")
         language = ProofAction.Language.LEAN4
@@ -96,6 +97,9 @@ def main():
                 env.render()
                 if not done:
                     action = scan_action(language, supported_actions)
+            if env.language == ProofAction.Language.LEAN4:
+                print("Final proof so far:")
+                print(env.pretty_print_proof_so_far())
     finally:
         if language == ProofAction.Language.ISABELLE:
             IsabelleExecutor.stop_server()

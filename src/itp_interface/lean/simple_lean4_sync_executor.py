@@ -295,13 +295,19 @@ class SimpleLean4SyncExecutor:
             stmt = (" " * (indentation_needed - actual_indent)) + stmt.lstrip()
         return stmt
 
-    def _get_lean_code_with_tactics(self, idx: int, stmt: str):
+    def pretty_print_proof_so_far(self) -> str:
         assert self._last_theorem is not None, "Last theorem should not be None"
-        self._add_last_tactic(idx, stmt)
         tactics_so_far = self._get_tactics_so_far()
+        if len(tactics_so_far) == 0:
+            tactics_so_far = self.possible_proof_tactics
         assert len(tactics_so_far) > 0, "There should be at least one tactic so far"
         _ , _, theorem_stmt = self._last_theorem
         return theorem_stmt + "\n" + tactics_so_far + "\n"
+
+    def _get_lean_code_with_tactics(self, idx: int, stmt: str):
+        assert self._last_theorem is not None, "Last theorem should not be None"
+        self._add_last_tactic(idx, stmt)
+        return self.pretty_print_proof_so_far()
 
     def _backtrack_tactic_line(self, idx: int):
         # identify the keys to remove
@@ -784,7 +790,6 @@ class SimpleLean4SyncExecutor:
 
         # Build the complete Lean code with actual proof tactics
         # The proof tactics are accumulated in self.possible_proof_tactics
-        actual_proof = ""  # Track the actual proof for sorry checking
         proof_tactics_source = self.possible_proof_tactics
 
         # If possible_proof_tactics is empty, try to use _last_tactics as fallback

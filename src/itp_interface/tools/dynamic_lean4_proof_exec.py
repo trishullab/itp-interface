@@ -181,7 +181,9 @@ class DynamicProofExecutor(SimpleLean4SyncExecutor):
         if tactic_line_num < self.line_num:
             line_tactic_map_keys = list(self.run_state.line_tactic_map.keys())
             lowest_line_num_gt_eq_tactic_line = min([ln for ln in line_tactic_map_keys if ln >= tactic_line_num], default=None)
-            assert lowest_line_num_gt_eq_tactic_line is not None, "There must be at least one line number >= tactic_line_num"
+            if lowest_line_num_gt_eq_tactic_line is None:
+                # Nothing to backtrack
+                return False
             tactic_line_num = lowest_line_num_gt_eq_tactic_line
             state_num = self.run_state.line_tactic_map[tactic_line_num]
             self.run_state.tactics_ran = self.run_state.tactics_ran[:state_num]

@@ -243,6 +243,11 @@ class ProofEnv(Env):
             )
         else:
             return {}
+    
+    def pretty_print_proof_so_far(self) -> str:
+        assert self._loaded, "Env not loaded, call reset() first"
+        assert isinstance(self._dynamic_proof_executor, DynamicLean4ProofExecutor), "Dynamic proof executor must be of type DynamicLean4ProofExecutor"
+        return self._dynamic_proof_executor.pretty_print_proof_so_far()
 
     def checkpoint(self):
         return super().checkpoint()
