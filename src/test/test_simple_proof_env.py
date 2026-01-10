@@ -2,6 +2,7 @@
 
 import sys
 import logging
+from itp_interface.lean.simple_lean4_sync_executor import get_theorem_name_resembling
 from itp_interface.rl.simple_proof_env import ProofEnv, ProofEnvReRankStrategy
 from itp_interface.rl.proof_action import ProofAction
 from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
@@ -56,14 +57,15 @@ def main():
         always_retrieve_thms = True
         retrieval_strategy = ProofEnvReRankStrategy.BM25
     elif inp == 'lean4':
+        file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
         proof_exec_callback = ProofExecutorCallback(
             project_folder="src/data/test/lean4_proj",
-            file_path="src/data/test/lean4_proj/Lean4Proj/Basic.lean",
+            file_path=file_path,
             language=ProofAction.Language.LEAN4,
             always_use_retrieval=False,
             keep_local_context=True
         )
-        theorem_name = "test3"
+        theorem_name = get_theorem_name_resembling(file_path, "test3")
         language = ProofAction.Language.LEAN4
         always_retrieve_thms = False
         retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
