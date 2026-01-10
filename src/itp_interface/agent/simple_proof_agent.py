@@ -80,7 +80,8 @@ class ProofAgent(Agent):
                     self.logger.info("**"*20)
                     env.render()
                     self.logger.info("**"*20)
-                if action.action_type != ProofAction.ActionType.BACKTRACK:
+                if action.action_type != ProofAction.ActionType.BACKTRACK and \
+                    action.action_type != ProofAction.ActionType.FULL_BACKTRACK:
                     # Don't update policy for backtracking actions, this will create a 
                     # a very nasty loop in the policy.
                     self.logger.info("Updating policy")

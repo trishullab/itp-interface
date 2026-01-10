@@ -2,6 +2,7 @@
 
 import sys
 import logging
+from itp_interface.lean.simple_lean4_sync_executor import get_theorem_name_resembling
 from itp_interface.rl.simple_proof_env import ProofEnv, ProofEnvReRankStrategy
 from itp_interface.rl.proof_action import ProofAction
 from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
@@ -17,7 +18,10 @@ def scan_action(language, supported_actions):
         inp = input("Enter tactic(s) (';' separated): ")
         inp = inp.split(';')
         return ProofAction(action_type, language, tactics=inp)
-    elif action_type == ProofAction.ActionType.GET_DFNS_THMS or action_type == ProofAction.ActionType.BACKTRACK or action_type == ProofAction.ActionType.EXIT:
+    elif action_type == ProofAction.ActionType.GET_DFNS_THMS or \
+        action_type == ProofAction.ActionType.BACKTRACK or \
+        action_type == ProofAction.ActionType.FULL_BACKTRACK or \
+        action_type == ProofAction.ActionType.EXIT:
         return ProofAction(action_type, language)
     else:
         raise Exception(f"Invalid action type {action_type}")
@@ -53,14 +57,16 @@ def main():
         always_retrieve_thms = True
         retrieval_strategy = ProofEnvReRankStrategy.BM25
     elif inp == 'lean4':
+        file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
         proof_exec_callback = ProofExecutorCallback(
             project_folder="src/data/test/lean4_proj",
-            file_path="src/data/test/lean4_proj/Lean4Proj/Basic.lean",
+            file_path=file_path,
             language=ProofAction.Language.LEAN4,
             always_use_retrieval=False,
-            keep_local_context=True
+            keep_local_context=True,
+            starting_tactic_sequence=["by", "apply And.intro"]
         )
-        theorem_name = "test3"
+        theorem_name = get_theorem_name_resembling(file_path, "test3")
         language = ProofAction.Language.LEAN4
         always_retrieve_thms = False
         retrieval_strategy = ProofEnvReRankStrategy.NO_RE_RANK
@@ -91,6 +97,9 @@ def main():
                 env.render()
                 if not done:
                     action = scan_action(language, supported_actions)
+            if env.language == ProofAction.Language.LEAN4:
+                print("Final proof so far:")
+                print(env.pretty_print_proof_so_far())
     finally:
         if language == ProofAction.Language.ISABELLE:
             IsabelleExecutor.stop_server()

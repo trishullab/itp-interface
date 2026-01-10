@@ -30,12 +30,15 @@ class ProofAction(Action):
         GET_DFNS_THMS = 'GET_DFNS_THMS'
         RUN_TACTIC = 'RUN_TACTIC'
         BACKTRACK = 'BACKTRACK'
+        FULL_BACKTRACK = 'FULL_BACKTRACK'
         EXIT = 'EXIT'
         NONE = 'NONE'
 
         @staticmethod
         def get_order(action_type: 'ProofAction.ActionType'):
             if action_type == ProofAction.ActionType.EXIT:
+                return 8
+            elif action_type == ProofAction.ActionType.FULL_BACKTRACK:
                 return 7
             elif action_type == ProofAction.ActionType.BACKTRACK:
                 return 6

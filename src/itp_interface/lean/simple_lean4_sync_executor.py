@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from contextlib import nullcontext
 import os
 import base64
 import copy
@@ -11,6 +12,7 @@ import json
 import typing
 import bisect
 import subprocess
+from filelock import FileLock
 from itp_interface.lean.tactic_parser import (
     TacticParser, 
     ErrorInfo, 
@@ -36,6 +38,8 @@ class SimpleLean4SyncExecutor:
     have_regex = r"(^\s*have\s+([^:]*):([\s|\S]*?))(:=\s*by)([\s|\S]*)"
     have_match = re.compile(have_regex, re.MULTILINE)
     theorem_has_by_match = re.compile(theorem_has_by, re.MULTILINE)
+    ends_with_by_sorry = r":=[\s]*by\s+sorry[\s]*$"
+    ends_with_by_sorry_match = re.compile(ends_with_by_sorry, re.MULTILINE)
     unsolved_message = "unsolved goals"
     no_goals = "No goals to be solved"
     no_goals_alternative = "no goals to be solved"
@@ -56,7 +60,8 @@ class SimpleLean4SyncExecutor:
         enable_search: bool = False,
         keep_local_context: bool = False,
         enforce_qed: bool = False,
-        logger: Optional[logging.Logger] = None):
+        logger: Optional[logging.Logger] = None,
+        starting_tactic_sequence: Optional[List[str]] = None):
         assert proof_step_iter is None or isinstance(proof_step_iter, ClonableIterator), \
             "proof_step_iter must be an iterator"
         assert main_file is not None or proof_step_iter is not None, \
@@ -121,6 +126,7 @@ class SimpleLean4SyncExecutor:
         self._last_modified_tactic : str | None = None
         self._recursion_depth = 0
         self.max_threshold_for_tactic_length = 575 # Max 575 characters for a tactic
+        self._starting_tactic_sequence = ['by'] if starting_tactic_sequence is None or len(starting_tactic_sequence) == 0 else starting_tactic_sequence
         if self._enable_search:
             pass
         pass
@@ -291,13 +297,19 @@ class SimpleLean4SyncExecutor:
             stmt = (" " * (indentation_needed - actual_indent)) + stmt.lstrip()
         return stmt
 
-    def _get_lean_code_with_tactics(self, idx: int, stmt: str):
+    def pretty_print_proof_so_far(self) -> str:
         assert self._last_theorem is not None, "Last theorem should not be None"
-        self._add_last_tactic(idx, stmt)
         tactics_so_far = self._get_tactics_so_far()
+        if len(tactics_so_far) == 0:
+            tactics_so_far = self.possible_proof_tactics
         assert len(tactics_so_far) > 0, "There should be at least one tactic so far"
         _ , _, theorem_stmt = self._last_theorem
         return theorem_stmt + "\n" + tactics_so_far + "\n"
+
+    def _get_lean_code_with_tactics(self, idx: int, stmt: str):
+        assert self._last_theorem is not None, "Last theorem should not be None"
+        self._add_last_tactic(idx, stmt)
+        return self.pretty_print_proof_so_far()
 
     def _backtrack_tactic_line(self, idx: int):
         # identify the keys to remove
@@ -600,48 +612,53 @@ class SimpleLean4SyncExecutor:
         assert self.main_file_iter is not None, "main_file_iter should not be None"
         assert self.tactic_parser is not None, "Tactic parser is not initialized"
         extraction_path = self._get_file_path_in_cache()
+        lock_file_path = self._get_lock_file_path_in_cache(extraction_path) if extraction_path is not None else None
+        # Use FileLock otherwise just a pass-through context manager
+        lock = FileLock(lock_file_path, timeout=self.timeout_in_sec*10) if lock_file_path is not None else nullcontext()
         can_fetch_from_cache = extraction_path is not None
         file_dep_analysis = None
-        if can_fetch_from_cache:
-            file_path = self.associated_file()
-            assert file_path is not None, "File path should not be None"
-            if os.path.exists(extraction_path):
-                temp_extraction_path_file = open(extraction_path, "r", encoding="utf-8")
-                file_dep_analysis_str = temp_extraction_path_file.read()
-                file_dep_analysis = [FileDependencyAnalysis.load_from_string(file_dep_analysis_str)]
+        with lock:
+            if can_fetch_from_cache:
+                file_path = self.associated_file()
+                assert file_path is not None, "File path should not be None"
+                if os.path.exists(extraction_path):
+                    temp_extraction_path_file = open(extraction_path, "r", encoding="utf-8")
+                    file_dep_analysis_str = temp_extraction_path_file.read()
+                    file_dep_analysis = [FileDependencyAnalysis.load_from_string(file_dep_analysis_str)]
+                else:
+                    file_dep_analysis = self.extract_all_theorems_and_definitions(
+                        json_output_path=extraction_path, file_path=file_path)
+                    assert file_dep_analysis is not None, "File dependency analysis should not be None"
+                    assert len(file_dep_analysis) > 0, "File dependency analysis should not be empty"
+                    
+                    temp_extraction_path_file = open(extraction_path, "w", encoding="utf-8")
+                    with temp_extraction_path_file:
+                        temp_extraction_path_file.write(file_dep_analysis[0].to_json())
+                with open(file_path, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
             else:
+                while True:
+                    try:
+                        stmt = next(self.main_file_iter)
+                    except StopIteration:
+                        break
+                    lines.append(stmt)
+                full_file = "\n".join(lines) + "\n"
+                # Dump the file in the temp file
+                with open(self.temp_file_full_path, "w", encoding="utf-8") as f:
+                    f.write(full_file)
+                file_path = self.temp_file_full_path
+                temp_extraction_path_file = NamedTemporaryFile(
+                    prefix="lean4_dep_analysis_",
+                    suffix=".json",
+                    delete_on_close=True)
+                extraction_path = temp_extraction_path_file.name
                 file_dep_analysis = self.extract_all_theorems_and_definitions(
                     json_output_path=extraction_path, file_path=file_path)
-                assert file_dep_analysis is not None, "File dependency analysis should not be None"
-                assert len(file_dep_analysis) > 0, "File dependency analysis should not be empty"
-                temp_extraction_path_file = open(extraction_path, "w", encoding="utf-8")
-                with temp_extraction_path_file:
-                    temp_extraction_path_file.write(file_dep_analysis[0].to_json())
-            with open(file_path, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-        else:
-            while True:
-                try:
-                    stmt = next(self.main_file_iter)
-                except StopIteration:
-                    break
-                lines.append(stmt)
-            full_file = "\n".join(lines) + "\n"
-            # Dump the file in the temp file
-            with open(self.temp_file_full_path, "w", encoding="utf-8") as f:
-                f.write(full_file)
-            file_path = self.temp_file_full_path
-            temp_extraction_path_file = NamedTemporaryFile(
-                prefix="lean4_dep_analysis_",
-                suffix=".json",
-                delete_on_close=True)
-            extraction_path = temp_extraction_path_file.name
-            file_dep_analysis = self.extract_all_theorems_and_definitions(
-                json_output_path=extraction_path, file_path=file_path)
-            temp_extraction_path_file.close()
-            # Remove the temp file
-            if os.path.exists(self.temp_file_full_path):
-                os.remove(self.temp_file_full_path)
+                temp_extraction_path_file.close()
+                # Remove the temp file
+                if os.path.exists(self.temp_file_full_path):
+                    os.remove(self.temp_file_full_path)
         assert file_dep_analysis is not None, "File dependency analysis should not be None"
         assert len(file_dep_analysis) > 0, "File dependency analysis should not be empty"
         preprocess_declarations(file_dep_analysis)
@@ -670,7 +687,11 @@ class SimpleLean4SyncExecutor:
 
         self._content_till_last_theorem_stmt = "\n".join(self._lines_executed)
         assert not theorem_text.endswith(':='), "Theorem text should not end with ':='"
-        theorem_text = theorem_text + " :="
+        if SimpleLean4SyncExecutor.ends_with_by_sorry_match.search(theorem_text):
+            # Remove the ':= by sorry' part
+            theorem_text = SimpleLean4SyncExecutor.ends_with_by_sorry_match.sub('', theorem_text).strip() + " :="
+        else:
+            theorem_text = theorem_text + " :="
         content_until_after_theorem = "\n".join(self._lines_executed) + "\n" + theorem_text
         self._content_till_after_theorem_stmt = content_until_after_theorem.strip()
         assert self._content_till_after_theorem_stmt.endswith(':='), "Content till last theorem statement should not end with ':='"
@@ -693,8 +714,9 @@ class SimpleLean4SyncExecutor:
         self._last_theorem = (given_theorem_name, theorem_text, theorem_text)
         self._theorem_started = True
         self._lines_executed.extend(lines_in_theorem_text)
-        self._run_stmt_on_lean_server(tactic_start_line, "by", theorem_started=True)
-        self._lines_executed.append('by')
+        starting_tactics = '\n'.join(self._starting_tactic_sequence)
+        self._run_stmt_on_lean_server(tactic_start_line, starting_tactics, theorem_started=True)
+        self._lines_executed.append(starting_tactics)
         # Reset the iterator to the line of the theorem
         if lines[tactic_start_line - 1].strip().endswith("by"):
             self.main_file_iter.set_to_index(tactic_start_line)
@@ -740,6 +762,9 @@ class SimpleLean4SyncExecutor:
             fp_encoded = f"b64_{fp_encoded}"
             file_name_with_timestamp = f"{fp_encoded}_{file_mtime_str}.json"
             return os.path.join(temp_cache_dir, file_name_with_timestamp)
+    
+    def _get_lock_file_path_in_cache(self, file_path: str) -> str:
+        return file_path + ".lock"
 
     def validate_proof(self, timeout_sec: int = 30, keep_temp_file: bool = True) -> typing.Dict[str, typing.Any]:
         """
@@ -775,7 +800,6 @@ class SimpleLean4SyncExecutor:
 
         # Build the complete Lean code with actual proof tactics
         # The proof tactics are accumulated in self.possible_proof_tactics
-        actual_proof = ""  # Track the actual proof for sorry checking
         proof_tactics_source = self.possible_proof_tactics
 
         # If possible_proof_tactics is empty, try to use _last_tactics as fallback
@@ -1026,11 +1050,21 @@ def get_theorem_name_resembling(file_path: str, theorem_name: str, use_cache: bo
                 return json.dumps(dict_thm)
         raise ValueError(f"The theorem '{theorem_name}' was not found in the file '{file_path}'")
 
-def execute_thm_line_by_line(file_path: str, project_root: str, theorem_name: str, logger: logging.Logger, with_print: bool=False):
+def execute_thm_line_by_line(file_path: str, project_root: str, theorem_name: str, logger: logging.Logger, with_print: bool=False, starting_tactic_sequence: List[str]=[]) -> None:
     pprint = lambda msg: print(msg) if with_print else None
-    with SimpleLean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger) as executor:
+    with SimpleLean4SyncExecutor(main_file=file_path, project_root=project_root, logger=logger, starting_tactic_sequence=starting_tactic_sequence) as executor:
         executor.set_run_exactly()
         executor._skip_to_theorem(theorem_name)
+        if len(starting_tactic_sequence) > 0:
+            # It can happen that the starting tactic sequence already finishes the proof
+            proof_context_empty = executor.proof_context is None or executor.proof_context == ProofContext.empty()
+            no_error_messages = len(executor.lean_error_messages) == 0
+            if proof_context_empty and no_error_messages:
+                pprint("Proof finished with starting tactic sequence")
+                return
+            if len(executor.lean_error_messages) > 0:
+                pprint(f"Error messages after starting tactic sequence:\n{executor.lean_error_messages}")
+                return
         assert executor.proof_context is not None, "Proof context should be present"
         proof_exec = False
         while not executor.execution_complete:
