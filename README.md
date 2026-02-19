@@ -1,7 +1,3 @@
-[![Build Status](https://github.com/trishullab/itp-interface/actions/workflows/github-build-actions.yaml/badge.svg)](https://github.com/trishullab/itp-interface/actions/workflows/github-build-actions.yaml)
-[![PyPI version](https://img.shields.io/pypi/v/itp-interface.svg)](https://pypi.org/project/itp-interface/)
-[![PyPI downloads](https://img.shields.io/pypi/dm/itp-interface.svg)](https://pypi.org/project/itp-interface/)
-
 # itp-interface
 Generic interface for hooking up to any Interactive Theorem Prover (ITP) and collecting data for training ML models for AI in formal theorem proving.
 
@@ -12,20 +8,12 @@ Generic interface for hooking up to any Interactive Theorem Prover (ITP) and col
 ## Quick Setup for Lean 4:
 1. Install itp-interface using the following command:
 ```bash
-pip install itp-interface
+pip install "[REDACTED]"
 ```
-
-2. Run the following command to prepare the REPL for Lean 4. The default version is 4.24.0. You can change the version by setting the `LEAN_VERSION` environment variable. If no version is set, then 4.24.0 is used.
+2. Run the following command to build the REPL for Lean 4. Make sure that `lean --version` returns the correct version before running the command below. If not then check if `$HOME/.elan/bin` is in your path. Recommended to run `source $HOME/.elan/env` before running the command below.
 >NOTE: The Lean 4 version must match the version of the Lean 4 project you are working with. `itp-interface` **supports Lean 4 version >= 4.15.0 and <= 4.24.0**. (It has been tested till version 4.24.0, but might as well work for future versions too, if the future versions are completely backwards-compatible).
-
 ```bash
-install-lean-repl
-# To use a different Lean version, set LEAN_VERSION before running:
 # export LEAN_VERSION="4.17.0" && install-lean-repl
-```
-
-3. Run the following command to build the REPL for Lean 4. Make sure that `lean --version` returns the correct version before running the command below. If not then check if `$HOME/.elan/bin` is in your path. Recommended to run `source $HOME/.elan/env` before running the command below.
-```bash
 install-itp-interface
 ```
 
@@ -235,19 +223,3 @@ Check the `simple_coq_data_gen.yaml` configuration in the `src/itp_interface/mai
 
 ## Important Note:
 The ITP projects must be built before running proof step data generation. Make sure that the switch is set correctly while generating data for Coq projects because the Coq projects can be using different versions of Coq. Instructions for Coq project setup are listed in `src/itp_interface/main/configs/repo/coq_repos.yaml` file.
-
-## Our Paper:
-
-For more details, please refer to our paper: [ProofWala: Multilingual Proof Data Synthesis and Theorem-Proving](https://arxiv.org/abs/2502.04671).
-
-```bibtex
-@misc{thakur2025proofwala,
-      title={${\rm P{\small ROOF}W{\small ALA}}$: Multilingual Proof Data Synthesis and Theorem-Proving}, 
-      author={Amitayush Thakur and George Tsoukalas and Greg Durrett and Swarat Chaudhuri},
-      year={2025},
-      eprint={2502.04671},
-      archivePrefix={arXiv},
-      primaryClass={cs.AI},
-      url={https://arxiv.org/abs/2502.04671}, 
-}
-```
