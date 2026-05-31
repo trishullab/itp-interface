@@ -7,6 +7,8 @@ Generic interface for hooking up to any Interactive Theorem Prover (ITP) and col
 
 ## 🎉 What's New
 
+**Lean v4.25–v4.30 Support** (May 2026) - `itp-interface` now supports Lean 4 versions v4.25.0 through v4.30.0, extending the previously supported range of v4.15–v4.24.
+
 **Python 3.14 Free-Threading Support** (January 2025) - `itp-interface` now supports Python 3.14's experimental free-threading mode (GIL-free execution)! Experience true parallel proof search with up to 2.13x speedup on multi-core systems. The interface automatically detects your Python version and seamlessly falls back to thread-based parallelism when Ray is unavailable. See [Python 3.14 Free-Threading Support](#python-314-free-threading-support-optional) for details. 
 
 ## Quick Setup for Lean 4:
