@@ -30,6 +30,10 @@ install-lean-repl
 ```bash
 install-itp-interface
 ```
+>NOTE: `install-itp-interface` also respects the `LEAN_VERSION` environment variable to determine which Lean version to compile the tactic parser with. It defaults to `4.24.0` when not set. **Both `install-lean-repl` and `install-itp-interface` must use the same `LEAN_VERSION`** — mismatching versions will cause elaboration errors at runtime. If you set `LEAN_VERSION` for one, set it for both:
+```bash
+export LEAN_VERSION="4.30.0" && install-lean-repl && install-itp-interface
+```
 
 >NOTE: These steps are only tested on Linux. For Windows, you can use WSL. These steps will not setup the Coq interface.
 

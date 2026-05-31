@@ -290,7 +290,7 @@ def get_path_to_tactic_parser_executable() -> str:
     return tactic_parser_bin_path
 
 def toolchain_version_and_env_version():
-    lean_version_needed = os.getenv("LEAN_VERSION", None)
+    lean_version_needed = os.getenv("LEAN_VERSION", "4.24.0")
     tactic_parser_project = get_path_to_tactic_parser_project()
     # Check the version of the built parser
     toolchain_file = os.path.join(tactic_parser_project, "lean-toolchain")
