@@ -16,3 +16,6 @@
 [submodule "src/data/test/batteries"]
 	path = src/data/test/batteries
 	url = https://github.com/leanprover-community/batteries.git
+[submodule "src/data/test/Strata"]
+	path = src/data/test/Strata
+	url = https://github.com/strata-org/Strata.git
