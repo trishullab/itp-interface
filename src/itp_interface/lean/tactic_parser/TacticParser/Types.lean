@@ -3,6 +3,7 @@ Types for tactic information.
 -/
 import Lean
 import Lean.Elab.Frontend
+import TacticParser.Compat
 
 namespace TacticParser
 
