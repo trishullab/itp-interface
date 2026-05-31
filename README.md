@@ -7,6 +7,8 @@ Generic interface for hooking up to any Interactive Theorem Prover (ITP) and col
 
 ## 🎉 What's New
 
+**Lean v4.25–v4.30 Support** (May 2026) - `itp-interface` now supports Lean 4 versions v4.25.0 through v4.30.0, extending the previously supported range of v4.15–v4.24.
+
 **Python 3.14 Free-Threading Support** (January 2025) - `itp-interface` now supports Python 3.14's experimental free-threading mode (GIL-free execution)! Experience true parallel proof search with up to 2.13x speedup on multi-core systems. The interface automatically detects your Python version and seamlessly falls back to thread-based parallelism when Ray is unavailable. See [Python 3.14 Free-Threading Support](#python-314-free-threading-support-optional) for details. 
 
 ## Quick Setup for Lean 4:
@@ -16,7 +18,7 @@ pip install itp-interface
 ```
 
 2. Run the following command to prepare the REPL for Lean 4. The default version is 4.24.0. You can change the version by setting the `LEAN_VERSION` environment variable. If no version is set, then 4.24.0 is used.
->NOTE: The Lean 4 version must match the version of the Lean 4 project you are working with. `itp-interface` **supports Lean 4 version >= 4.15.0 and <= 4.24.0**. (It has been tested till version 4.24.0, but might as well work for future versions too, if the future versions are completely backwards-compatible).
+>NOTE: The Lean 4 version must match the version of the Lean 4 project you are working with. `itp-interface` **supports Lean 4 versions v4.15.0 through v4.30.0**. (It has been tested till version 4.30.0, but might as well work for future versions too, if the future versions are completely backwards-compatible).
 
 ```bash
 install-lean-repl
@@ -27,6 +29,10 @@ install-lean-repl
 3. Run the following command to build the REPL for Lean 4. Make sure that `lean --version` returns the correct version before running the command below. If not then check if `$HOME/.elan/bin` is in your path. Recommended to run `source $HOME/.elan/env` before running the command below.
 ```bash
 install-itp-interface
+```
+>NOTE: `install-itp-interface` also respects the `LEAN_VERSION` environment variable to determine which Lean version to compile the tactic parser with. It defaults to `4.24.0` when not set. **Both `install-lean-repl` and `install-itp-interface` must use the same `LEAN_VERSION`** — mismatching versions will cause elaboration errors at runtime. If you set `LEAN_VERSION` for one, set it for both:
+```bash
+export LEAN_VERSION="4.30.0" && install-lean-repl && install-itp-interface
 ```
 
 >NOTE: These steps are only tested on Linux. For Windows, you can use WSL. These steps will not setup the Coq interface.

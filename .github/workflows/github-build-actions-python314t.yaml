@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           export PATH="$HOME/miniconda/bin:$PATH"
-          conda create -n py314-ft python=3.14 python-freethreading -c conda-forge -y
+          conda create -n py314-ft python=3.14 python-freethreading pip -c conda-forge -y
           conda clean -all -y
 
       - name: Check Python version and GIL status
@@ -55,6 +55,7 @@ jobs:
         run: |
           export PATH="$HOME/miniconda/bin:$PATH"
           source $HOME/miniconda/bin/activate py314-ft
+          mkdir -p /root/.docker && chmod 700 /root/.docker
           python -m pip install --upgrade pip
           pip install build==1.3.0 hatchling==1.27.0
           pip cache purge
