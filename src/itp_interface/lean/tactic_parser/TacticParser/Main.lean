@@ -125,24 +125,23 @@ unsafe def processRequest (b64Input : String) (chkptState : Option CheckpointedP
       let chkpointParseResult ← parseTactics parse_request.content none cmdState
       result := chkpointParseResult.parseResult
       --IO.println s!"Parsed tactics with {result.trees.size} trees and {repr result.errors} errors."
+      -- Capture the cumulative line offset from PRIOR chunks BEFORE updating the
+      -- checkpoint state. Positions from `parseTactics` are local to the current
+      -- chunk (1-indexed lines), so the offset to shift them into document-global
+      -- coordinates is the cumulative count of lines from earlier chunks only —
+      -- NOT including this chunk's own lines.
+      let prev_line_num :=
+        match newchkptState with
+        | some chkpt => chkpt.lineNum.getD 0
+        | none => 0
       if is_checkpoint_request then
-        -- Only changes if the checkpoint is to be updated
+        -- Update the checkpoint state to include this chunk's lines.
         let line_num := chkpointParseResult.lineNum.getD 0
-        let prev_line_num :=
-          match newchkptState with
-          | some chkpt => chkpt.lineNum.getD 0
-          | none => 0
-        -- Adjust line number based on previous checkpoint
         newchkptState := some {
           parseResult := chkpointParseResult.parseResult,
           lineNum := some (line_num + prev_line_num),
           chkptState := chkpointParseResult.chkptState
         }
-      -- Additionally, adjust error positions based on previous checkpoint
-      let prev_line_num :=
-        match newchkptState with
-        | some chkpt => chkpt.lineNum.getD 0
-        | none => 0
       if prev_line_num > 0 then
         -- Adjust error line numbers
         let adjusted_errors := result.errors.map (fun err =>
@@ -170,6 +169,16 @@ unsafe def processRequest (b64Input : String) (chkptState : Option CheckpointedP
           adjust_tree tree
         )
         result := { trees := adjusted_trees, errors := adjusted_errors }
+      -- For chkpt_tactics requests, the caller intentionally truncates the
+      -- input before the target theorem, so the parser invariably hits EOF
+      -- mid-declaration (e.g. after a trailing `@[…]` attribute that belongs
+      -- to the theorem to come). Drop "unexpected end of input" errors in
+      -- that mode so the Python wrapper's `fail_on_error=True` does not raise
+      -- on what is, for chkpt_tactics, an expected condition.
+      if is_checkpoint_request then
+        let filtered_errors := result.errors.filter (fun err =>
+          !("unexpected end of input".isPrefixOf err.message))
+        result := { result with errors := filtered_errors }
     else
       -- Unsupported request type
       let temp_result ← parseDecls parse_request.content
