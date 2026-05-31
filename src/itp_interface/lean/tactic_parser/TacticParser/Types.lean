@@ -323,7 +323,7 @@ instance : Repr CheckpointedParseResult where
   reprPrec r _ := (repr r.parseResult)
 
 def get_position_from_char_pos (content : String) (charPos : Nat) : Position :=
-  let before := content.extract ⟨0⟩ ⟨charPos⟩
+  let before := String.Pos.Raw.extract content ⟨0⟩ ⟨charPos⟩
   let lines := before.splitOn "\n"
   let lineCount := lines.length
   if lineCount == 0 then

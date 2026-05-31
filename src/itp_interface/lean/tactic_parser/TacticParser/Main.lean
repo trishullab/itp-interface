@@ -62,8 +62,8 @@ instance : FromStr UserParseRequest where
     if s.length < parse_max_pad + 1 then
       none
     else
-      let pref := s.take parse_max_pad
-      let content := s.drop parse_max_pad
+      let pref := (s.take parse_max_pad).copy
+      let content := (s.drop parse_max_pad).copy
       match FromStr.fromStr pref with
       | some reqType => some { requestType := reqType, content := content }
       | none => none

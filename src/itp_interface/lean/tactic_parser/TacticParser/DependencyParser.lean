@@ -35,9 +35,9 @@ def filePathToModuleName (filepath : System.FilePath) : String :=
   let modulePath := withoutExt.replace "/" "."
   -- Remove leading ./ if present
   if modulePath.startsWith ".." then
-    modulePath.drop 2
+    (modulePath.drop 2).copy
   else if modulePath.startsWith "." then
-    modulePath.drop 1
+    (modulePath.drop 1).copy
   else
     modulePath
 
@@ -162,7 +162,7 @@ partial def findImports (stx : Syntax) (content: String) : IO (Array ImportInfo)
         match stx.getRange? with
         | some range =>
           let moduleName := extractModuleName stx
-          let text := content.extract range.start range.stop
+          let text := String.Pos.Raw.extract content range.start range.stop
           let info : ImportInfo := {
             moduleName := moduleName
             startPos := range.start.byteIdx
@@ -215,7 +215,7 @@ def parseImports (filepath : System.FilePath) : IO DependencyInfo := do
       match stx.getRange? with
       | some range =>
         let namespaceName := extractModuleName stx
-        let text := content.extract range.start range.stop
+        let text := String.Pos.Raw.extract content range.start range.stop
         let info : NamespaceInfo := {
           name := namespaceName
           startPos := range.start.byteIdx

@@ -97,7 +97,7 @@ unsafe def extractProofFromDecl
 
   -- Test each candidate
   for candidate in candidates do
-    let beforeDelimiter := text.take candidate.position
+    let beforeDelimiter := (text.take candidate.position).copy
 
     -- IO.println s!"beforeDelimiter:\n{beforeDelimiter}\n---"
 
@@ -121,8 +121,8 @@ unsafe def extractProofFromDecl
     if success then
       -- Found valid split!
       -- IO.println s!"Found valid split at position {candidate.position} with delimiter {candidate.delimiterType}"
-      let proof := text.drop candidate.position
-      let thrm := text.take candidate.position
+      let proof := (text.drop candidate.position).copy
+      let thrm := (text.take candidate.position).copy
       return { declInfo with proof := some proof.trim , text := thrm.trim }
     -- else
     --  IO.println s!"Failed split at position {candidate.position} with delimiter {candidate.delimiterType}"
