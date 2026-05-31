@@ -70,9 +70,9 @@ open Lean.Elab
 open Lean.Parser
 open Lean.Syntax
 
-/-- Convert a String.Pos to line and column numbers -/
-def posToLineColumn (input : String) (pos : String.Pos) : Position :=
-  let lines := input.extract 0 pos |>.splitOn "\n"
+/-- Convert a String.Pos.Raw to line and column numbers -/
+def posToLineColumn (input : String) (pos : String.Pos.Raw) : Position :=
+  let lines := (String.Pos.Raw.extract input 0 pos).splitOn "\n"
   let line := lines.length
   let column := (lines.getLast!).length
   { line, column }
@@ -94,7 +94,7 @@ partial def printInfoTree (input : String) (tree : InfoTree) (indent : Nat := 0)
       -- Extract actual text from source using byte positions
       let startByte := tacInfo.stx.getPos?.getD 0
       let endByte := tacInfo.stx.getTailPos?.getD 0
-      let actualText := input.extract startByte endByte |>.trim
+      let actualText := (String.Pos.Raw.extract input startByte endByte).trim
 
       let startPos := posToLineColumn input startByte
       let endPos := posToLineColumn input endByte
@@ -251,8 +251,8 @@ def getTextFromPosition (input : String) (startPos : Position) (endPos : Positio
     ""
   else
     let relevantLines := (lines.take endPos.line).drop (startPos.line - 1)
-    let firstLine := relevantLines[0]!.drop startPos.column--.extract ⟨startPos.column⟩ ⟨relevantLines[0]!.length⟩
-    let lastLine := relevantLines[relevantLines.length - 1]!.take endPos.column
+    let firstLine := (relevantLines[0]!.drop startPos.column).copy--.extract ⟨startPos.column⟩ ⟨relevantLines[0]!.length⟩
+    let lastLine := (relevantLines[relevantLines.length - 1]!.take endPos.column).copy
     let middleLines := (relevantLines.take (relevantLines.length - 1)).drop 1
     let actualLines := if relevantLines.length > 1 then [firstLine] ++ middleLines ++ [lastLine]  else [firstLine]
     String.intercalate "\n" actualLines
