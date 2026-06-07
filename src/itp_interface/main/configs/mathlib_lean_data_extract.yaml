@@ -10,4 +10,5 @@ defaults:
 
 run_settings:
  output_dir: .log/data_generation/benchmark/mathlib_benchmark_lean_ext
- pool_size: 12
+ pool_size: 5
+ memory_per_task_gb: 70

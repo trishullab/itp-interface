@@ -38,3 +38,8 @@ datasets:
       - src/data/test/Mathlib/.lake/packages/mathlib/Archive.lean
       - src/data/test/Mathlib/lakefile.lean
       - src/data/test/Mathlib/ReplMathlibTests.lean
+      - src/data/test/Mathlib/.lake/packages/mathlib/Mathlib/Combinatorics/SetFamily/AhlswedeZhang.lean
+      - src/data/test/Mathlib/.lake/packages/mathlib/Mathlib/Probability/Distributions/Gaussian/HasGaussianLaw/Independence.lean
+      - src/data/test/Mathlib/.lake/packages/mathlib/Mathlib/Combinatorics/Colex.lean
+      - src/data/test/Mathlib/.lake/packages/mathlib/Mathlib/Data/EReal/Inv.lean
+      - src/data/test/Mathlib/.lake/packages/mathlib/Mathlib/AlgebraicGeometry/EllipticCurve/Jacobian/Formula.lean

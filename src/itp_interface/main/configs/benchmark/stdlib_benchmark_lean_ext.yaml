@@ -27,5 +27,5 @@ datasets:
       - src/data/test/batteries/.github
       - src/data/test/batteries/lake-manifest.json
     include_files:
-      - ~/.elan/toolchains/leanprover--lean4---v4.24.0/src/lean/Init
-      - ~/.elan/toolchains/leanprover--lean4---v4.24.0/src/lean/Std
+      - ~/.elan/toolchains/leanprover--lean4---v4.30.0/src/lean/Init
+      - ~/.elan/toolchains/leanprover--lean4---v4.30.0/src/lean/Std
