@@ -40,10 +40,13 @@ class RayUtils(object):
         return None
 
     @staticmethod
-    def init_ray(num_of_cpus: int = 10, object_store_memory_in_gb: float = 25, memory_in_gb: float = 0.5, runtime_env: typing.Dict[str, str] = None):
+    def init_ray(num_of_cpus: int = 10, object_store_memory_in_gb: float = 25, memory_in_gb: float = 0.5, total_memory_in_gb: typing.Optional[float] = None, runtime_env: typing.Dict[str, str] = None):
         gb = 2**30
         object_store_memory = int(object_store_memory_in_gb * gb)
-        memory = int(memory_in_gb * gb)
+        if total_memory_in_gb is not None:
+            memory = int(total_memory_in_gb * gb)
+        else:
+            memory = int(memory_in_gb * gb)
         obj = RayUtils.connect_to_ray()
         if obj is not None:
             return obj

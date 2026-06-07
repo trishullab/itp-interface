@@ -61,6 +61,7 @@ class RunSettings(object):
     random_seed: int = 42
     random_split: bool = False
     train_eval_test_split: typing.List[float] = field(default_factory=lambda: [1.0, 0.0, 0.0])
+    memory_per_task_gb: typing.Optional[float] = None
 
 @dataclass_json
 @dataclass
@@ -163,7 +164,8 @@ def parse_config(cfg):
         should_checkpoint=run_settings_cfg["should_checkpoint"],
         random_seed=run_settings_cfg["random_seed"],
         random_split=run_settings_cfg["random_split"],
-        train_eval_test_split=run_settings_cfg["train_eval_test_split"])
+        train_eval_test_split=run_settings_cfg["train_eval_test_split"],
+        memory_per_task_gb=run_settings_cfg.get("memory_per_task_gb", None))
     benchmark_cfg = cfg["benchmark"]
     datasets_cfg = benchmark_cfg["datasets"]
     eval_datasets = []

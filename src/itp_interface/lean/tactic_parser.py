@@ -10,10 +10,13 @@ The parser process runs in the background to avoid restart overhead.
 import base64
 import json
 import os
+import signal
 import subprocess
 import logging
 import re
 import shutil
+import threading
+import time
 from enum import Enum
 from pydantic import BaseModel, field_validator
 from pathlib import Path
@@ -376,6 +379,29 @@ def build_tactic_parser_if_needed(logger: Optional[logging.Logger] = None):
     if not is_tactic_parser_built():
         build_lean4_project(get_path_to_tactic_parser_project(), logger, has_executable=True)
 
+def _get_process_group_rss_kb(pgid: int) -> int:
+    """Sum RSS (kB) of all processes in a process group by scanning /proc."""
+    total = 0
+    try:
+        for entry in os.listdir('/proc'):
+            if not entry.isdigit():
+                continue
+            try:
+                with open(f'/proc/{entry}/stat', 'r') as f:
+                    stat = f.read().split()
+                if int(stat[4]) == pgid:
+                    with open(f'/proc/{entry}/status', 'r') as f:
+                        for line in f:
+                            if line.startswith('VmRSS:'):
+                                total += int(line.split()[1])
+                                break
+            except (FileNotFoundError, ValueError, IndexError, PermissionError):
+                continue
+    except Exception:
+        pass
+    return total
+
+
 def get_path_to_dependency_parser_executable() -> str:
     """Get the path to the dependency parser executable."""
     abs_path = get_path_to_tactic_parser_project()
@@ -386,7 +412,8 @@ def analyze_lean_file_dependencies(
     full_lean_file_path: str,
     json_output_path: str,
     working_dir: Optional[str] = None,
-    logger: Optional[logging.Logger] = None
+    logger: Optional[logging.Logger] = None,
+    memory_limit_fraction: float = 0.30
 ) -> tuple[List[FileDependencyAnalysis], List[ErrorInfo]]:
     """
     Analyze dependencies in a Lean file and export to JSON.
@@ -432,14 +459,63 @@ def analyze_lean_file_dependencies(
     logger.debug(f"Running dependency analysis: {' '.join(cmds)}")
     logger.debug(f"Working directory: {working_dir}")
 
-    # Execute the command
-    result = subprocess.run(
+    # Read total system memory once
+    try:
+        with open('/proc/meminfo', 'r') as _f:
+            _mem_total_kb = int(next(l for l in _f if l.startswith('MemTotal:')).split()[1])
+    except Exception:
+        _mem_total_kb = 0
+    mem_limit_kb = int(_mem_total_kb * memory_limit_fraction)
+
+    proc = subprocess.Popen(
         cmds,
         cwd=working_dir,
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         text=True,
-        check=False  # Don't raise on error, handle it ourselves
+        preexec_fn=os.setsid  # new process group so we can kill the whole tree
     )
+
+    killed_oom = threading.Event()
+
+    def _memory_monitor():
+        try:
+            pgid = os.getpgid(proc.pid)
+        except ProcessLookupError:
+            return
+        while proc.poll() is None:
+            time.sleep(2)
+            rss_kb = _get_process_group_rss_kb(pgid)
+            if mem_limit_kb > 0 and rss_kb > mem_limit_kb:
+                logger.warning(
+                    f"dependency-parser for {full_lean_file_path} used "
+                    f"{rss_kb/1024/1024:.1f} GB (>{memory_limit_fraction*100:.0f}% of RAM). Killing."
+                )
+                killed_oom.set()
+                try:
+                    os.killpg(pgid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                return
+
+    monitor_thread = threading.Thread(target=_memory_monitor, daemon=True)
+    monitor_thread.start()
+    stdout, stderr = proc.communicate()
+    monitor_thread.join(timeout=3)
+
+    if killed_oom.is_set():
+        empty = FileDependencyAnalysis(
+            file_path=full_lean_file_path,
+            module_name="",
+            imports=[],
+            declarations=[]
+        )
+        return [empty], [ErrorInfo(
+            message=f"Killed: exceeded {memory_limit_fraction*100:.0f}% memory limit",
+            position=Position(line=0, column=0)
+        )]
+
+    result = subprocess.CompletedProcess(cmds, proc.returncode, stdout, stderr)
 
     logger.debug(f"Dependency analysis stdout: {result.stdout}")
     if result.stderr:
