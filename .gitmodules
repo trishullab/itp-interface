@@ -25,3 +25,12 @@
 	path = src/data/test/cslib
 	url = https://github.com/leanprover/cslib.git
 	ignore = dirty
+[submodule "src/data/test/miniF2F-lean4"]
+	path = src/data/test/miniF2F-lean4
+	url = https://github.com/yangky11/miniF2F-lean4
+[submodule "src/data/test/PutnamBench"]
+	path = src/data/test/PutnamBench
+	url = https://github.com/trishullab/PutnamBench.git
+[submodule "src/data/test/clever"]
+	path = src/data/test/clever
+	url = https://github.com/trishullab/clever.git
