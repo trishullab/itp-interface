@@ -551,11 +551,12 @@ def run_data_generation_pipeline(experiment: Experiments, log_dir: str, checkpoi
                 try:
                     data_transform.run_all_local_transforms(
                         experiment.run_settings.pool_size,
-                        partition_project_to_theorems, 
-                        use_human_readable=experiment.run_settings.use_human_readable, 
-                        new_output_dir=new_output_dir, 
+                        partition_project_to_theorems,
+                        use_human_readable=experiment.run_settings.use_human_readable,
+                        new_output_dir=new_output_dir,
                         log_error=True,
-                        other_args=other_args)
+                        other_args=other_args,
+                        memory_per_task_gb=experiment.run_settings.memory_per_task_gb)
                 finally:
                     if clone_dir is not None:
                         for project in projects:

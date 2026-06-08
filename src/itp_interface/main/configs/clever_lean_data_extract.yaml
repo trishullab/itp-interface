@@ -1,0 +1,9 @@
+defaults:
+  - benchmark: clever_benchmark_lean_ext
+  - run_settings: default_lean4_data_generation_transforms
+  - env_settings: no_retrieval
+  - override hydra/job_logging: 'disabled'
+
+run_settings:
+ output_dir: .log/data_generation/benchmark/clever_benchmark_lean_ext
+ pool_size: 12

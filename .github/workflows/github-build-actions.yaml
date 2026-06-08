@@ -14,6 +14,7 @@ jobs:
       options: --user 0  # Running as root; no sudo needed
     env:
       HOME: /root
+      ITP_DEP_PARSER_MEM_LIMIT: "0.9"
 
     steps:
       - name: Checkout repository

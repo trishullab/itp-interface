@@ -17,7 +17,7 @@ Generic interface for hooking up to any Interactive Theorem Prover (ITP) and col
 pip install itp-interface
 ```
 
-2. Run the following command to prepare the REPL for Lean 4. The default version is 4.24.0. You can change the version by setting the `LEAN_VERSION` environment variable. If no version is set, then 4.24.0 is used.
+2. Run the following command to prepare the REPL for Lean 4. The default version is 4.30.0. You can change the version by setting the `LEAN_VERSION` environment variable. If no version is set, then 4.30.0 is used.
 >NOTE: The Lean 4 version must match the version of the Lean 4 project you are working with. `itp-interface` **supports Lean 4 versions v4.15.0 through v4.30.0**. (It has been tested till version 4.30.0, but might as well work for future versions too, if the future versions are completely backwards-compatible).
 
 ```bash
@@ -30,10 +30,20 @@ install-lean-repl
 ```bash
 install-itp-interface
 ```
->NOTE: `install-itp-interface` also respects the `LEAN_VERSION` environment variable to determine which Lean version to compile the tactic parser with. It defaults to `4.24.0` when not set. **Both `install-lean-repl` and `install-itp-interface` must use the same `LEAN_VERSION`** — mismatching versions will cause elaboration errors at runtime. If you set `LEAN_VERSION` for one, set it for both:
+>NOTE: `install-itp-interface` also respects the `LEAN_VERSION` environment variable to determine which Lean version to compile the tactic parser with. It defaults to `4.30.0` when not set. **Both `install-lean-repl` and `install-itp-interface` must use the same `LEAN_VERSION`** — mismatching versions will cause elaboration errors at runtime. If you set `LEAN_VERSION` for one, set it for both:
 ```bash
 export LEAN_VERSION="4.30.0" && install-lean-repl && install-itp-interface
 ```
+
+### Memory limit for the dependency parser
+
+When `itp-interface` analyzes a Lean file (e.g. one that `import Mathlib`), it launches a `dependency-parser` subprocess that loads the full Lean environment and can use several GB of RAM. A soft memory monitor kills the process if it exceeds **30 % of total system RAM** by default, to avoid OOM-killing the host.
+
+On machines with ample memory (large CI runners, workstations) this default can be too conservative. Override it with:
+```bash
+export ITP_DEP_PARSER_MEM_LIMIT=0.9   # allow up to 90 % of total RAM
+```
+The value is a float in (0, 1]. It is read at runtime — no rebuild needed.
 
 >NOTE: These steps are only tested on Linux. For Windows, you can use WSL. These steps will not setup the Coq interface.
 

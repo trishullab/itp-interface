@@ -1,0 +1,16 @@
+name: miniF2F_lean_ext
+num_files: 1
+language: LEAN4
+few_shot_data_path_for_retrieval: 
+few_shot_metadata_filename_for_retrieval: 
+dfs_data_path_for_retrieval: 
+dfs_metadata_filename_for_retrieval: 
+is_extraction_request: true
+datasets:
+  - project: src/data/test/miniF2F-lean4
+    files: []
+    exclude_files:
+      - src/data/test/miniF2F-lean4/.lake
+      - src/data/test/miniF2F-lean4/MiniF2F/Test.lean
+      - src/data/test/miniF2F-lean4/MiniF2F/Valid.lean
+      - src/data/test/miniF2F-lean4/MiniF2F/Valid

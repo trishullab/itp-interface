@@ -1,0 +1,23 @@
+name: strata_benchmark_lean_ext
+num_files: 1
+language: LEAN4
+few_shot_data_path_for_retrieval: 
+few_shot_metadata_filename_for_retrieval: 
+dfs_data_path_for_retrieval: 
+dfs_metadata_filename_for_retrieval: 
+is_extraction_request: true
+datasets:
+  - project: src/data/test/Strata
+    files: []
+    exclude_files:
+      - src/data/test/Strata/.lake
+      - src/data/test/Strata/.vscode
+      - src/data/test/Strata/docs
+      - src/data/test/Strata/lake-manifest.toml
+      - src/data/test/Strata/.docker
+      - src/data/test/Strata/lakefile.toml
+      - src/data/test/Strata/.gitpod.yml
+      - src/data/test/Strata/.github
+      - src/data/test/Strata/.git
+      - src/data/test/Strata/lake-manifest.json
+      - src/data/test/Strata/vcs

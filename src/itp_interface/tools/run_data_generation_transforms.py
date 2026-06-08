@@ -262,7 +262,7 @@ class RunDataGenerationTransforms(object):
             idx += 1
         self.logger.info(f"==============================>[{transform.name}] Merged local transforms for all projects<==============================")
 
-    def run_local_transform(self, pool_size: int , transform: typing.Union[CoqLocalDataGenerationTransform, LeanLocalDataGenerationTransform, IsabelleLocalDataGenerationTransform], projects: typing.Dict[str, typing.Dict[str, str]], use_human_readable: bool, new_output_dir: str, log_error: bool, save_transform: bool = True, preserve_temp: bool = True, other_args: typing.Dict[str, typing.Dict[str, dict]] = {}):
+    def run_local_transform(self, pool_size: int , transform: typing.Union[CoqLocalDataGenerationTransform, LeanLocalDataGenerationTransform, IsabelleLocalDataGenerationTransform], projects: typing.Dict[str, typing.Dict[str, str]], use_human_readable: bool, new_output_dir: str, log_error: bool, save_transform: bool = True, preserve_temp: bool = True, other_args: typing.Dict[str, typing.Dict[str, dict]] = {}, memory_per_task_gb: typing.Optional[float] = None):
         assert pool_size > 0, "pool_size should be greater than 0"
         assert transform is not None, "transform should not be None"
         assert projects is not None, "projects should not be None"
@@ -280,7 +280,13 @@ class RunDataGenerationTransforms(object):
             object_store_memory_in_gb = 100
             memory_in_gb = 5
             if not RayUtils.is_ray_initialized():
-                ray_dashboard = RayUtils.init_ray(num_of_cpus=pool_size, object_store_memory_in_gb=object_store_memory_in_gb, memory_in_gb=memory_in_gb)
+                if memory_per_task_gb is not None:
+                    with open('/proc/meminfo', 'r') as _f:
+                        _mem_total_kb = int(next(l for l in _f if l.startswith('MemTotal:')).split()[1])
+                    total_mem_gb = _mem_total_kb / (1024 * 1024)
+                    ray_dashboard = RayUtils.init_ray(num_of_cpus=pool_size, object_store_memory_in_gb=object_store_memory_in_gb, total_memory_in_gb=total_mem_gb)
+                else:
+                    ray_dashboard = RayUtils.init_ray(num_of_cpus=pool_size, object_store_memory_in_gb=object_store_memory_in_gb, memory_in_gb=memory_in_gb)
             else:
                 ray_dashboard = "Ray already initialized"
             self.logger.info(f"==============================>[{transform.name}] Ray initialized with {transform.max_parallelism} CPUs, Memory=({memory_in_gb} GiB, Object Memory = {object_store_memory_in_gb} GiB)<==============================")
@@ -370,11 +376,16 @@ class RunDataGenerationTransforms(object):
 
         if self._use_ray:
             # Ray-based execution
+            _memory_bytes = int(memory_per_task_gb * 2**30) if memory_per_task_gb is not None else None
             def _create_remotes(job_list):
                 remotes = []
                 for job in job_list:
                     self.logger.info(f"[{transform.name}] Starting transform for {job[4]}")
-                    remotes.append(RunDataGenerationTransforms.run_local_transform_on_file.remote(*job))
+                    if _memory_bytes is not None:
+                        remote = RunDataGenerationTransforms.run_local_transform_on_file.options(memory=_memory_bytes).remote(*job)
+                    else:
+                        remote = RunDataGenerationTransforms.run_local_transform_on_file.remote(*job)
+                    remotes.append(remote)
                 return remotes
 
             def _prepare_remotes(num: int):
@@ -428,14 +439,14 @@ class RunDataGenerationTransforms(object):
         self.logger.warning(f"==============================>[{transform.name}] Removing temp directory {temp_output_dir}<==============================")
         shutil.rmtree(temp_output_dir)
 
-    def run_all_local_transforms(self, pool_size: int, projects: typing.Dict[str, typing.Dict[str, str]], use_human_readable: bool, new_output_dir: str, log_error: bool, other_args: typing.Dict[str, typing.Dict[str, dict]] = {}):
+    def run_all_local_transforms(self, pool_size: int, projects: typing.Dict[str, typing.Dict[str, str]], use_human_readable: bool, new_output_dir: str, log_error: bool, other_args: typing.Dict[str, typing.Dict[str, dict]] = {}, memory_per_task_gb: typing.Optional[float] = None):
         os.makedirs(new_output_dir, exist_ok=True)
         for idx, transform in enumerate(self.transforms):
             last_transform = idx == len(self.transforms) - 1
             save_transform = self.save_intermidiate_transforms or last_transform
             temp_new_output_dir = str(Path(new_output_dir) / str(idx))
             os.makedirs(temp_new_output_dir, exist_ok=True)
-            self.run_local_transform(pool_size, transform, projects, use_human_readable, temp_new_output_dir, log_error, save_transform, preserve_temp=self.save_intermidiate_transforms, other_args=other_args)
+            self.run_local_transform(pool_size, transform, projects, use_human_readable, temp_new_output_dir, log_error, save_transform, preserve_temp=self.save_intermidiate_transforms, other_args=other_args, memory_per_task_gb=memory_per_task_gb)
         pass
 
 # Create Ray remote version if Ray is available

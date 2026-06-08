@@ -1,4 +1,4 @@
-name: stdlib_benchmark_lean_ext
+name: batteries_benchmark_lean_ext
 num_files: 1
 language: LEAN4
 few_shot_data_path_for_retrieval: 
@@ -13,7 +13,6 @@ datasets:
       - src/data/test/batteries/.lake
       - src/data/test/batteries/.vscode
       - src/data/test/batteries/BatteriesTest
-      - src/data/test/batteries/Batteries
       - src/data/test/batteries/scripts
       - src/data/test/batteries/docs
       - src/data/test/batteries/Shake
@@ -26,6 +25,3 @@ datasets:
       - src/data/test/batteries/.gitpod.yml
       - src/data/test/batteries/.github
       - src/data/test/batteries/lake-manifest.json
-    include_files:
-      - ~/.elan/toolchains/leanprover--lean4---v4.30.0/src/lean/Init
-      - ~/.elan/toolchains/leanprover--lean4---v4.30.0/src/lean/Std
