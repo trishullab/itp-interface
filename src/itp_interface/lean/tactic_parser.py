@@ -423,6 +423,8 @@ def analyze_lean_file_dependencies(
         json_output_path: Path where JSON output will be written (relative to working_dir)
         working_dir: Working directory (Lean project root). If None, uses current directory.
         logger: Optional logger for debugging
+        memory_limit_fraction: Fraction of total RAM allowed before killing the parser.
+            Overridden by the ITP_DEP_PARSER_MEM_LIMIT environment variable when set.
 
     Returns:
         tuple: (FileDependencyAnalysis, List[ErrorInfo]) - analysis results and any errors
@@ -436,6 +438,13 @@ def analyze_lean_file_dependencies(
 
     if working_dir is None:
         working_dir = os.getcwd()
+
+    env_limit = os.environ.get("ITP_DEP_PARSER_MEM_LIMIT")
+    if env_limit is not None:
+        try:
+            memory_limit_fraction = float(env_limit)
+        except ValueError:
+            logger.warning(f"ITP_DEP_PARSER_MEM_LIMIT='{env_limit}' is not a valid float; using {memory_limit_fraction}")
 
     # Ensure the dependency parser is built
     build_tactic_parser_if_needed(logger)

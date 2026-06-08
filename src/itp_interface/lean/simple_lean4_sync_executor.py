@@ -622,18 +622,19 @@ class SimpleLean4SyncExecutor:
                 file_path = self.associated_file()
                 assert file_path is not None, "File path should not be None"
                 if os.path.exists(extraction_path):
-                    temp_extraction_path_file = open(extraction_path, "r", encoding="utf-8")
-                    file_dep_analysis_str = temp_extraction_path_file.read()
+                    with open(extraction_path, "r", encoding="utf-8") as temp_extraction_path_file:
+                        file_dep_analysis_str = temp_extraction_path_file.read()
                     file_dep_analysis = [FileDependencyAnalysis.load_from_string(file_dep_analysis_str)]
                 else:
                     file_dep_analysis = self.extract_all_theorems_and_definitions(
                         json_output_path=extraction_path, file_path=file_path)
                     assert file_dep_analysis is not None, "File dependency analysis should not be None"
                     assert len(file_dep_analysis) > 0, "File dependency analysis should not be empty"
-                    
-                    temp_extraction_path_file = open(extraction_path, "w", encoding="utf-8")
-                    with temp_extraction_path_file:
-                        temp_extraction_path_file.write(file_dep_analysis[0].to_json())
+                    # Only cache non-empty results; an OOM-killed parser returns empty declarations
+                    # and caching that would poison every subsequent call for this file.
+                    if file_dep_analysis[0].declarations:
+                        with open(extraction_path, "w", encoding="utf-8") as temp_extraction_path_file:
+                            temp_extraction_path_file.write(file_dep_analysis[0].to_json())
                 with open(file_path, "r", encoding="utf-8") as f:
                     lines = f.readlines()
             else:

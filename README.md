@@ -35,6 +35,16 @@ install-itp-interface
 export LEAN_VERSION="4.30.0" && install-lean-repl && install-itp-interface
 ```
 
+### Memory limit for the dependency parser
+
+When `itp-interface` analyzes a Lean file (e.g. one that `import Mathlib`), it launches a `dependency-parser` subprocess that loads the full Lean environment and can use several GB of RAM. A soft memory monitor kills the process if it exceeds **30 % of total system RAM** by default, to avoid OOM-killing the host.
+
+On machines with ample memory (large CI runners, workstations) this default can be too conservative. Override it with:
+```bash
+export ITP_DEP_PARSER_MEM_LIMIT=0.9   # allow up to 90 % of total RAM
+```
+The value is a float in (0, 1]. It is read at runtime — no rebuild needed.
+
 >NOTE: These steps are only tested on Linux. For Windows, you can use WSL. These steps will not setup the Coq interface.
 
 # Full Setup for Coq and Lean:
