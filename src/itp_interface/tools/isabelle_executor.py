@@ -21,7 +21,7 @@ from enum import Enum
 try:
     from itp_interface.pisa.src.main.python.pisa_client import PisaEnv, initialise_env, IsabelleLemma
     HAS_ISABELLE = True
-except (ImportError, RuntimeError):
+except (ImportError, RuntimeError, TypeError):
     HAS_ISABELLE = False
     PisaEnv = None
     initialise_env = None
