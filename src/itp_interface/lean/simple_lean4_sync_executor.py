@@ -29,7 +29,7 @@ from itp_interface.tools.misc_defns import HammerMode
 from itp_interface.tools.iter_helpers import ClonableIterator
 from typing import List, Optional, Tuple, OrderedDict, Dict
 from tempfile import gettempdir, NamedTemporaryFile
-from itp_interface.lean.parsing_helpers import preprocess_declarations
+from itp_interface.lean.parsing_helpers import preprocess_declarations, LeanDeclParser
 
 class SimpleLean4SyncExecutor:
     theorem_regex = r"((((theorem|lemma)[\s]+([^\s:]*))|example)([\S|\s]*?)(:=|=>)[\s]*?)[\s]+"
@@ -687,12 +687,20 @@ class SimpleLean4SyncExecutor:
         theorem_text = thm.text
 
         self._content_till_last_theorem_stmt = "\n".join(self._lines_executed)
-        assert not theorem_text.endswith(':='), "Theorem text should not end with ':='"
-        if SimpleLean4SyncExecutor.ends_with_by_sorry_match.search(theorem_text):
-            # Remove the ':= by sorry' part
-            theorem_text = SimpleLean4SyncExecutor.ends_with_by_sorry_match.sub('', theorem_text).strip() + " :="
+        # On Lean < 4.30.0, the tactic parser returns the full declaration text
+        # (signature + proof) in thm.text with thm.proof=None. On Lean >= 4.30.0
+        # it correctly splits them. Use LeanDeclParser to strip the proof body
+        # from thm.text so we always end up with just the signature + " :=".
+        _parsed = LeanDeclParser(theorem_text).parse()
+        if _parsed.text is not None:
+            theorem_text = _parsed.text.strip() + " :="
         else:
-            theorem_text = theorem_text + " :="
+            assert not theorem_text.endswith(':='), "Theorem text should not end with ':='"
+            if SimpleLean4SyncExecutor.ends_with_by_sorry_match.search(theorem_text):
+                # Remove the ':= by sorry' part
+                theorem_text = SimpleLean4SyncExecutor.ends_with_by_sorry_match.sub('', theorem_text).strip() + " :="
+            else:
+                theorem_text = theorem_text + " :="
         content_until_after_theorem = "\n".join(self._lines_executed) + "\n" + theorem_text
         self._content_till_after_theorem_stmt = content_until_after_theorem.strip()
         assert self._content_till_after_theorem_stmt.endswith(':='), "Content till last theorem statement should not end with ':='"

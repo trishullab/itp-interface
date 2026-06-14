@@ -530,6 +530,48 @@ _ = n*(n + 1) + 1*(n + 1) := by rw (config := { occs := .pos [2]}) [←Nat.mul_o
                     pretty_print(s1, s2, proof_step, done)
             assert proof_finished, "Proof was not finished"
 
+    def test_simple_lean4_exact_proof(self):
+        """Regression test: theorems whose proof is a single 'exact ...' tactic should
+        produce a valid initial proof state, not 'unexpected token :='."""
+        from itp_interface.rl.proof_state import ProofState
+        from itp_interface.rl.proof_action import ProofAction
+        from itp_interface.rl.simple_proof_env import ProofEnv
+        from itp_interface.tools.proof_exec_callback import ProofExecutorCallback
+        from itp_interface.rl.simple_proof_env import ProofEnvReRankStrategy
+        project_folder = "src/data/test/lean4_proj"
+        file_path = "src/data/test/lean4_proj/Lean4Proj/Basic.lean"
+        helper = LeanHelper()
+        helper.build_lean4_project(project_folder)
+        language = ProofAction.Language.LEAN4
+        # theorem test_exact uses `exact ⟨hp, hq, hp⟩` — a single-tactic proof.
+        # On Lean < 4.30 the tactic parser returned thm.text including the full
+        # proof body, causing '_skip_to_theorem' to append ':=' after the proof
+        # and produce 'unexpected token :='.
+        theorem_name = '{\"namespace\":\"Lean4Proj2\",\"name\":\"test_exact\"}'
+        proof_exec_callback = ProofExecutorCallback(
+            project_folder=project_folder,
+            file_path=file_path,
+            language=language,
+            always_use_retrieval=False,
+            keep_local_context=True
+        )
+        env = ProofEnv(
+            "test_lean4_exact",
+            proof_exec_callback,
+            theorem_name,
+            retrieval_strategy=ProofEnvReRankStrategy.NO_RE_RANK,
+            max_proof_depth=5,
+            always_retrieve_thms=False
+        )
+        with env:
+            state, _, next_state, _, done, info = env.step(ProofAction(
+                ProofAction.ActionType.RUN_TACTIC,
+                language,
+                tactics=['exact ⟨hp, hq, hp⟩']))
+            assert info.error_message is None, \
+                f"Unexpected error on first tactic: {info.error_message}"
+            assert done, "Proof should be complete after 'exact ⟨hp, hq, hp⟩'"
+
     def test_simple_lean4_multiline_multigoal(self):
         from itp_interface.rl.proof_state import ProofState
         from itp_interface.rl.proof_action import ProofAction
