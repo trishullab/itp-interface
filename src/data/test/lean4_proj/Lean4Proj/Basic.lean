@@ -52,6 +52,10 @@ theorem test3 (p q : Prop) (hp : p) (hq : q)
     exact hq
     exact hp
 
+theorem test_exact (p q : Prop) (hp : p) (hq : q)
+: p ∧ q ∧ p := by
+    exact ⟨hp, hq, hp⟩
+
 theorem imo_1959_p1
   (n : ℕ)
   (h₀ : 0 < n) :
