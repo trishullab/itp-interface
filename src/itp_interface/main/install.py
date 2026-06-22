@@ -40,8 +40,8 @@ def install_itp_interface():
 def install_lean_repl():
     print("Updating Lean")
     print("Checking if Lean version is set in environment variables as LEAN_VERSION")
-    print("If not, defaulting to 4.24.0")
-    lean_version = os.environ.get("LEAN_VERSION", "4.24.0")
+    print("If not, defaulting to 4.30.0")
+    lean_version = os.environ.get("LEAN_VERSION", "4.30.0")
 
     # Make sure that .elan is installed
     print("Checking if .elan is installed")

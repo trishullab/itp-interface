@@ -279,7 +279,7 @@ class RequestType(Enum):
     BREAK_CHCKPNT = "break_chckpnt"
     PARSE_DEPENDS = "parse_depends"  # 13 chars - for dependency analysis
 
-def get_lean_version_from_env() -> Optional[str]:
+def get_lean_version_from_env() -> str:
     """Get the Lean version from the environment variable, if set."""
     return os.getenv("LEAN_VERSION", "4.30.0")
 
@@ -415,9 +415,11 @@ def _get_process_group_rss_kb(pgid: int) -> int:
     return total
 
 
-def get_path_to_dependency_parser_executable() -> str:
+def get_path_to_dependency_parser_executable(lean_version: str|None=None) -> str:
     """Get the path to the dependency parser executable."""
-    abs_path = get_path_to_tactic_parser_project()
+    if lean_version is None:
+        lean_version = get_lean_version_from_env()
+    abs_path = get_path_to_tactic_parser_project(lean_version)
     dependency_parser_bin_path = os.path.join(abs_path, ".lake", "build", "bin", "dependency-parser")
     return dependency_parser_bin_path
 
