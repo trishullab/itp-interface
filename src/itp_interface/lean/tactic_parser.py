@@ -279,22 +279,29 @@ class RequestType(Enum):
     BREAK_CHCKPNT = "break_chckpnt"
     PARSE_DEPENDS = "parse_depends"  # 13 chars - for dependency analysis
 
-def get_path_to_tactic_parser_project() -> str:
+def get_lean_version_from_env() -> str:
+    """Get the Lean version from the environment variable, if set."""
+    return os.getenv("LEAN_VERSION", "4.30.0")
+
+def get_path_to_tactic_parser_project(lean_version: str|None=None) -> str:
     """Get the path to the tactic parser project directory."""
     lean_dir = os.path.dirname(__file__)
     tactic_parser_path = os.path.join(lean_dir, "tactic_parser")
     abs_path = os.path.abspath(tactic_parser_path)
+    if lean_version is not None:
+        version_dir_str = lean_version.replace('.', '')
+        abs_path = f"{abs_path}_{version_dir_str}"
     return abs_path
 
-def get_path_to_tactic_parser_executable() -> str:
+def get_path_to_tactic_parser_executable(lean_version: str|None=None) -> str:
     """Get the path to the tactic parser executable."""
-    abs_path = get_path_to_tactic_parser_project()
+    abs_path = get_path_to_tactic_parser_project(lean_version)
     tactic_parser_bin_path = os.path.join(abs_path, ".lake", "build", "bin", "tactic-parser")
     return tactic_parser_bin_path
 
-def toolchain_version_and_env_version():
-    lean_version_needed = os.getenv("LEAN_VERSION", "4.30.0")
-    tactic_parser_project = get_path_to_tactic_parser_project()
+def toolchain_version_and_env_version(version_dir: str|None=None) -> tuple[str, str, str]:
+    lean_version_needed = get_lean_version_from_env()
+    tactic_parser_project = get_path_to_tactic_parser_project(version_dir)
     # Check the version of the built parser
     toolchain_file = os.path.join(tactic_parser_project, "lean-toolchain")
     assert os.path.isfile(toolchain_file), f"lean-toolchain file not found at {toolchain_file}, something is wrong."
@@ -317,8 +324,13 @@ def change_toolchain_version(lean_version_needed: str, toolchain_file: str, tool
 
 def is_tactic_parser_built() -> bool:
     """Check if the tactic parser executable exists."""
-    path_to_exec = get_path_to_tactic_parser_executable()
     toolchain_file, toolchain_content, lean_version_needed = toolchain_version_and_env_version()
+    version_dir = get_path_to_tactic_parser_project(lean_version_needed)
+    if not os.path.exists(version_dir):
+        shutil.copytree(get_path_to_tactic_parser_project(), version_dir)
+        toolchain_file = os.path.join(version_dir, "lean-toolchain")
+    path_to_exec = get_path_to_tactic_parser_executable(lean_version_needed)
+    toolchain_file, toolchain_content, lean_version_needed = toolchain_version_and_env_version(lean_version_needed)
     if not os.path.isfile(path_to_exec):
         if lean_version_needed is not None:
             change_toolchain_version(lean_version_needed, toolchain_file, toolchain_content)
@@ -377,7 +389,8 @@ def build_lean4_project(project_folder, logger: Optional[logging.Logger] = None,
 def build_tactic_parser_if_needed(logger: Optional[logging.Logger] = None):
     """Build the tactic parser if not already built."""
     if not is_tactic_parser_built():
-        build_lean4_project(get_path_to_tactic_parser_project(), logger, has_executable=True)
+        lean_version = get_lean_version_from_env()
+        build_lean4_project(get_path_to_tactic_parser_project(lean_version), logger, has_executable=True)
 
 def _get_process_group_rss_kb(pgid: int) -> int:
     """Sum RSS (kB) of all processes in a process group by scanning /proc."""
@@ -402,9 +415,11 @@ def _get_process_group_rss_kb(pgid: int) -> int:
     return total
 
 
-def get_path_to_dependency_parser_executable() -> str:
+def get_path_to_dependency_parser_executable(lean_version: str|None=None) -> str:
     """Get the path to the dependency parser executable."""
-    abs_path = get_path_to_tactic_parser_project()
+    if lean_version is None:
+        lean_version = get_lean_version_from_env()
+    abs_path = get_path_to_tactic_parser_project(lean_version)
     dependency_parser_bin_path = os.path.join(abs_path, ".lake", "build", "bin", "dependency-parser")
     return dependency_parser_bin_path
 
@@ -641,7 +656,8 @@ class TacticParser:
                 self.logger.debug(f"Starting parser in standalone mode from: {working_dir}")
             # Ensure the parser is built
             build_tactic_parser_if_needed(self.logger)
-            path_to_tactic_parser_exec = get_path_to_tactic_parser_executable()
+            lean_version = get_lean_version_from_env()
+            path_to_tactic_parser_exec = get_path_to_tactic_parser_executable(lean_version)
             assert os.path.isfile(path_to_tactic_parser_exec), f"Tactic parser executable not found at {path_to_tactic_parser_exec}, please build it first."
             cmds = ["lake", "env", path_to_tactic_parser_exec]
             self.process = subprocess.Popen(
