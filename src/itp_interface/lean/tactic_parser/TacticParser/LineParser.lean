@@ -296,7 +296,8 @@ unsafe def parseDecls (originalContent : String) : IO (Array DeclInfo) := do
 
 /-- Parse a Lean 4 file and extract declaration information -/
 unsafe def parseFile (filepath : System.FilePath) : IO (Array DeclInfo) := do
-  let originalContent ← IO.FS.readFile filepath
+  let mut originalContent ← IO.FS.readFile filepath
+  originalContent := if originalContent.endsWith "\n" then originalContent else originalContent ++ "\n"
   let (postProcessedContent, modifiedLineIdx) := postProcess originalContent
   let inputCtx := mkInputContext postProcessedContent filepath.toString
 
