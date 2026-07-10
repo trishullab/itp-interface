@@ -178,7 +178,8 @@ partial def findImports (stx : Syntax) (content: String) : IO (Array ImportInfo)
 
 /-- Parse imports and namespaces from a Lean 4 file -/
 def parseImports (filepath : System.FilePath) : IO DependencyInfo := do
-  let content ← IO.FS.readFile filepath
+  let mut content ← IO.FS.readFile filepath
+  content := if content.endsWith "\n" then content else content ++ "\n"
   let inputCtx := mkInputContext content filepath.toString
 
   -- Parse header which contains imports
@@ -254,7 +255,10 @@ def extractConstantsFromConstInfo (cinfo : ConstantInfo) : NameSet :=
 /-- Analyze all declarations in a file and extract their dependencies -/
 unsafe def analyzeFileDependencies (filepath : System.FilePath) : IO FileDependencyAnalysis := do
   -- Read file content
-  let content ← IO.FS.readFile filepath
+  let mut content ← IO.FS.readFile filepath
+
+  -- if content does not end with a newline, add one to avoid parsing issues
+  content := if content.endsWith "\n" then content else content ++ "\n"
 
   -- Parse basic file structure (imports and namespaces)
   let depInfo ← parseImports filepath

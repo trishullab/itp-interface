@@ -20,6 +20,4 @@ theorem additive_identity2 :
   simp [additive]
 
 theorem additive_comm:
-∀ {a b : Nat}, addNat a b = addNat b a := by
-  simp [additive]
-  grind
+∀ {a b : Nat}, addNat a b = addNat b a := by sorry
