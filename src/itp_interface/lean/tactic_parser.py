@@ -312,8 +312,8 @@ def toolchain_version_and_env_version(version_dir: str|None=None) -> tuple[str, 
 
 def change_toolchain_version(lean_version_needed: str, toolchain_file: str, toolchain_content: str):
     # Replace the version in the toolchain file
-    # The version should be like 4.x.y
-    pattern = r'^4\.\d+\.\d+$'
+    # The version should be like 4.x.y, optionally with a release-candidate suffix like 4.x.y-rcN
+    pattern = r'^4\.\d+\.\d+(-rc\d+)?$'
     if not re.match(pattern, lean_version_needed):
         raise RuntimeError(f"Tactic parser built with Lean version {toolchain_content}, but version {lean_version_needed} is required." +
         "Don't know how to build Lean which is not of the form 4.x.y. " +

@@ -48,6 +48,86 @@ def elabCompatPreV427 : CommandElab := fun stx => do
       elabCommand c
 
 -- ---------------------------------------------------------------------------
+-- Removed-`String`-method shims.
+--
+-- The Lean 4 `String` type was reworked around UTF-8 slices (landing by v4.35)
+-- and the whole-`String` spellings `String.trim`, `String.trimLeft`,
+-- `String.trimRight`, `String.dropRightWhile`, `String.takeRightWhile`, and
+-- `String.dropRight` were removed. The `TacticParser` source still uses those
+-- spellings (`s.trim`, `line.trimLeft`, `s.dropRightWhile p`, …).
+--
+-- Rather than gate on a version number (fragile — the exact removal release is
+-- easy to get wrong, and different methods could in principle go at different
+-- times), each shim below is elaborated only when the corresponding `String.*`
+-- constant is ABSENT from the current environment. On toolchains that still
+-- provide the core definition the shim is skipped and the core version is used;
+-- on toolchains where it has been removed the shim supplies it. The shims use
+-- only primitives stable across the documented range (`String.toList`,
+-- `String.push`, `Char.isWhitespace`, and `List` operations), so every call
+-- site compiles unchanged on all supported toolchains.
+-- ---------------------------------------------------------------------------
+
+/-- Elaborate the brace-delimited body iff `name✝` is absent from the current
+    environment. The single leading identifier is the fully-qualified constant to
+    probe; the body is brace-delimited so its `command*` does not swallow the
+    declarations that follow. -/
+syntax (name := compatIfMissing) "compat_if_missing " ident "{" command* "}" : command
+
+@[command_elab compatIfMissing]
+def elabCompatIfMissing : CommandElab := fun stx => do
+  let name := stx[1].getId
+  unless (← getEnv).contains name do
+    for c in stx[3].getArgs do
+      elabCommand c
+
+/-- Build a `String` from characters without `String.mk` (deprecated on recent
+    toolchains) or `String.ofList` (absent on older ones). Always defined; only
+    used by the shims below. -/
+private def String.itpOfChars (cs : List Char) : String :=
+  cs.foldl (fun s c => s.push c) ""
+
+/- Shim for a removed `String.trimLeft`: drop leading whitespace. -/
+compat_if_missing String.trimLeft {
+  def String.trimLeft (s : String) : String :=
+    String.itpOfChars (s.toList.dropWhile Char.isWhitespace)
+}
+
+/- Shim for a removed `String.trimRight`: drop trailing whitespace. -/
+compat_if_missing String.trimRight {
+  def String.trimRight (s : String) : String :=
+    String.itpOfChars (s.toList.reverse.dropWhile Char.isWhitespace).reverse
+}
+
+/- Shim for a removed `String.trim`: drop leading and trailing whitespace.
+    Uses `trimLeft`/`trimRight`, which resolve to the core or shimmed version. -/
+compat_if_missing String.trim {
+  def String.trim (s : String) : String :=
+    s.trimLeft.trimRight
+}
+
+/- Shim for a removed `String.dropRightWhile`: drop the trailing run of
+    characters satisfying `p`, returning the remaining prefix. -/
+compat_if_missing String.dropRightWhile {
+  def String.dropRightWhile (s : String) (p : Char → Bool) : String :=
+    String.itpOfChars (s.toList.reverse.dropWhile p).reverse
+}
+
+/- Shim for a removed `String.takeRightWhile`: take the trailing run of
+    characters satisfying `p`, in original order. -/
+compat_if_missing String.takeRightWhile {
+  def String.takeRightWhile (s : String) (p : Char → Bool) : String :=
+    String.itpOfChars (s.toList.reverse.takeWhile p).reverse
+}
+
+/- Shim for a removed `String.dropRight`: drop the last `n` characters.
+    Nat subtraction saturates at 0, so `n ≥ length` yields the empty string. -/
+compat_if_missing String.dropRight {
+  def String.dropRight (s : String) (n : Nat) : String :=
+    let cs := s.toList
+    String.itpOfChars (cs.take (cs.length - n))
+}
+
+-- ---------------------------------------------------------------------------
 -- Pre-v4.27 shims.
 --
 -- On v4.27 these are NOT elaborated; the real core definitions are used.
