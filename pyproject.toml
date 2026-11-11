@@ -1,6 +1,10 @@
 [build-system]
+# Pin below 1.30: hatchling >= 1.30 emits core-metadata version 2.5, which the
+# twine/packaging bundled in the PyPI publish toolchain does not yet recognize
+# ("'2.5' is not a valid metadata version"). 1.29.x still emits the widely
+# supported metadata 2.4.
 requires = [
-    "hatchling"
+    "hatchling<1.30"
 ]
 build-backend = "hatchling.build"
 [project]
