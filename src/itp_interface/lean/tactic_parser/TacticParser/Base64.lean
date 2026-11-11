@@ -1,6 +1,7 @@
 /-
 Base64 decoder for receiving Lean code from Python.
 -/
+import TacticParser.Compat
 
 namespace TacticParser.Base64
 
