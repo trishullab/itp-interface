@@ -78,8 +78,14 @@ theorem test1 (p q : Prop) (hp : p) (hq : q) : p ∧ q := by
 "
 #eval! (FromStr.fromStr some_lean_code : Option UserParseRequest)
 
+/-- Persistent parser state across requests in `Main.loop`. -/
+structure LoopState where
+  chkptState : Option CheckpointedParseResult := none
+  baseEnv : Option Environment := none
+  cachedImportEnv : Option (String × Environment) := none
+
 /-- Process a single request and output JSON -/
-unsafe def processRequest (b64Input : String) (chkptState : Option CheckpointedParseResult := none) : IO  (Option CheckpointedParseResult) := do
+unsafe def processRequest (b64Input : String) (state : LoopState) : IO LoopState := do
   try
     -- Decode base64 to Lean code
     let parse_request_raw ← match Base64.decode b64Input with
@@ -89,7 +95,7 @@ unsafe def processRequest (b64Input : String) (chkptState : Option CheckpointedP
         let errorInfo := ErrorInfo.mk (s!"Base64 decode error: {msg}") { line := 0, column := 0 }
         let result : ParseResult := { trees := #[], errors := #[errorInfo] }
         IO.println (toJson result).compress
-        return none
+        return { state with chkptState := none }
 
     let user_parse_request : Option UserParseRequest ← pure (FromStr.fromStr parse_request_raw)
 
@@ -98,13 +104,14 @@ unsafe def processRequest (b64Input : String) (chkptState : Option CheckpointedP
       let errorInfo := ErrorInfo.mk (s!"Invalid parse request format.") { line := 0, column := 0 }
       let result : ParseResult := { trees := #[], errors := #[errorInfo] }
       IO.println (toJson result).compress
-      return none
+      return { state with chkptState := none }
 
     let parse_request := user_parse_request.get!
 
     let mut result : ParseResult := { trees := #[], errors := #[] }
     -- Initialize new checkpoint state to the current one
-    let mut newchkptState : Option CheckpointedParseResult := chkptState
+    let mut newchkptState : Option CheckpointedParseResult := state.chkptState
+    let mut newCachedImportEnv := state.cachedImportEnv
     let is_of_tactics_type :=
       parse_request.requestType == ParseRequestType.parseTactics ∨
       parse_request.requestType == ParseRequestType.chkptTactics ∨
@@ -124,7 +131,6 @@ unsafe def processRequest (b64Input : String) (chkptState : Option CheckpointedP
         | none => none
       let chkpointParseResult ← parseTactics parse_request.content none cmdState
       result := chkpointParseResult.parseResult
-      --IO.println s!"Parsed tactics with {result.trees.size} trees and {repr result.errors} errors."
       -- Capture the cumulative line offset from PRIOR chunks BEFORE updating the
       -- checkpoint state. Positions from `parseTactics` are local to the current
       -- chunk (1-indexed lines), so the offset to shift them into document-global
@@ -180,8 +186,45 @@ unsafe def processRequest (b64Input : String) (chkptState : Option CheckpointedP
           !("unexpected end of input".isPrefixOf err.message))
         result := { result with errors := filtered_errors }
     else
-      -- Unsupported request type
-      let temp_result ← parseDecls parse_request.content
+      -- Parse top-level declarations (PARSE_THEOREM)
+      -- Fast path: parse with preloaded `Init` environment (loadExts := true).
+      let (initDecls, initErrs) ← parseDeclsWithEnv parse_request.content state.baseEnv
+      let mut temp_result := initDecls
+      let mut errCount := initErrs
+      -- If syntax errors occurred (e.g., Mathlib/Batteries/Cslib notations or
+      -- macros) and the file declares imports, try loading the file's header
+      -- imports (with a 1-entry cache) so custom notations parse cleanly.
+      if errCount > 0 then
+        try
+          let ictx := Lean.Parser.mkInputContext parse_request.content "<input>"
+          let (header, _, msgs) ← Lean.Parser.parseHeader ictx
+          let impNames := (Lean.Elab.headerToImports header).map fun imp => imp.module.toString
+          let impKey := String.intercalate "," impNames.toList
+          if !impKey.isEmpty then
+            let envOpt : Option Environment ←
+              match newCachedImportEnv with
+              | some (k, cached) =>
+                if k == impKey then pure (some cached)
+                else do
+                  Lean.enableInitializersExecution
+                  let (impEnv, _) ← Lean.Elab.processHeader header {} msgs ictx
+                  newCachedImportEnv := some (impKey, impEnv)
+                  pure (some impEnv)
+              | none => do
+                Lean.enableInitializersExecution
+                let (impEnv, _) ← Lean.Elab.processHeader header {} msgs ictx
+                newCachedImportEnv := some (impKey, impEnv)
+                pure (some impEnv)
+            match envOpt with
+            | some impEnv =>
+              let (impDecls, impErrs) ← parseDeclsWithEnv parse_request.content (some impEnv)
+              if impErrs < errCount then
+                temp_result := impDecls
+                errCount := impErrs
+            | none => pure ()
+        catch _ =>
+          -- Project imports unavailable on LEAN_PATH; keep Init-based parse.
+          pure ()
       let mut tree_list : Array InfoNodeStruct := #[]
       for decl in temp_result do
         let info_tree ← pure (InfoNodeStruct.mk decl.declType decl.name decl.docString decl.text decl.startPos decl.endPos decl.namespc #[])
@@ -190,16 +233,16 @@ unsafe def processRequest (b64Input : String) (chkptState : Option CheckpointedP
 
     -- Output result as JSON
     IO.println (toJson result).compress
-    return newchkptState
+    return { state with chkptState := newchkptState, cachedImportEnv := newCachedImportEnv }
   catch e =>
     -- Output error as JSON
     let errorInfo := ErrorInfo.mk (s!"Unexpected error: {e}") { line := 0, column := 0 }
     let result : ParseResult := { trees := #[], errors := #[errorInfo] }
     IO.println (toJson result).compress
-    return none
+    return { state with chkptState := none }
 
 /-- Loop to process requests -/
-unsafe def loop (stdin : IO.FS.Stream) (stdout : IO.FS.Stream) (chkptState : Option CheckpointedParseResult := none) : IO Unit := do
+unsafe def loop (stdin : IO.FS.Stream) (stdout : IO.FS.Stream) (state : LoopState) : IO Unit := do
   -- Read input from stdin (base64)
   let line ← stdin.getLine
   let line := line.trim
@@ -209,16 +252,17 @@ unsafe def loop (stdin : IO.FS.Stream) (stdout : IO.FS.Stream) (chkptState : Opt
     return
 
   -- Process the request
-  let mut newchkptState ← processRequest line chkptState
+  let newState ← processRequest line state
 
   -- Flush output to ensure Python can read it
   stdout.flush
 
   -- Continue loop
-  loop stdin stdout newchkptState
+  loop stdin stdout newState
 
 /-- Start processing -/
 unsafe def main (args : List String) : IO Unit := do
   let stdin ← IO.getStdin
   let stdout ← IO.getStdout
-  loop stdin stdout none
+  let baseEnv ← loadInitEnv
+  loop stdin stdout { baseEnv := some baseEnv }

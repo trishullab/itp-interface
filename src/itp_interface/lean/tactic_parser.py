@@ -322,17 +322,52 @@ def change_toolchain_version(lean_version_needed: str, toolchain_file: str, tool
     with open(toolchain_file, 'w') as f:
         f.write(toolchain_final)
 
+def _sync_tactic_parser_sources(src_project: str, dst_project: str) -> bool:
+    """Sync Lean sources from canonical ``tactic_parser/`` into a versioned
+    ``tactic_parser_<ver>/`` directory. Returns True if any file was updated."""
+    changed = False
+    src_root = Path(src_project)
+    dst_root = Path(dst_project)
+    for rel_sub in ("TacticParser",):
+        sdir = src_root / rel_sub
+        ddir = dst_root / rel_sub
+        if not sdir.is_dir():
+            continue
+        ddir.mkdir(parents=True, exist_ok=True)
+        for src_file in sdir.glob("*.lean"):
+            dst_file = ddir / src_file.name
+            src_bytes = src_file.read_bytes()
+            if not dst_file.exists() or dst_file.read_bytes() != src_bytes:
+                dst_file.write_bytes(src_bytes)
+                changed = True
+    for top_file in ("lakefile.lean", "TacticParser.lean"):
+        sf = src_root / top_file
+        df = dst_root / top_file
+        if sf.is_file():
+            sb = sf.read_bytes()
+            if not df.exists() or df.read_bytes() != sb:
+                df.write_bytes(sb)
+                changed = True
+    return changed
+
+
 def is_tactic_parser_built() -> bool:
-    """Check if the tactic parser executable exists."""
+    """Check if the tactic parser & dependency parser executables exist and are up to date."""
     toolchain_file, toolchain_content, lean_version_needed = toolchain_version_and_env_version()
+    base_dir = get_path_to_tactic_parser_project()
     version_dir = get_path_to_tactic_parser_project(lean_version_needed)
+    sources_changed = False
     if not os.path.exists(version_dir):
-        shutil.copytree(get_path_to_tactic_parser_project(), version_dir)
+        shutil.copytree(base_dir, version_dir)
         toolchain_file = os.path.join(version_dir, "lean-toolchain")
+        sources_changed = True
+    elif os.path.abspath(version_dir) != os.path.abspath(base_dir):
+        sources_changed = _sync_tactic_parser_sources(base_dir, version_dir)
     path_to_exec = get_path_to_tactic_parser_executable(lean_version_needed)
+    path_to_dep_exec = get_path_to_dependency_parser_executable(lean_version_needed)
     toolchain_file, toolchain_content, lean_version_needed = toolchain_version_and_env_version(lean_version_needed)
-    if not os.path.isfile(path_to_exec):
-        if lean_version_needed is not None:
+    if sources_changed or not os.path.isfile(path_to_exec) or not os.path.isfile(path_to_dep_exec):
+        if lean_version_needed is not None and not toolchain_content.endswith(lean_version_needed):
             change_toolchain_version(lean_version_needed, toolchain_file, toolchain_content)
         return False
     else:
@@ -599,14 +634,13 @@ def get_from_original_text(code: str, lean_info: LeanLineInfo, relative_line_num
         extracted_lines.append(lines[end_line_idx][:lean_info.end_column])
         return '\n'.join(extracted_lines)
 
-theorem_name_regex = r"(((theorem|lemma)[\s]+([^\s:]*))|example)"
+theorem_name_regex = r"(?:(?:theorem|lemma)\s+(«[^»]+»|[^\s:(\[{]+)|\bexample\b)"
 theorem_name_match = re.compile(theorem_name_regex, re.MULTILINE)
 
 def parse_theorem_name(thm_stmt: str) -> Optional[str]:
     match = theorem_name_match.search(thm_stmt)
     if match:
-        theorem_name = match.group(4)
-        return theorem_name
+        return match.group(1)
     return None
 
 class TacticParser:
@@ -760,11 +794,10 @@ class TacticParser:
             assert t.start_pos is not None
             assert t.end_pos is not None
             if t.decl_type is not None and (t.decl_type == "theorem" or t.decl_type == "lemma"):
-                # TODO: Fix the incorrect theorem/lemma name parsing from the underlying lean tool
-                actual_name = parse_theorem_name(t.text if t.text else "")
-                assert actual_name is not None, "Theorem/lemma name should not be None"
-                if t.name != actual_name:
-                    t.name = actual_name
+                if not t.name or t.name == "[anonymous]":
+                    actual_name = parse_theorem_name(t.text if t.text else "")
+                    if actual_name:
+                        t.name = actual_name
             tactics.append(
                 LeanLineInfo(
                     text=t.text if t.text else "",

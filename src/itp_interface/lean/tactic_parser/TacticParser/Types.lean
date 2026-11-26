@@ -15,10 +15,14 @@ inductive DeclType where
   | inductive
   | theorem
   | def
+  | abbrev
+  | opaque
   | axiom
   | structure
   | class_decl
   | instance
+  | mutual
+  | section
   | other
   | example
   | lemma
@@ -33,10 +37,14 @@ instance : ToString DeclType where
     | .inductive => "inductive"
     | .theorem => "theorem"
     | .def => "def"
+    | .abbrev => "abbrev"
+    | .opaque => "opaque"
     | .axiom => "axiom"
     | .structure => "structure"
     | .class_decl => "class"
     | .instance => "instance"
+    | .mutual => "mutual"
+    | .section => "section"
     | .other => "other"
     | .example => "example"
     | .lemma => "lemma"  -- lemma is treated as theorem

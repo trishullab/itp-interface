@@ -252,6 +252,17 @@ def extractConstantsFromConstInfo (cinfo : ConstantInfo) : NameSet :=
     combined.foldl (fun s n => s.insert n) {}
   | none => fromType
 
+/-- Build a `Lean.Name` from an optional dotted namespace and a (possibly dotted)
+    declaration name, e.g. `some "Cslib.FLP"` + `"DeliverMsg.scheduleMsgs"`
+    -> `` `Cslib.FLP.DeliverMsg.scheduleMsgs ``. -/
+private def mkQualifiedDeclName (ns? : Option String) (declNameStr : String) : Name :=
+  let baseName := match ns? with
+    | some ns =>
+      (ns.splitOn ".").foldl (fun n part => if part.isEmpty then n else Name.mkStr n part) Name.anonymous
+    | none => Name.anonymous
+  let cleaned := declNameStr.replace "«" "" |>.replace "»" ""
+  (cleaned.splitOn ".").foldl (fun n part => if part.isEmpty then n else Name.mkStr n part) baseName
+
 /-- Analyze all declarations in a file and extract their dependencies -/
 unsafe def analyzeFileDependencies (filepath : System.FilePath) : IO FileDependencyAnalysis := do
   -- Read file content
@@ -260,45 +271,51 @@ unsafe def analyzeFileDependencies (filepath : System.FilePath) : IO FileDepende
   -- if content does not end with a newline, add one to avoid parsing issues
   content := if content.endsWith "\n" then content else content ++ "\n"
 
-  -- Parse basic file structure (imports and namespaces)
-  let depInfo ← parseImports filepath
-
-  -- Parse all declarations using LineParser
-  let decls ← parseFile filepath
-
-  -- Extract proofs from theorem/lemma/example declarations
-  let declsWithProofs ← extractProofsFromDecls decls content
-
-  -- Load environment with all imports and elaborate the file
+  -- Load environment with all imports FIRST so LineParser, ProofExtractor, and
+  -- dependency resolution all share the real project syntax table & extensions!
   Lean.initSearchPath (← Lean.findSysroot)
   Lean.enableInitializersExecution
 
   let inputCtx := Parser.mkInputContext content filepath.toString
   let (header, parserState, messages) ← Parser.parseHeader inputCtx
-  let (env, _) ← processHeader header {} messages inputCtx
+  let (env, headerMsgs) ← processHeader header {} messages inputCtx
+
+  -- Extract imports directly from the parsed header
+  let headerSyn : Syntax := header
+  let imports ← findImports headerSyn content (pure #[])
+  let moduleName := filePathToModuleName filepath
+
+  -- Parse all declarations using LineParser with the real imported environment
+  let (decls, _) ← parseDeclsWithEnv content (some env) filepath.toString
+
+  -- Reuse the header Command.State when the header ends on a line boundary
+  -- (avoids re-importing Mathlib/project modules a second time in ProofExtractor).
+  let headerEndPos := get_position_from_char_pos content parserState.pos.byteIdx
+  let (initCmdState, initPrevLine) :=
+    if headerEndPos.column == 0 && headerEndPos.line > 0 then
+      (some (Command.mkState env headerMsgs {}), headerEndPos.line)
+    else
+      (none, 0)
+
+  -- Extract proofs from theorem/lemma/example declarations
+  let declsWithProofs ← extractProofsFromDecls decls content initCmdState initPrevLine
 
   -- Elaborate the entire file to get all declarations in the environment
-  let commandState := Command.mkState env messages {}
+  let commandState := Command.mkState env headerMsgs {}
   let finalState ← IO.processCommands inputCtx parserState commandState <&> Frontend.State.commandState
   let elaboratedEnv := finalState.env
 
   -- Build a map of module names to file paths from imports
   let mut moduleToFilePath : Std.HashMap String String := {}
-  for imp in depInfo.imports do
+  for imp in imports do
     let filePath := imp.moduleName.replace "." "/" ++ ".lean"
     moduleToFilePath := moduleToFilePath.insert imp.moduleName filePath
 
   -- Analyze each declaration
   let mut declsWithDeps : Array DeclWithDependencies := #[]
   for declInfo in declsWithProofs do
-    -- Construct the fully qualified name for this declaration
-    let declName := match declInfo.namespc with
-      | some ns =>
-        -- Build the name from namespace parts
-        let namespaceParts := ns.splitOn "."
-        let baseName := namespaceParts.foldl (fun n part => Name.mkStr n part) Name.anonymous
-        Name.mkStr baseName declInfo.name
-      | none => Name.mkStr Name.anonymous declInfo.name
+    -- Construct the fully qualified name (properly splitting dotted decl names!)
+    let declName := mkQualifiedDeclName declInfo.namespc declInfo.name
 
     -- Try to find this declaration in the elaborated environment
     match elaboratedEnv.find? declName with
@@ -352,8 +369,8 @@ unsafe def analyzeFileDependencies (filepath : System.FilePath) : IO FileDepende
 
   let result : FileDependencyAnalysis := {
     filePath := filepath.toString
-    moduleName := depInfo.moduleName
-    imports := depInfo.imports
+    moduleName := moduleName
+    imports := imports
     declarations := declsWithDeps
   }
   return result
