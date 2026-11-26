@@ -34,3 +34,7 @@
 [submodule "src/data/test/clever"]
 	path = src/data/test/clever
 	url = https://github.com/trishullab/clever.git
+[submodule "src/data/test/formal-conjectures"]
+	path = src/data/test/formal-conjectures
+	url = https://github.com/google-deepmind/formal-conjectures.git
+	ignore = dirty
