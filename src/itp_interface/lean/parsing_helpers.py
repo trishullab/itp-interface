@@ -43,10 +43,17 @@ class LeanDeclParser:
 
     # Types for which we should NOT attempt to extract a proof/body
     NO_PROOF_TYPES = {
-        LeanDeclType.INDUCTIVE, 
-        LeanDeclType.MUTUAL, 
+        LeanDeclType.INDUCTIVE,
+        LeanDeclType.MUTUAL,
         LeanDeclType.STRUCTURE,
-        LeanDeclType.CLASS
+        LeanDeclType.CLASS,
+        LeanDeclType.DEF,
+        LeanDeclType.ABBREV,
+        LeanDeclType.ABBREVIATION,
+        LeanDeclType.OPAQUE,
+        LeanDeclType.AXIOM,
+        LeanDeclType.INSTANCE,
+        LeanDeclType.CONSTANT,
     }
 
     # Types that typically don't have a name
@@ -126,7 +133,16 @@ class LeanDeclParser:
                     i += 1
                     continue
                 if self.text[i] == "'":
-                    state = IN_CHAR
+                    prev_is_ident = i > 0 and (self.text[i - 1].isalnum() or self.text[i - 1] in "_'")
+                    looks_like_char = (
+                        not prev_is_ident
+                        and (
+                            (i + 2 < self.n and self.text[i + 2] == "'" and self.text[i + 1] != "\n")
+                            or (i + 3 < self.n and self.text[i + 1] == "\\" and self.text[i + 3] == "'")
+                        )
+                    )
+                    if looks_like_char:
+                        state = IN_CHAR
                     i += 1
                     continue
             
@@ -183,12 +199,19 @@ class LeanDeclParser:
                     self.tokens.append(("PROOF", i, i+2))
                     i += 2
                     continue
-                if self.text.startswith("where", i) and self._is_word_boundary(i+5):
+                if (
+                    self.text.startswith("where", i)
+                    and (i == 0 or not (self.text[i - 1].isalnum() or self.text[i - 1] == '_'))
+                    and self._is_word_boundary(i + 5)
+                ):
                     self.tokens.append(("PROOF", i, i+5))
                     i += 5
                     continue
                 if char == '|':
-                    self.tokens.append(("PROOF", i, i+1))
+                    prev_ok = i == 0 or self.text[i - 1] not in "|<[{"
+                    next_ok = i + 1 >= self.n or self.text[i + 1] not in "|>-]}"
+                    if prev_ok and next_ok:
+                        self.tokens.append(("PROOF", i, i+1))
                     i += 1
                     continue
             

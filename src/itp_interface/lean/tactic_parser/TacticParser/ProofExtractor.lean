@@ -15,7 +15,7 @@ open Lean Parser Elab
 
 /-- Represents a candidate delimiter position and type -/
 structure DelimiterCandidate where
-  position : Nat  -- Byte position in the text
+  position : Nat  -- UTF-8 byte position in the text
   delimiterType : String  -- ":=", "where", or "|"
   deriving Repr, BEq
 
@@ -29,41 +29,146 @@ def tryParseSuccessfully (text : String) (cmdState : Option Command.State): IO B
   let new_cmd_state := chkpt_result.2
   pure (parse_res.errors.size == 0 ∧ new_cmd_state.isSome)
 
-/-- Check if a substring starts with a given substring at a specific position -/
-def substringStartsWith (text : String) (startPos : Nat) (substr : String) : Bool :=
-  if startPos + substr.length > text.length then
-    false
-  else
-    let extracted := text.drop startPos
-    extracted.startsWith substr
+private def isIdentBytePE (b : UInt8) : Bool :=
+  (b >= 97 && b <= 122) ||  -- a-z
+  (b >= 65 && b <= 90)  ||  -- A-Z
+  (b >= 48 && b <= 57)  ||  -- 0-9
+  b == 95 ||                -- _
+  b == 39 ||                -- '
+  b >= 128                  -- non-ASCII UTF-8 bytes
 
-/-- Find all occurrences of a substring in a text -/
-def findSubstrOccurences (text : String) (substr : String) : List Nat :=
-  if substr.length > text.length then
-    []
-  else
-    let all_pos := List.range (text.length - substr.length + 1)
-    let all_occurences := all_pos.filter (fun pos => substringStartsWith text pos substr)
-    all_occurences
+/-- Find all top-level candidate proof delimiter positions (`:=`, `where`, `|`)
+    in strictly ascending UTF-8 byte offset order.
+    Skips line comments (`--`), nested block comments (`/- ... -/`), string
+    literals (`"..."`), char literals (`'c'` without confusing identifier primes
+    like `foo'`), and anything nested inside `(...)`, `[...]`, `{...}`, or `⟨...⟩`.
+    Enforces word boundaries on `where` (ignoring `everywhere`, etc.) and
+    operator boundaries on `|` (ignoring `||`, `<|`, `|>`, `|]`, `[|`, `|}`). -/
+def findCandidateDelimiters (text : String) : List DelimiterCandidate := Id.run do
+  let bytes := text.toUTF8
+  let n := bytes.size
+  let mut candidates : Array DelimiterCandidate := #[]
+  let mut i : Nat := 0
+  let mut inLineComment : Bool := false
+  let mut blockDepth : Nat := 0
+  let mut inString : Bool := false
+  let mut escaped : Bool := false
+  let mut inChar : Bool := false
+  let mut charEscaped : Bool := false
+  let mut parenDepth : Nat := 0
+  let mut bracketDepth : Nat := 0
+  let mut braceDepth : Nat := 0
+  let mut angleDepth : Nat := 0
+  let whereBytes := "where".toUTF8
 
-/-- Find all candidate delimiter positions -/
-def findCandidateDelimiters (text : String) : List DelimiterCandidate :=
-  let assignPositions := findSubstrOccurences text ":="
-  let wherePositions := findSubstrOccurences text "where"
-  let pipePositions := findSubstrOccurences text "|"
+  while i < n do
+    let b := bytes[i]!
+    if inLineComment then
+      if b == 10 then
+        inLineComment := false
+      i := i + 1
+    else if blockDepth > 0 then
+      if i + 1 < n && b == 47 && bytes[i + 1]! == 45 then  -- /-
+        blockDepth := blockDepth + 1
+        i := i + 2
+      else if i + 1 < n && b == 45 && bytes[i + 1]! == 47 then  -- -/
+        blockDepth := blockDepth - 1
+        i := i + 2
+      else
+        i := i + 1
+    else if inString then
+      if escaped then
+        escaped := false
+      else if b == 92 then  -- \
+        escaped := true
+      else if b == 34 then  -- "
+        inString := false
+      i := i + 1
+    else if inChar then
+      if charEscaped then
+        charEscaped := false
+      else if b == 92 then
+        charEscaped := true
+      else if b == 39 || b == 10 then  -- ' or newline safety exit
+        inChar := false
+      i := i + 1
+    else
+      -- Comments
+      if i + 1 < n && b == 45 && bytes[i + 1]! == 45 then  -- --
+        inLineComment := true
+        i := i + 2
+      else if i + 1 < n && b == 47 && bytes[i + 1]! == 45 then  -- /-
+        blockDepth := 1
+        i := i + 2
+      -- String literal
+      else if b == 34 then  -- "
+        inString := true
+        i := i + 1
+      -- Char literal (ONLY when not preceded by an identifier byte, so `foo'` is untouched)
+      else if b == 39 then  -- '
+        let prevIsIdent := i > 0 && isIdentBytePE bytes[i - 1]!
+        if !prevIsIdent && i + 2 < n &&
+           (bytes[i + 2]! == 39 || (bytes[i + 1]! == 92 && i + 3 < n && bytes[i + 3]! == 39)) then
+          inChar := true
+        i := i + 1
+      -- Nesting delimiters
+      else if b == 40 then  -- (
+        parenDepth := parenDepth + 1
+        i := i + 1
+      else if b == 41 then  -- )
+        if parenDepth > 0 then parenDepth := parenDepth - 1
+        i := i + 1
+      else if b == 91 then  -- [
+        bracketDepth := bracketDepth + 1
+        i := i + 1
+      else if b == 93 then  -- ]
+        if bracketDepth > 0 then bracketDepth := bracketDepth - 1
+        i := i + 1
+      else if b == 123 then  -- {
+        braceDepth := braceDepth + 1
+        i := i + 1
+      else if b == 125 then  -- }
+        if braceDepth > 0 then braceDepth := braceDepth - 1
+        i := i + 1
+      -- UTF-8 `⟨` = 0xE2 0x9F 0xA8, `⟩` = 0xE2 0x9F 0xA9
+      else if i + 2 < n && b == 0xE2 && bytes[i + 1]! == 0x9F && bytes[i + 2]! == 0xA8 then
+        angleDepth := angleDepth + 1
+        i := i + 3
+      else if i + 2 < n && b == 0xE2 && bytes[i + 1]! == 0x9F && bytes[i + 2]! == 0xA9 then
+        if angleDepth > 0 then angleDepth := angleDepth - 1
+        i := i + 3
+      else
+        let atTop := parenDepth == 0 && bracketDepth == 0 && braceDepth == 0 && angleDepth == 0
+        if atTop && b == 58 && i + 1 < n && bytes[i + 1]! == 61 then  -- :=
+          let prevOk := i == 0 || bytes[i - 1]! != 58  -- not ::=
+          let nextOk := i + 2 >= n || bytes[i + 2]! != 61  -- not :==
+          if prevOk && nextOk then
+            candidates := candidates.push { position := i, delimiterType := ":=" }
+          i := i + 2
+        else if atTop && b == 119 && i + 5 <= n &&  -- "where"
+                bytes[i + 1]! == whereBytes[1]! &&
+                bytes[i + 2]! == whereBytes[2]! &&
+                bytes[i + 3]! == whereBytes[3]! &&
+                bytes[i + 4]! == whereBytes[4]! then
+          let prevOk := i == 0 || !isIdentBytePE bytes[i - 1]!
+          let nextOk := i + 5 >= n || !isIdentBytePE bytes[i + 5]!
+          if prevOk && nextOk then
+            candidates := candidates.push { position := i, delimiterType := "where" }
+            i := i + 5
+          else
+            i := i + 1
+        else if atTop && b == 124 then  -- |
+          let prevOk := i == 0 ||
+            (bytes[i - 1]! != 124 && bytes[i - 1]! != 60 && bytes[i - 1]! != 91 && bytes[i - 1]! != 123)
+          let nextOk := i + 1 >= n ||
+            (bytes[i + 1]! != 124 && bytes[i + 1]! != 62 && bytes[i + 1]! != 45 && bytes[i + 1]! != 93 && bytes[i + 1]! != 125)
+          if prevOk && nextOk then
+            candidates := candidates.push { position := i, delimiterType := "|" }
+          i := i + 1
+        else
+          i := i + 1
 
-  let assignCandidates := assignPositions.map fun pos =>
-    { position := pos, delimiterType := ":=" }
-  let whereCandidates := wherePositions.map fun pos =>
-    { position := pos, delimiterType := "where" }
-  let pipeCandidates := pipePositions.map fun pos =>
-    { position := pos, delimiterType := "|" }
-  let assignCandidatesSorted := assignCandidates.toArray.qsort (fun a b => a.position < b.position)
-  let whereCandidatesSorted := whereCandidates.toArray.qsort (fun a b => a.position < b.position)
-  let pipeCandidatesSorted := pipeCandidates.toArray.qsort (fun a b => a.position < b.position)
-
-  let allCandidates := assignCandidatesSorted.toList ++ whereCandidatesSorted.toList ++ pipeCandidatesSorted.toList
-  allCandidates
+  return candidates.toList
 
 def is_proof_extraction_needed (declInfo : DeclInfo) : Bool :=
   declInfo.declType == DeclType.theorem ||
@@ -76,11 +181,17 @@ def get_content_before_decl (fileContent : String) (declLineNum : Nat) : String 
   (String.intercalate "\n" beforeLines) ++ "\n"
 
 def get_in_between_content (fileContent : String) (startLine : Nat) (endLine : Nat) : String :=
-  let lines := fileContent.splitOn "\n"
-  let betweenLines := (lines.take endLine).drop (startLine - 1)
-  String.intercalate "\n" betweenLines
+  if endLine < startLine || endLine == 0 then
+    ""
+  else
+    let lines := fileContent.splitOn "\n"
+    let startIdx := if startLine == 0 then 0 else startLine - 1
+    let betweenLines := (lines.take endLine).drop startIdx
+    String.intercalate "\n" betweenLines
 
-/-- Extract proof from a declaration by testing candidate delimiters -/
+/-- Extract proof from a declaration by testing candidate delimiters in ascending
+    position order (so e.g. `theorem ... : C where field := by ...` splits at
+    the outer `where`, not the inner `:=`). -/
 unsafe def extractProofFromDecl
   (declInfo : DeclInfo)
   (cmdState : Option Command.State)
@@ -91,15 +202,13 @@ unsafe def extractProofFromDecl
 
   let text := declInfo.text
 
-  -- Convert Position to byte offset
-  -- Find all candidate delimiters
+  -- Find all top-level candidate delimiters in ascending byte-offset order
   let candidates := findCandidateDelimiters text
 
   -- Test each candidate
   for candidate in candidates do
-    let beforeDelimiter := (text.take candidate.position).copy
-
-    -- IO.println s!"beforeDelimiter:\n{beforeDelimiter}\n---"
+    let splitPos : String.Pos.Raw := ⟨candidate.position⟩
+    let beforeDelimiter := String.Pos.Raw.extract text ⟨0⟩ splitPos
 
     -- Build test text with full context
     let mut statementOnly := match candidate.delimiterType with
@@ -108,24 +217,21 @@ unsafe def extractProofFromDecl
       | "where" => beforeDelimiter ++ " := sorry"
       | _ => beforeDelimiter ++ " := sorry"
 
-
     -- If extra content is provided, prepend it
     statementOnly :=
       match extra_content with
-      | some extra => extra ++ (if extra.endsWith "\n" then statementOnly else "\n" ++ statementOnly)
+      | some extra =>
+        if extra.isEmpty then statementOnly
+        else extra ++ (if extra.endsWith "\n" then statementOnly else "\n" ++ statementOnly)
       | none => statementOnly
 
-    -- IO.println s!"statementOnly:\n{statementOnly}\n---"
-    -- Try to parse
+    -- Try to parse/elaborate the stubbed statement
     let success ← tryParseSuccessfully statementOnly cmdState
     if success then
       -- Found valid split!
-      -- IO.println s!"Found valid split at position {candidate.position} with delimiter {candidate.delimiterType}"
-      let proof := (text.drop candidate.position).copy
-      let thrm := (text.take candidate.position).copy
-      return { declInfo with proof := some proof.trim , text := thrm.trim }
-    -- else
-    --  IO.println s!"Failed split at position {candidate.position} with delimiter {candidate.delimiterType}"
+      let proof := String.Pos.Raw.extract text splitPos text.rawEndPos
+      let thrm := beforeDelimiter
+      return { declInfo with proof := some proof.trim, text := thrm.trim }
 
   -- No valid split found - no proof
   return { declInfo with proof := none }
@@ -136,40 +242,44 @@ unsafe def parse_between
 (next: Nat)
 (cmd_state : Option Command.State)
 : IO CheckpointedParseResult := do
-    -- IO.println s!"Extracting proof for segment between lines {prev} and {next}"
     let contextBeforeDecl := get_in_between_content fileContent prev next
-    -- IO.println s!"Processing declaration at line {decl.startPos.line}-{decl.endPos.line}"
-    -- IO.println s!"Declaration text:\n{decl.text}\n---"
-    -- IO.println s!"--- Context Before Decl ----\n{contextBeforeDecl}\n--- Context Before Decl ----\n"
+    if contextBeforeDecl.trim.isEmpty && cmd_state.isSome then
+      return {
+        parseResult := { trees := #[], errors := #[] }
+        chkptState := cmd_state
+        lineNum := some 0
+      }
     let chkpt_parse_res ← parseTactics contextBeforeDecl none cmd_state
     return chkpt_parse_res
 
-/-- Extract proofs from multiple declarations -/
-unsafe def extractProofsFromDecls (decls : Array DeclInfo) (fileContent : String) : IO (Array DeclInfo) := do
+/-- Extract proofs from multiple declarations.
+    Optionally accepts a pre-initialized `initialCmdState` (from `processHeader`)
+    and `initialPrevLine` (1-indexed first line after the header) to avoid
+    re-importing the file's header modules. -/
+unsafe def extractProofsFromDecls
+  (decls : Array DeclInfo)
+  (fileContent : String)
+  (initialCmdState : Option Command.State := none)
+  (initialPrevLine : Nat := 0)
+  : IO (Array DeclInfo) := do
   let mut result := #[]
-  let mut prev := 0
-  let mut cmd_state : Option Command.State := none
+  let mut prev := initialPrevLine
+  let mut cmd_state : Option Command.State := initialCmdState
   let mut next := 0
   let mut extra_content : Option String := none
   for decl in decls do
     if is_proof_extraction_needed decl then
-      next := decl.startPos.line - 1
+      next := if decl.startPos.line > 0 then decl.startPos.line - 1 else 0
       let chkpt_parse_res ← parse_between fileContent prev next cmd_state
-      -- IO.println s!"--- Context Before Decl ----\n{contextBeforeDecl}\n--- Context Before Decl ----\n"
       let parse_res := chkpt_parse_res.parseResult
       if parse_res.errors.size > 0 ∨ chkpt_parse_res.chkptState.isNone then
         -- supply the extra content to compile from
-        extra_content := get_in_between_content fileContent prev next
-        -- IO.println s!"Re-parsing declaration at lines: \n{extra_content.get!}"
-        -- IO.println s!"\nDeclaration text:\n{decl.text}\n---"
-        -- DO NOT update cmd_state yet
+        let extra := get_in_between_content fileContent prev next
+        extra_content := if extra.trim.isEmpty then none else some extra
       else
         cmd_state := chkpt_parse_res.chkptState
         extra_content := none
         prev := next + 1
-      -- let cmd_st ← match cmd_state with
-      --   | some st => pure st
-      --   | none => panic! "Failed to get valid cmd_state before processing declaration"
       let processed ← extractProofFromDecl decl cmd_state extra_content
       result := result.push processed
     else
